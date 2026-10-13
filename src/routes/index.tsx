@@ -52,10 +52,10 @@ function Today({ s }: { s: State }) {
         <div className="rounded-2xl bg-accent p-4 text-accent-foreground">
           <p className="text-sm">Сегодня вышло на {rub(c.overspend)} больше ориентира. Бывает. Как поступим?</p>
           <div className="mt-3 grid gap-2">
-            <Button variant="secondary" onClick={() => setState((x) => ({ ...x, overspendHandled: c.todayKey }))}>
+            <Button variant="secondary" className="h-auto whitespace-normal py-2" onClick={() => setState((x) => ({ ...x, overspendHandled: c.todayKey }))}>
               Распределить на оставшиеся дни {c.days > 1 && `(≈ ${rub(c.afterSpread)} в день)`}
             </Button>
-            <Button variant="secondary" disabled={s.cushion <= 0} onClick={() => {
+            <Button variant="secondary" className="h-auto whitespace-normal py-2" disabled={s.cushion <= 0} onClick={() => {
               const t = coverFromCushion(c.overspend);
               setState((x) => ({ ...x, overspendHandled: c.todayKey }));
               addedToast(t, "Взяли из подушки");
