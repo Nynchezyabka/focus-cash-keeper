@@ -15,7 +15,7 @@ export function parseLocal(input: string): Parsed[] {
     .flatMap((p) => {
       const m = p.match(/(\d[\d\s]*(?:[.,]\d+)?)\s*(к|тыс)?/i);
       if (!m) return [];
-      let amount = parseFloat(m[1].replace(/\s/g, "").replace(",", "."));
+      let amount = parseFloat((m[1] ?? "0").replace(/\s/g, "").replace(",", "."));
       if (m[2]) amount *= 1000;
       const note = p.replace(m[0], "").replace(/(₽|руб\.?|р\.)/gi, "").trim() || "Трата";
       return [{ note, amount, category: guessCategory(note) }];

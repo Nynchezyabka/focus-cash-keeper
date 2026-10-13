@@ -130,7 +130,7 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const [group, setGroup] = useState<Group>("life");
   const save = (category: string) => {
     const a = Number(amount.replace(",", "."));
-    if (!a) return toast("Сначала впишите сумму");
+    if (!a) { toast("Сначала впишите сумму"); return; }
     const t = addTx({ kind: "expense", amount: a, category });
     addedToast(t, `${cat(category).name}: ${rub(a)}`);
     setAmount(""); onClose();
