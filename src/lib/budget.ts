@@ -25,7 +25,7 @@ export interface State {
   obligations: Obligation[];
   incomes: Income[];
   incomeAck: Record<string, string>; // incomeId -> last handled occurrence (YYYY-MM-DD)
-  nextIncomeOverride?: string; // YYYY-MM-DD
+  nextIncomeOverride?: string | undefined; // YYYY-MM-DD
   overspendHandled?: string; // date key
   ai: AiSettings;
   createdAt: string;
@@ -46,7 +46,7 @@ export const CATEGORIES: { id: string; name: string; group: Group; icon: string;
   { id: "unexpected", name: "Непредвиденное", group: "safe", icon: "Umbrella", keys: ["ремонт", "штраф", "сломал"] },
 ];
 export const GROUPS: Record<Group, string> = { must: "Обязательное", safe: "Безопасность", life: "Жизнь и радости" };
-export const cat = (id: string) => CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0];
+export const cat = (id: string) => CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0]!;
 
 const KEY = "berezhny-budget-v1";
 const initial = (): State => ({
@@ -85,7 +85,7 @@ export const rub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`
 // ---------- dates ----------
 export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const parseKey = (k: string) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const parseKey = (k: string) => { const [y = 2000, m = 1, d = 1] = k.split("-").map(Number); return new Date(y, m - 1, d); };
 function onDay(y: number, m: number, day: number) {
   const last = new Date(y, m + 1, 0).getDate();
   return new Date(y, m, Math.min(day, last));
@@ -119,7 +119,8 @@ export function pendingIncome(s: State, now = new Date()): { income: Income; dat
     const last = past[past.length - 1];
     if (!last) continue;
     const k = dayKey(last);
-    if (!s.incomeAck[inc.id] || s.incomeAck[inc.id] < k) return { income: inc, date: k };
+    const ackd = s.incomeAck[inc.id];
+    if (!ackd || ackd < k) return { income: inc, date: k };
   }
   return null;
 }
