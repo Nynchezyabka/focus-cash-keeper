@@ -2,16 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { CatIcon, Shell, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
-import { cat, CATEGORIES, GROUPS, rub, type Group, type State } from "@/lib/budget";
+import { Link } from "@tanstack/react-router";
+import { Settings2 } from "lucide-react";
+import { cat, catColor, GROUPS, rub, type Group, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/analytics")({
   head: () => meta("Аналитика — Бережный бюджет", "Куда уходят деньги: круговая диаграмма трат по категориям за месяц."),
   component: () => <Shell title="Аналитика">{(s) => <Analytics s={s} />}</Shell>,
 });
 
-// distinct soft hues per category, tuned to the warm palette
-const HUES = [150, 35, 210, 280, 330, 15, 60, 190, 260, 100, 170, 240];
-const color = (id: string) => `oklch(0.72 0.11 ${HUES[Math.max(0, CATEGORIES.findIndex((c) => c.id === id)) % HUES.length]})`;
+const color = (id: string) => catColor(cat(id));
 
 const PERIODS = [
   { id: "month", label: "Этот месяц" },
@@ -98,6 +98,7 @@ function Analytics({ s }: { s: State }) {
         </>
       )}
 
+      <Link to="/categories" className="flex items-center justify-center gap-2 text-sm text-primary"><Settings2 className="h-4 w-4" /> Настроить категории, иконки и цвета</Link>
       <h2 className="pt-2 font-display text-lg">{picked ? `Операции: ${cat(picked).name}` : "Все операции"}</h2>
       <TxList txs={picked ? exp.filter((t) => t.category === picked) : inPeriod} />
     </div>

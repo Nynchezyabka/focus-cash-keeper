@@ -5,7 +5,7 @@ import { Shell, CatIcon, meta } from "@/components/Shell";
 import { addedToast, undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addTx, calc, cat, CATEGORIES, isPaid, obligationDue, rub, setState, uid, type State } from "@/lib/budget";
+import { addTx, calc, cat, cats, isPaid, obligationDue, rub, setState, uid, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("Обязательные платежи — Бережный бюджет", "Аренда, ЖКУ, подписки и рассрочки бронируются заранее, чтобы их случайно не потратить."),
@@ -58,7 +58,7 @@ function Payments({ s }: { s: State }) {
           <Input inputMode="numeric" placeholder="Число месяца" value={day} onChange={(e) => setDay(e.target.value)} />
         </div>
         <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm">
-          {CATEGORIES.filter((x) => x.group !== "life").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          {cats().filter((x) => x.group !== "life").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select>
         <Button type="submit" className="w-full">Добавить</Button>
       </form>
