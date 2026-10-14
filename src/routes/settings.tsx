@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { detectService } from "@/lib/parse";
 import { useRef } from "react";
 import { Download, Upload, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -20,21 +21,23 @@ function Settings({ s }: { s: State }) {
   const setAi = (p: Partial<AiSettings>) => setState((x) => ({ ...x, ai: { ...x.ai, ...p } }));
   return (
     <div className="space-y-6">
-      <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
-        <h2 className="font-display text-lg">Умный разбор (свой ключ ИИ)</h2>
-        <p className="text-xs text-muted-foreground">Ключ хранится только в этом браузере и отправляется напрямую выбранному сервису. Без ключа разбор работает на устройстве попроще.</p>
-        <select value={s.ai.provider} onChange={(e) => { const p = e.target.value as AiSettings["provider"]; setAi({ provider: p, model: MODELS[p] }); }} className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm">
-          <option value="none">Без ИИ (на устройстве)</option>
-          <option value="openai">OpenAI</option>
-          <option value="openrouter">OpenRouter</option>
-          <option value="anthropic">Anthropic</option>
-        </select>
-        {s.ai.provider !== "none" && (
-          <>
-            <Input type="password" placeholder="API-ключ" value={s.ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value })} />
-            <Input placeholder="Модель" value={s.ai.model} onChange={(e) => setAi({ model: e.target.value })} />
-          </>
-        )}
+      <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
+        <h2 className="font-display text-lg">Распознавание трат</h2>
+        <p className="text-sm text-muted-foreground">Когда вы пишете «такси 450, кофе 380», приложение раскладывает это на отдельные траты.</p>
+        <Input type="password" autoComplete="off" placeholder="Вставьте ваш API-ключ (необязательно)" value={s.ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value })} />
+        {(() => {
+          const svc = detectService(s.ai.apiKey);
+          if (svc) return <p className="text-sm text-primary">✓ Ключ {svc.name} — будет понимать любые формулировки.</p>;
+          if (s.ai.apiKey.trim()) return <p className="text-sm text-muted-foreground">Не узнаю этот ключ. Подходят ключи OpenAI, OpenRouter, Google Gemini, Groq, Anthropic, DeepSeek, xAI.</p>;
+          return (
+            <div className="rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
+              <p className="font-medium">Сейчас: встроенный режим, без ИИ</p>
+              <p className="mt-1 text-xs">Работает прямо на телефоне: находит суммы и узнаёт слова вроде «такси», «аптека», «кофе». Бесплатно и без интернета, но сложные фразы («закинула пятихатку на телефон») может не понять.</p>
+            </div>
+          );
+        })()}
+        <p className="text-xs text-muted-foreground">Ключ хранится только в этом браузере и уходит напрямую в сервис ИИ.</p>
+        {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
 
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Sun, CalendarClock, Wallet, ListOrdered, Settings, icons } from "lucide-react";
+import { Sun, CalendarClock, Wallet, PieChart, Settings, icons } from "lucide-react";
 import type { ReactNode } from "react";
 import { useBudget, type State } from "@/lib/budget";
 
@@ -7,7 +7,7 @@ const NAV = [
   { to: "/", label: "Сегодня", Icon: Sun },
   { to: "/payments", label: "Платежи", Icon: CalendarClock },
   { to: "/incomes", label: "Доходы", Icon: Wallet },
-  { to: "/history", label: "История", Icon: ListOrdered },
+  { to: "/analytics", label: "Аналитика", Icon: PieChart },
   { to: "/settings", label: "Настройки", Icon: Settings },
 ] as const;
 

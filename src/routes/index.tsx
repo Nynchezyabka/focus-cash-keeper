@@ -13,7 +13,8 @@ import {
   addTx, calc, cat, CATEGORIES, coverFromCushion, dayKey, GROUPS, getState, pendingIncome, reconcile, removeTx, rub, setState,
   type Group, type State,
 } from "@/lib/budget";
-import { parseAi, type Parsed } from "@/lib/parse";
+import { detectService, parseAi, type Parsed } from "@/lib/parse";
+import { MicButton } from "@/components/Mic";
 
 export const Route = createFileRoute("/")({
   head: () => meta("Бережный бюджет — сколько можно потратить сегодня", "Спокойный бюджет без таблиц и чувства вины: одна цифра на день, сверка баланса в один клик."),
@@ -69,7 +70,7 @@ function Today({ s }: { s: State }) {
       <div className="grid grid-cols-2 gap-3">
         <Button size="lg" className="h-16 rounded-2xl text-base" onClick={() => setDialog("expense")}><Plus /> Трата</Button>
         <Button size="lg" variant="secondary" className="h-16 rounded-2xl text-base" onClick={() => setDialog("reconcile")}><Scale /> Сверить баланс</Button>
-        <Button variant="outline" className="h-12 rounded-2xl" onClick={() => setDialog("pocket")}><Wand2 /> Карман мыслей</Button>
+        <Button variant="outline" className="h-12 rounded-2xl" onClick={() => setDialog("pocket")}><Wand2 /> Записать списком</Button>
         <Button variant="outline" className="h-12 rounded-2xl" onClick={() => setDialog("income")}><Coins /> Доход</Button>
       </div>
 
@@ -82,7 +83,7 @@ function Today({ s }: { s: State }) {
       <section>
         <div className="mb-2 flex items-baseline justify-between">
           <h2 className="font-display text-lg text-foreground">Последнее</h2>
-          <Link to="/history" className="text-sm text-muted-foreground">Все</Link>
+          <Link to="/analytics" className="text-sm text-muted-foreground">Все</Link>
         </div>
         <TxList txs={s.txs.slice(0, 6)} />
       </section>
@@ -206,11 +207,15 @@ function PocketDialog({ open, onClose, s }: { open: boolean; onClose: () => void
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Карман мыслей</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Записать несколько трат</DialogTitle></DialogHeader>
         {!items ? (
           <>
-            <Textarea autoFocus rows={4} placeholder="Такси 450, кофе с круассаном 380, в аптеке 1200" value={text} onChange={(e) => setText(e.target.value)} />
-            <p className="text-xs text-muted-foreground">{s.ai.provider !== "none" && s.ai.apiKey ? "Разберёт ваш ИИ из настроек." : "Разбор на устройстве. Свой ключ ИИ можно добавить в настройках."}</p>
+            <p className="text-sm text-muted-foreground">Напишите или надиктуйте как есть — приложение само разложит по категориям.</p>
+            <div className="relative">
+              <Textarea autoFocus rows={4} placeholder="Такси 450, кофе с круассаном 380, в аптеке 1200" value={text} onChange={(e) => setText(e.target.value)} className="pr-12" />
+              <MicButton onText={(t) => setText((p) => (p ? p + ", " : "") + t)} />
+            </div>
+            <p className="text-xs text-muted-foreground">{detectService(s.ai.apiKey) ? `Разберёт ИИ (${detectService(s.ai.apiKey)!.name}).` : "Разбор на устройстве, по суммам и словам. Ключ ИИ можно добавить в настройках."}</p>
             <Button disabled={busy || !text.trim()} onClick={async () => {
               setBusy(true);
               try { setItems(await parseAi(text, getState().ai)); }
@@ -228,14 +233,15 @@ function PocketDialog({ open, onClose, s }: { open: boolean; onClose: () => void
                     {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   <span className="flex-1 truncate">{it.note}</span>
-                  <span className="tabular-nums">{rub(it.amount)}</span>
+                  <input inputMode="decimal" aria-label="Сумма" value={it.amount} onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value.replace(/\D/g, "")) || 0 } : x)))} className="w-20 rounded-md bg-card p-1 text-right text-sm tabular-nums" />
+                  <button aria-label="Убрать" className="px-1 text-muted-foreground" onClick={() => setItems(items.filter((_, j) => j !== i))}>×</button>
                 </li>
               ))}
             </ul>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setItems(null)}>Назад</Button>
               <Button className="flex-1" disabled={!items.length} onClick={() => {
-                const ids = items.map((it) => addTx({ kind: "expense", amount: it.amount, category: it.category, note: it.note }).id);
+                const ids = items.filter((it) => it.amount > 0).map((it) => addTx({ kind: "expense", amount: it.amount, category: it.category, note: it.note }).id);
                 undoable(`Добавлено трат: ${ids.length}`, () => ids.forEach(removeTx));
                 close();
               }}>Сохранить всё</Button>
