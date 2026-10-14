@@ -10,7 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as HistoryRouteImport } from './routes/history'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IncomesRouteImport } from './routes/incomes'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -20,9 +20,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IncomesRoute = IncomesRouteImport.update({
@@ -43,14 +43,14 @@ const SettingsRoute = SettingsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/history': typeof HistoryRoute
+  '/analytics': typeof AnalyticsRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/history': typeof HistoryRoute
+  '/analytics': typeof AnalyticsRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -58,22 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/history': typeof HistoryRoute
+  '/analytics': typeof AnalyticsRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/history' | '/incomes' | '/payments' | '/settings'
+  fullPaths: '/' | '/analytics' | '/incomes' | '/payments' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/history' | '/incomes' | '/payments' | '/settings'
-  id: '__root__' | '/' | '/history' | '/incomes' | '/payments' | '/settings'
+  to: '/' | '/analytics' | '/incomes' | '/payments' | '/settings'
+  id: '__root__' | '/' | '/analytics' | '/incomes' | '/payments' | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  HistoryRoute: typeof HistoryRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   IncomesRoute: typeof IncomesRoute
   PaymentsRoute: typeof PaymentsRoute
   SettingsRoute: typeof SettingsRoute
@@ -88,11 +88,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/incomes': {
@@ -121,7 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  HistoryRoute: HistoryRoute,
+  AnalyticsRoute: AnalyticsRoute,
   IncomesRoute: IncomesRoute,
   PaymentsRoute: PaymentsRoute,
   SettingsRoute: SettingsRoute,
