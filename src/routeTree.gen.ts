@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as IncomesRouteImport } from './routes/incomes'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CategoriesRoute = CategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IncomesRoute = IncomesRouteImport.update({
@@ -44,6 +50,7 @@ const SettingsRoute = SettingsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/categories': typeof CategoriesRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/categories': typeof CategoriesRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -59,21 +67,32 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/categories': typeof CategoriesRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/analytics' | '/incomes' | '/payments' | '/settings'
+  fullPaths:
+    '/' | '/analytics' | '/categories' | '/incomes' | '/payments' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analytics' | '/incomes' | '/payments' | '/settings'
-  id: '__root__' | '/' | '/analytics' | '/incomes' | '/payments' | '/settings'
+  to:
+    '/' | '/analytics' | '/categories' | '/incomes' | '/payments' | '/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/analytics'
+    | '/categories'
+    | '/incomes'
+    | '/payments'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CategoriesRoute: typeof CategoriesRoute
   IncomesRoute: typeof IncomesRoute
   PaymentsRoute: typeof PaymentsRoute
   SettingsRoute: typeof SettingsRoute
@@ -93,6 +112,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/categories': {
+      id: '/categories'
+      path: '/categories'
+      fullPath: '/categories'
+      preLoaderRoute: typeof CategoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/incomes': {
@@ -122,6 +148,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CategoriesRoute: CategoriesRoute,
   IncomesRoute: IncomesRoute,
   PaymentsRoute: PaymentsRoute,
   SettingsRoute: SettingsRoute,

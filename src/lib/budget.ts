@@ -28,10 +28,13 @@ export interface State {
   nextIncomeOverride?: string | undefined; // YYYY-MM-DD
   overspendHandled?: string; // date key
   ai: AiSettings;
+  categories?: Category[];
   createdAt: string;
 }
 
-export const CATEGORIES: { id: string; name: string; group: Group; icon: string; keys: string[] }[] = [
+export interface Category { id: string; name: string; group: Group; icon: string; keys: string[]; color?: string }
+export const COLORS = ["#7fb89a", "#e0a96d", "#6fa8dc", "#b49ad9", "#e48aa6", "#e07a5f", "#d4c46a", "#5fb7c4", "#8d8fd9", "#9cc56f", "#c79a7a", "#9aa5b1"];
+export const DEFAULT_CATEGORIES: Category[] = [
   { id: "food", name: "Еда", group: "life", icon: "ShoppingBasket", keys: ["продукт", "магазин", "еда", "пятёроч", "пятероч", "перекрест", "лента", "вкусвилл", "хлеб", "молоко"] },
   { id: "cafe", name: "Кафе и кофе", group: "life", icon: "Coffee", keys: ["кофе", "кафе", "круассан", "обед", "ресторан", "бар", "пицц", "шаурм", "доставк"] },
   { id: "taxi", name: "Транспорт", group: "life", icon: "Car", keys: ["такси", "метро", "автобус", "бензин", "проезд", "каршер"] },
@@ -46,7 +49,11 @@ export const CATEGORIES: { id: string; name: string; group: Group; icon: string;
   { id: "unexpected", name: "Непредвиденное", group: "safe", icon: "Umbrella", keys: ["ремонт", "штраф", "сломал"] },
 ];
 export const GROUPS: Record<Group, string> = { must: "Обязательное", safe: "Безопасность", life: "Жизнь и радости" };
-export const cat = (id: string) => CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0]!;
+export const cats = (s: State = getState()): Category[] => s.categories ?? DEFAULT_CATEGORIES;
+const FALLBACK: Category = { id: "other", name: "Другое", group: "life", icon: "Circle", keys: [] };
+export const cat = (id: string) => cats().find((c) => c.id === id) ?? FALLBACK;
+export const catColor = (c: Category) => c.color ?? COLORS[Math.max(0, DEFAULT_CATEGORIES.findIndex((d) => d.id === c.id)) % COLORS.length]!;
+export function saveCategories(list: Category[]) { setState((s) => ({ ...s, categories: list })); }
 
 const KEY = "berezhny-budget-v1";
 const initial = (): State => ({

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  addTx, calc, cat, CATEGORIES, coverFromCushion, dayKey, GROUPS, getState, pendingIncome, reconcile, removeTx, rub, setState,
+  addTx, calc, cat, catColor, cats, coverFromCushion, dayKey, GROUPS, getState, pendingIncome, reconcile, removeTx, rub, setState,
   type Group, type State,
 } from "@/lib/budget";
 import { detectService, parseAi, type Parsed } from "@/lib/parse";
@@ -147,11 +147,12 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
           ))}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {CATEGORIES.filter((c) => c.group === group).map((c) => (
+          {cats().filter((c) => c.group === group).map((c) => (
             <button key={c.id} onClick={() => save(c.id)} className="flex flex-col items-center gap-1 rounded-xl bg-secondary p-3 text-xs text-secondary-foreground active:scale-95">
-              <CatIcon name={c.icon} className="h-5 w-5" />{c.name}
+              <span className="grid h-9 w-9 place-items-center rounded-full text-foreground" style={{ background: catColor(c) }}><CatIcon name={c.icon} className="h-5 w-5" /></span>{c.name}
             </button>
           ))}
+          <Link to="/categories" onClick={onClose} className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-3 text-xs text-muted-foreground">+ Своя</Link>
         </div>
         <p className="text-center text-xs text-muted-foreground">Нажмите на категорию — трата сохранится</p>
       </DialogContent>
@@ -230,7 +231,7 @@ function PocketDialog({ open, onClose, s }: { open: boolean; onClose: () => void
               {items.map((it, i) => (
                 <li key={i} className="flex items-center gap-2 rounded-xl bg-secondary p-2 text-sm">
                   <select value={it.category} onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, category: e.target.value } : x)))} className="w-28 rounded-md bg-card p-1 text-xs">
-                    {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {cats().map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   <span className="flex-1 truncate">{it.note}</span>
                   <input inputMode="decimal" aria-label="Сумма" value={it.amount} onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value.replace(/\D/g, "")) || 0 } : x)))} className="w-20 rounded-md bg-card p-1 text-right text-sm tabular-nums" />

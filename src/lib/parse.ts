@@ -1,10 +1,10 @@
-import { CATEGORIES, type AiSettings } from "./budget";
+import { cats, type AiSettings } from "./budget";
 
 export interface Parsed { note: string; amount: number; category: string }
 
 export function guessCategory(text: string) {
   const t = text.toLowerCase();
-  return CATEGORIES.find((c) => c.keys.some((k) => t.includes(k)))?.id ?? "shop";
+  return cats().find((c) => c.keys.some((k) => t.includes(k)))?.id ?? "shop";
 }
 
 export function parseLocal(input: string): Parsed[] {
@@ -22,7 +22,7 @@ export function parseLocal(input: string): Parsed[] {
     });
 }
 
-const PROMPT = `Разбери текст пользователя на отдельные траты. Категории (id): ${CATEGORIES.map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON вида {"items":[{"note":"кофе с круассаном","amount":380,"category":"cafe"}]}.`;
+const PROMPT = () => `Разбери текст пользователя на отдельные траты. Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON вида {"items":[{"note":"кофе с круассаном","amount":380,"category":"cafe"}]}.`;
 
 type Svc = { name: string; url: string; model: string; kind: "openai" | "anthropic" | "google" };
 export function detectService(key: string): Svc | null {
@@ -51,7 +51,7 @@ export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> 
         "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true",
       },
-      body: JSON.stringify({ model: svc.model, max_tokens: 800, system: PROMPT, messages: [{ role: "user", content: input }] }),
+      body: JSON.stringify({ model: svc.model, max_tokens: 800, system: PROMPT(), messages: [{ role: "user", content: input }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     const j = await r.json();
@@ -60,7 +60,7 @@ export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> 
     const r = await fetch(svc.url, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-      body: JSON.stringify({ model: svc.model, messages: [{ role: "system", content: PROMPT }, { role: "user", content: input }] }),
+      body: JSON.stringify({ model: svc.model, messages: [{ role: "system", content: PROMPT() }, { role: "user", content: input }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     const j = await r.json();
@@ -71,5 +71,5 @@ export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> 
   const items = (JSON.parse(json).items ?? []) as Parsed[];
   return items
     .filter((i) => Number(i.amount) > 0)
-    .map((i) => ({ note: String(i.note || "Трата"), amount: Number(i.amount), category: CATEGORIES.some((c) => c.id === i.category) ? i.category : guessCategory(i.note) }));
+    .map((i) => ({ note: String(i.note || "Трата"), amount: Number(i.amount), category: cats().some((c) => c.id === i.category) ? i.category : guessCategory(i.note) }));
 }
