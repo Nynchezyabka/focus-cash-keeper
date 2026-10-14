@@ -83,7 +83,7 @@ function Today({ s }: { s: State }) {
       <section>
         <div className="mb-2 flex items-baseline justify-between">
           <h2 className="font-display text-lg text-foreground">Последнее</h2>
-          <Link to="/history" className="text-sm text-muted-foreground">Все</Link>
+          <Link to="/analytics" className="text-sm text-muted-foreground">Все</Link>
         </div>
         <TxList txs={s.txs.slice(0, 6)} />
       </section>
