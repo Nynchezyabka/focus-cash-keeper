@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { detectService } from "@/lib/parse";
 import { useRef } from "react";
-import { Download, Upload, ShieldCheck } from "lucide-react";
+import { Download, Upload, ShieldCheck, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
@@ -14,7 +14,6 @@ export const Route = createFileRoute("/settings")({
   component: () => <Shell title="Настройки">{(s) => <Settings s={s} />}</Shell>,
 });
 
-const MODELS: Record<AiSettings["provider"], string> = { none: "", openai: "gpt-4o-mini", openrouter: "openai/gpt-4o-mini", anthropic: "claude-haiku-4-5" };
 
 function Settings({ s }: { s: State }) {
   const file = useRef<HTMLInputElement>(null);
@@ -39,6 +38,11 @@ function Settings({ s }: { s: State }) {
         <p className="text-xs text-muted-foreground">Ключ хранится только в этом браузере и уходит напрямую в сервис ИИ.</p>
         {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
+
+      <Link to="/categories" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="block font-display text-lg">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
 
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Резервная копия</h2>

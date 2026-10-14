@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  addTx, calc, cat, cats, coverFromCushion, dayKey, GROUPS, getState, pendingIncome, reconcile, removeTx, rub, setState,
+  addTx, calc, cat, catColor, cats, coverFromCushion, dayKey, GROUPS, getState, pendingIncome, reconcile, removeTx, rub, setState,
   type Group, type State,
 } from "@/lib/budget";
 import { detectService, parseAi, type Parsed } from "@/lib/parse";
@@ -149,9 +149,10 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
         <div className="grid grid-cols-3 gap-2">
           {cats().filter((c) => c.group === group).map((c) => (
             <button key={c.id} onClick={() => save(c.id)} className="flex flex-col items-center gap-1 rounded-xl bg-secondary p-3 text-xs text-secondary-foreground active:scale-95">
-              <CatIcon name={c.icon} className="h-5 w-5" />{c.name}
+              <span className="grid h-9 w-9 place-items-center rounded-full text-foreground" style={{ background: catColor(c) }}><CatIcon name={c.icon} className="h-5 w-5" /></span>{c.name}
             </button>
           ))}
+          <Link to="/categories" onClick={onClose} className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-3 text-xs text-muted-foreground">+ Своя</Link>
         </div>
         <p className="text-center text-xs text-muted-foreground">Нажмите на категорию — трата сохранится</p>
       </DialogContent>
