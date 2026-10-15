@@ -14,7 +14,7 @@ export interface Tx {
   period?: string; // "YYYY-MM" for obligation payments
 }
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string }
-export interface Income { id: string; name: string; amount: number; day: number; period: "monthly" | "biweekly" }
+export interface Income { id: string; name: string; amount: number; day: number; method?: "card" | "cash"; period?: "monthly" | "biweekly" }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string }
 
 export interface State {
@@ -103,7 +103,6 @@ function incomeDates(inc: Income, from: Date, count = 4): Date[] {
   for (let i = -2; i < count; i++) {
     const base = onDay(from.getFullYear(), from.getMonth() + i, inc.day);
     out.push(base);
-    if (inc.period === "biweekly") out.push(new Date(base.getFullYear(), base.getMonth(), base.getDate() + 14));
   }
   return out.sort((a, b) => +a - +b);
 }

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Scale, Wand2, Coins, Lock, Loader2 } from "lucide-react";
+import { Plus, Minus, Scale, Wand2, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -45,7 +45,7 @@ function Today({ s }: { s: State }) {
 
       {empty && (
         <div className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
-          С чего начать: нажмите «Сверить баланс» и впишите, сколько сейчас на карте. Потом добавьте зарплату в <Link to="/incomes" className="underline">Доходы</Link>.
+          С чего начать: нажмите «Сверить баланс» и впишите, сколько сейчас на карте. Потом впишите, каких числа приходят деньги, в <Link to="/incomes" className="underline">План доходов</Link>.
         </div>
       )}
 
@@ -68,11 +68,10 @@ function Today({ s }: { s: State }) {
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Button size="lg" className="h-16 rounded-2xl text-base" onClick={() => setDialog("expense")}><Plus /> Трата</Button>
-        <Button size="lg" variant="secondary" className="h-16 rounded-2xl text-base" onClick={() => setDialog("reconcile")}><Scale /> Сверить баланс</Button>
-        <Button variant="outline" className="h-12 rounded-2xl" onClick={() => setDialog("pocket")}><Wand2 /> Записать списком</Button>
-        <Button variant="outline" className="h-12 rounded-2xl" onClick={() => setDialog("income")}><Coins /> Доход</Button>
+        <Button size="lg" className="h-16 rounded-2xl text-base" onClick={() => setDialog("expense")}><Minus /> Трата</Button>
+        <Button size="lg" variant="secondary" className="h-16 rounded-2xl text-base" onClick={() => setDialog("income")}><Plus /> Доход</Button>
       </div>
+      <Button variant="outline" className="h-12 w-full rounded-2xl" onClick={() => setDialog("pocket")}><Wand2 /> Записать несколько трат текстом или голосом</Button>
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label="На карте" value={rub(s.balance)} />
@@ -80,13 +79,20 @@ function Today({ s }: { s: State }) {
         <Stat label="Подушка" value={rub(s.cushion)} />
       </div>
 
-      <section>
-        <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="font-display text-lg text-foreground">Последнее</h2>
-          <Link to="/analytics" className="text-sm text-muted-foreground">Все</Link>
-        </div>
-        <TxList txs={s.txs.slice(0, 6)} />
-      </section>
+      <button onClick={() => setDialog("reconcile")} className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-border p-3 text-left text-sm text-muted-foreground">
+        <Scale className="h-5 w-5 shrink-0" />
+        <span className="flex-1">Сверить баланс — если цифра на карте не совпадает</span>
+      </button>
+
+      {s.txs.length > 0 && (
+        <section>
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-sm text-muted-foreground">Только что записано</h2>
+            <Link to="/analytics" className="text-sm text-muted-foreground">Все операции</Link>
+          </div>
+          <TxList txs={s.txs.slice(0, 2)} />
+        </section>
+      )}
 
       <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} />
@@ -166,9 +172,9 @@ function IncomeDialog({ open, onClose }: { open: boolean; onClose: () => void })
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Разовый доход</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Пришли деньги</DialogTitle></DialogHeader>
         <Input autoFocus inputMode="decimal" placeholder="Сумма, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-14 text-center text-2xl" />
-        <Input placeholder="Откуда (Авито, подработка, подарок)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <Input placeholder="Откуда (аванс, наличные, подработка, подарок)" value={note} onChange={(e) => setNote(e.target.value)} />
         <Button onClick={() => {
           const a = Number(amount.replace(",", "."));
           if (!a) return;
