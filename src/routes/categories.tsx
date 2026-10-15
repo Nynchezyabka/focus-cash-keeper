@@ -41,7 +41,7 @@ function Categories({ s }: { s: State }) {
                 <span className="line-clamp-2 text-center">{c.name}</span>
               </button>
             ))}
-            <button onClick={() => setEdit({ id: uid(), name: "", group: g, icon: "Heart", keys: [], color: COLORS[list.length % COLORS.length] })}
+            <button onClick={() => setEdit({ id: uid(), name: "", group: g, icon: "Heart", keys: [], color: COLORS[list.length % COLORS.length]! })}
               className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border p-3 text-xs text-muted-foreground">
               <Plus className="h-5 w-5" /> Своя
             </button>
