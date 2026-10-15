@@ -9,7 +9,7 @@ import { addTx, calc, cat, cats, isPaid, obligationDue, rub, setState, uid, type
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("Обязательные платежи — Бережный бюджет", "Аренда, ЖКУ, подписки и рассрочки бронируются заранее, чтобы их случайно не потратить."),
-  component: () => <Shell title="Обязательные платежи">{(s) => <Payments s={s} />}</Shell>,
+  component: () => <Shell title="План платежей">{(s) => <Payments s={s} />}</Shell>,
 });
 
 function Payments({ s }: { s: State }) {
@@ -18,6 +18,7 @@ function Payments({ s }: { s: State }) {
   const list = [...s.obligations].map((o) => ({ o, due: obligationDue(o) })).sort((a, b) => +a.due - +b.due);
   return (
     <div className="space-y-5">
+      <p className="text-sm text-muted-foreground">Здесь записано, что и какого числа нужно оплатить каждый месяц. Эти деньги заранее откладываются и не входят в «Сегодня свободно».</p>
       <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> До дохода забронировано {rub(c.reserve)}</p>
       <ul className="space-y-2">
         {list.map(({ o, due }) => {
