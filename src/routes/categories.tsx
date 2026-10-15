@@ -96,7 +96,11 @@ function Editor({ c, isNew, onSave, onClose, onDelete }: { c: Category; isNew: b
             </button>
           ))}
         </div>
-        <Input placeholder="Слова для распознавания: рынок, фикспрайс" value={v.keys.join(", ")} onChange={(e) => setV({ ...v, keys: e.target.value.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean) })} />
+        <div className="space-y-1">
+          <p className="text-sm">Подсказки для автоматического выбора</p>
+          <Input placeholder="рынок, фикспрайс, яблоки" value={v.keys.join(", ")} onChange={(e) => setV({ ...v, keys: e.target.value.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean) })} />
+          <p className="text-xs text-muted-foreground">Необязательно. Когда вы пишете траты списком без ключа ИИ, приложение ищет эти слова: «рынок 800» сразу попадёт сюда. С ключом ИИ понимает смысл сам, а эти слова — запасной вариант без интернета.</p>
+        </div>
         <div className="flex gap-2">
           {!isNew && <Button variant="outline" size="icon" aria-label="Удалить" onClick={onDelete}><Trash2 /></Button>}
           <Button className="flex-1" disabled={!v.name.trim()} onClick={() => onSave({ ...v, name: v.name.trim() })}>Сохранить</Button>
