@@ -278,7 +278,6 @@ export function learnKeys(items: { note: string; category: string }[]) {
     if (owner?.id === it.category) continue;
     const target = next.find((c) => c.id === it.category);
     if (!target) continue;
-    if (owner) owner.keys = owner.keys.filter((k) => !word.includes(k));
     target.keys.push(stem); changed = true;
   }
   if (changed) saveCategories(next);
