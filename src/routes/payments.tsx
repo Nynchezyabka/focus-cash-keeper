@@ -1,68 +1,112 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, Trash2, Lock } from "lucide-react";
+import { Check, CalendarClock, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { addedToast, undoable } from "@/components/Undo";
+import { CategoryPicker, DateDialog, MethodBadge, MethodToggle } from "@/components/Pickers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addTx, calc, cat, cats, isPaid, obligationDue, rub, setState, uid, type State } from "@/lib/budget";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { calc, cat, catColor, dayKey, isPaid, moveObligation, obligationDue, payObligation, rub, setState, uid, type Method, type Obligation, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/payments")({
-  head: () => meta("Обязательные платежи — Бережный бюджет", "Аренда, ЖКУ, подписки и рассрочки бронируются заранее, чтобы их случайно не потратить."),
+  head: () => meta("План платежей — Бережный бюджет", "Регулярные и разовые платежи, долги к возврату. Эти деньги откладываются заранее."),
   component: () => <Shell title="План платежей">{(s) => <Payments s={s} />}</Shell>,
 });
 
 function Payments({ s }: { s: State }) {
   const c = calc(s);
-  const [name, setName] = useState(""); const [amount, setAmount] = useState(""); const [day, setDay] = useState(""); const [category, setCategory] = useState("home");
+  const [edit, setEdit] = useState<Obligation | null>(null);
+  const [moving, setMoving] = useState<Obligation | null>(null);
   const list = [...s.obligations].map((o) => ({ o, due: obligationDue(o) })).sort((a, b) => +a.due - +b.due);
+  const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">Здесь записано, что и какого числа нужно оплатить каждый месяц. Эти деньги заранее откладываются и не входят в «Сегодня свободно».</p>
-      <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> До дохода забронировано {rub(c.reserve)}</p>
+      <p className="text-sm text-muted-foreground">Что и когда нужно оплатить: каждый месяц или один раз. Эти деньги заранее откладываются и не входят в «Сегодня свободно».</p>
+      <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> До дохода отложено {rub(c.reserve)}</p>
       <ul className="space-y-2">
         {list.map(({ o, due }) => {
           const paid = isPaid(s, o, due);
           const reserved = c.reserved.some((r) => r.o.id === o.id);
+          const k = cat(o.category);
           return (
-            <li key={o.id} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-soft">
-              <CatIcon name={cat(o.category).icon} className="h-5 w-5 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="text-sm text-foreground">{o.name}</p>
-                <p className="text-xs text-muted-foreground">{due.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}{paid ? " · оплачено" : reserved ? " · забронировано" : ""}</p>
-              </div>
-              <span className="text-sm tabular-nums">{rub(o.amount)}</span>
+            <li key={o.id} className={`rounded-2xl bg-card p-4 shadow-soft ${paid ? "opacity-60" : ""}`}>
+              <button className="flex w-full items-center gap-3 text-left" onClick={() => setEdit(o)}>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: catColor(k) }}><CatIcon name={k.icon} className="h-5 w-5" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm">{o.name}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {o.once ? `Один раз, ${fmt(due)}` : `Каждый месяц, ${o.day}-го`}{o.nextOn ? ` · перенесён на ${fmt(due)}` : ""}{paid ? " · оплачено" : reserved ? " · отложено" : ""}
+                  </span>
+                </span>
+                <span className="text-sm tabular-nums">{rub(o.amount)}</span>
+                <Pencil className="h-4 w-4 text-muted-foreground" />
+              </button>
               {!paid && (
-                <Button size="icon" variant="secondary" aria-label="Оплачено" onClick={() => addedToast(addTx({ kind: "expense", amount: o.amount, category: o.category, note: o.name, obligationId: o.id, period: `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, "0")}` }), `${o.name} оплачено`)}>
-                  <Check className="h-4 w-4" />
-                </Button>
+                <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+                  <span className="flex-1"><MethodBadge m={o.method} /></span>
+                  <Button size="sm" variant="ghost" onClick={() => setMoving(o)}><CalendarClock /> Перенести</Button>
+                  <Button size="sm" variant="secondary" onClick={() => addedToast(payObligation(o), `${o.name} оплачено`)}><Check /> Оплачено</Button>
+                </div>
               )}
-              <button aria-label="Удалить" className="text-muted-foreground" onClick={() => {
-                setState((x) => ({ ...x, obligations: x.obligations.filter((y) => y.id !== o.id) }));
-                undoable("Платёж удалён", () => setState((x) => ({ ...x, obligations: [...x.obligations, o] })));
-              }}><Trash2 className="h-4 w-4" /></button>
             </li>
           );
         })}
       </ul>
-      <form className="space-y-2 rounded-2xl bg-secondary p-4" onSubmit={(e) => {
-        e.preventDefault();
-        const a = Number(amount), d = Number(day);
-        if (!name || !a || d < 1 || d > 31) return;
-        setState((x) => ({ ...x, obligations: [...x.obligations, { id: uid(), name, amount: a, day: d, category }] }));
-        setName(""); setAmount(""); setDay("");
-      }}>
-        <p className="text-sm text-secondary-foreground">Добавить платёж</p>
-        <Input placeholder="Название (аренда, рассрочка за телефон)" value={name} onChange={(e) => setName(e.target.value)} />
-        <div className="flex gap-2">
-          <Input inputMode="decimal" placeholder="Сумма" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Input inputMode="numeric" placeholder="Число месяца" value={day} onChange={(e) => setDay(e.target.value)} />
-        </div>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-9 w-full rounded-md border border-input bg-card px-2 text-sm">
-          {cats().filter((x) => x.group !== "life").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <Button type="submit" className="w-full">Добавить</Button>
-      </form>
+      {list.length === 0 && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">Например: аренда 5-го, интернет 12-го, рассрочка 20-го. Или разовый: «Подарок маме, 3 ноября».</p>}
+      <Button className="h-12 w-full rounded-2xl" onClick={() => setEdit({ id: "", name: "", amount: 0, day: 0, category: "home" })}><Plus /> Добавить платёж</Button>
+
+      <DateDialog open={!!moving} title={`Новая дата: «${moving?.name ?? ""}»`} initial={moving ? dayKey(obligationDue(moving)) : ""} onClose={() => setMoving(null)} onSave={(d) => moving && moveObligation(moving.id, d)} />
+      {edit && <Editor o={edit} onClose={() => setEdit(null)} />}
     </div>
+  );
+}
+
+function Editor({ o, onClose }: { o: Obligation; onClose: () => void }) {
+  const isNew = !o.id;
+  const [name, setName] = useState(o.name);
+  const [amount, setAmount] = useState(o.amount ? String(o.amount) : "");
+  const [once, setOnce] = useState(!!o.once);
+  const [day, setDay] = useState(o.day ? String(o.day) : "");
+  const [date, setDate] = useState(o.once ?? "");
+  const [category, setCategory] = useState(o.category);
+  const [method, setMethod] = useState<Method>(o.method ?? "card");
+  const a = Number(amount.replace(/\s/g, "").replace(",", ".")), d = Number(day);
+  const valid = name.trim() && a > 0 && (once ? !!date : d >= 1 && d <= 31);
+  return (
+    <Dialog open onOpenChange={(x) => !x && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-sm overflow-y-auto">
+        <DialogHeader><DialogTitle>{isNew ? "Новый платёж" : "Изменить платёж"}</DialogTitle></DialogHeader>
+        <Input autoFocus placeholder="Название (аренда, рассрочка)" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input inputMode="decimal" placeholder="Сумма, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-sm">
+          {[false, true].map((v) => (
+            <button key={String(v)} type="button" onClick={() => setOnce(v)} className={`rounded-lg py-2 ${once === v ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{v ? "Один раз" : "Каждый месяц"}</button>
+          ))}
+        </div>
+        {once
+          ? <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          : <Input inputMode="numeric" placeholder="Какого числа (1–31)" value={day} onChange={(e) => setDay(e.target.value.replace(/\D/g, "").slice(0, 2))} />}
+        <MethodToggle value={method} onChange={setMethod} />
+        <CategoryPicker value={category} onPick={setCategory} groups={["must", "safe", "life"]} />
+        <div className="flex gap-2">
+          {!isNew && (
+            <Button variant="outline" size="icon" aria-label="Удалить" onClick={() => {
+              setState((x) => ({ ...x, obligations: x.obligations.filter((y) => y.id !== o.id) }));
+              undoable("Платёж удалён", () => setState((x) => ({ ...x, obligations: [...x.obligations, o] })));
+              onClose();
+            }}><Trash2 /></Button>
+          )}
+          <Button className="flex-1" disabled={!valid} onClick={() => {
+            const item: Obligation = {
+              id: o.id || uid(), name: name.trim(), amount: a, category, method,
+              day: once ? Number(date.slice(8, 10)) : d, ...(once ? { once: date } : {}), ...(!once && o.nextOn ? { nextOn: o.nextOn } : {}),
+            };
+            setState((x) => ({ ...x, obligations: isNew ? [...x.obligations, item] : x.obligations.map((y) => (y.id === o.id ? item : y)) }));
+            onClose();
+          }}>Сохранить</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
