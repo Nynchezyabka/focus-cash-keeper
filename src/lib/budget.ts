@@ -16,8 +16,8 @@ export interface Tx {
 }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
-export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string; method?: Method }
-export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string; period?: "monthly" | "biweekly" }
+export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method }
+export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly" }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; mode?: "auto" | "always" }
 
 export interface State {
@@ -36,7 +36,7 @@ export interface State {
   createdAt: string;
 }
 
-export interface Category { id: string; name: string; group: Group; icon: string; keys: string[]; color?: string }
+export interface Category { id: string; name: string; group: Group; icon: string; keys: string[]; color?: string | undefined }
 export const COLORS = ["#7fb89a", "#e0a96d", "#6fa8dc", "#b49ad9", "#e48aa6", "#e07a5f", "#d4c46a", "#5fb7c4", "#8d8fd9", "#9cc56f", "#c79a7a", "#9aa5b1"];
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "food", name: "Еда", group: "life", icon: "ShoppingBasket", keys: ["продукт", "магазин", "еда", "пятёроч", "пятероч", "перекрест", "лента", "вкусвилл", "хлеб", "молоко"] },
