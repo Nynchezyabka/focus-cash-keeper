@@ -80,7 +80,7 @@ export function MethodToggle({ value, onChange }: { value: Method; onChange: (m:
   );
 }
 
-export function MethodBadge({ m }: { m?: Method }) {
+export function MethodBadge({ m }: { m?: Method | undefined }) {
   const cash = m === "cash";
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
