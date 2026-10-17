@@ -74,7 +74,7 @@ function Today({ s }: { s: State }) {
       </div>
       <Button variant="outline" className="h-12 w-full rounded-2xl" onClick={() => setDialog("pocket")}><Wand2 /> Списком или голосом</Button>
 
-      <div className="grid grid-cols-3 gap-2 text-center">{/* cushion shown below */}
+      <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label="Карта" value={rub(s.balance)} />
         <Stat label="Наличные" value={rub(s.cash ?? 0)} />
         <Stat label="Отложено" value={rub(c.reserve)} icon />

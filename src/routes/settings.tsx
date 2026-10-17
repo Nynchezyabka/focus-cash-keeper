@@ -1,7 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { detectService } from "@/lib/parse";
-import { useRef } from "react";
-import { Download, Upload, ShieldCheck, ChevronRight } from "lucide-react";
+import { useRef, useState } from "react";
+import { APP_VERSION, checkForUpdates, hardReload, updatesSupported } from "@/lib/pwa";
+import { Download, Upload, ShieldCheck, ChevronRight, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
@@ -36,6 +37,19 @@ function Settings({ s }: { s: State }) {
           );
         })()}
         <p className="text-xs text-muted-foreground">Ключ хранится только в этом браузере и уходит напрямую в сервис ИИ.</p>
+        {detectService(s.ai.apiKey) && (
+          <div className="space-y-2">
+            <p className="text-sm">Когда звать ИИ</p>
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-xs">
+              {([["auto", "Экономно"], ["always", "Всегда"]] as const).map(([m, l]) => (
+                <button key={m} onClick={() => setAi({ mode: m })} className={`rounded-lg py-2 ${(s.ai.mode ?? "auto") === m ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{l}</button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{(s.ai.mode ?? "auto") === "auto"
+              ? "Знакомые слова приложение разбирает само. ИИ зовётся, только если встретилось новое слово. Сохранённые траты запоминаются — в следующий раз ИИ не нужен."
+              : "Каждый список отправляется в ИИ. Точнее для сложных фраз, но тратит больше запросов."}</p>
+          </div>
+        )}
         {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
 
@@ -43,6 +57,8 @@ function Settings({ s }: { s: State }) {
         <span><span className="block font-display text-lg">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </Link>
+
+      <Updates />
 
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Резервная копия</h2>
@@ -69,5 +85,26 @@ function Settings({ s }: { s: State }) {
         }} />
       </section>
     </div>
+  );
+}
+
+function Updates() {
+  const [checking, setChecking] = useState(false);
+  return (
+    <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
+      <h2 className="font-display text-lg">Обновления</h2>
+      <p className="text-xs text-muted-foreground">Приложение обновляется само, когда есть интернет. Если что-то выглядит по-старому — нажмите кнопку.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="secondary" disabled={checking} onClick={async () => {
+          if (!updatesSupported()) { toast("Проверка работает в установленном приложении, а не в окне редактора"); return; }
+          setChecking(true);
+          const r = await checkForUpdates();
+          setChecking(false);
+          toast(r === "updating" ? "Есть новая версия — перезапускаю" : r === "current" ? "У вас последняя версия" : "Нет интернета, попробуйте позже");
+        }}><RefreshCw className={checking ? "animate-spin" : ""} /> {checking ? "Проверяю…" : "Проверить"}</Button>
+        <Button variant="secondary" onClick={() => { if (confirm("Перезагрузить начисто? Деньги, планы и категории сохранятся.")) void hardReload(); }}><RotateCcw /> Начисто</Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">Версия {APP_VERSION}</p>
+    </section>
   );
 }
