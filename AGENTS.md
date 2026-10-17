@@ -11,3 +11,8 @@
 
 - App is local-first: all data lives in localStorage via src/lib/budget.ts (no backend, no login) — user requirement for privacy and instant start.
 - AI expense parsing runs in the browser with the user’s own key (BYOK) and falls back to a local parser — keeps the app backend-free.
+- Money is split into card (`balance`) and `cash`; every tx carries `method`, and `calc` uses their sum — keeps card/cash consistent everywhere.
+- Category colors are derived from their group's shade family (`GROUP_SHADES`), not picked by the user — fewer decisions for the user.
+- One `CategoryPicker` (src/components/Pickers.tsx) is used on every screen that chooses a category — the same chooser everywhere.
+- Offline/updates: hand-written network-first `public/sw.js` registered by `src/lib/pwa.ts`, disabled in editor previews — fresh version whenever online.
+- AI economy mode: local keyword parse first, AI only for unknown words; saved items teach keywords via `learnKeys` — saves the user's AI requests.
