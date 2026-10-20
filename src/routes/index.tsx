@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Plus, Minus, Scale, Wand2, Lock, Loader2, ImageUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Minus, Scale, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/")({
 function Today({ s }: { s: State }) {
   const c = calc(s);
   const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket">(null);
+  const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
   const showOver = c.overspend > 0 && s.overspendHandled !== c.todayKey;
   const empty = s.txs.length === 0 && s.balance === 0;
@@ -72,7 +73,17 @@ function Today({ s }: { s: State }) {
         <Button size="lg" className="h-16 rounded-2xl text-base" onClick={() => setDialog("expense")}><Minus /> Трата</Button>
         <Button size="lg" variant="secondary" className="h-16 rounded-2xl text-base" onClick={() => setDialog("income")}><Plus /> Доход</Button>
       </div>
-      <Button variant="outline" className="h-12 w-full rounded-2xl" onClick={() => setDialog("pocket")}><Wand2 /> Списком или голосом</Button>
+      <div className="grid grid-cols-2 gap-3">
+        <Button variant="outline" className="h-auto flex-col gap-0.5 rounded-2xl py-2.5" onClick={() => { setPhoto(null); setDialog("pocket"); }}>
+          <span className="flex items-center gap-1.5 text-sm"><MicIcon className="h-4 w-4" /> Текст или голос</span>
+          <span className="text-xs font-normal text-muted-foreground">вставить или надиктовать</span>
+        </Button>
+        <label className="inline-flex h-auto cursor-pointer flex-col items-center justify-center gap-0.5 rounded-2xl border border-input bg-background py-2.5">
+          <span className="flex items-center gap-1.5 text-sm font-medium"><ImageUp className="h-4 w-4" /> Чек или скриншот</span>
+          <span className="text-xs text-muted-foreground">из банка или магазина</span>
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) { setPhoto(f); setDialog("pocket"); } }} />
+        </label>
+      </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label="Карта" value={rub(s.balance)} />
@@ -103,7 +114,7 @@ function Today({ s }: { s: State }) {
       <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} />
       <ReconcileDialog open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
-      <PocketDialog open={dialog === "pocket"} onClose={() => setDialog(null)} s={s} />
+      <PocketDialog open={dialog === "pocket"} onClose={() => { setDialog(null); setPhoto(null); }} s={s} photo={photo} />
     </div>
   );
 }
@@ -222,26 +233,33 @@ function BorrowCard({ gap }: { gap: number }) {
   );
 }
 
-function PocketDialog({ open, onClose, s }: { open: boolean; onClose: () => void; s: State }) {
+function PocketDialog({ open, onClose, s, photo }: { open: boolean; onClose: () => void; s: State; photo: File | null }) {
   const [text, setText] = useState("");
   const [items, setItems] = useState<Parsed[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [via, setVia] = useState("");
+  const [off, setOff] = useState<Set<number>>(new Set());
+  const show = (list: Parsed[]) => { setItems(list); setOff(new Set()); };
   const close = () => { setText(""); setItems(null); onClose(); };
   const fromImage = async (f?: File) => {
     if (!f) return;
     setBusy(true);
-    try { setItems(await parseImage(f, getState().ai)); setVia(detectService(getState().ai.apiKey)?.name ?? ""); }
+    try { show(await parseImage(f, getState().ai)); setVia(detectService(getState().ai.apiKey)?.name ?? ""); }
     catch (e) { toast((e as Error).message); }
     finally { setBusy(false); }
   };
+  useEffect(() => { if (open && photo) void fromImage(photo); }, [open, photo]);
+  const chosen = (items ?? []).filter((it, i) => !off.has(i) && it.amount > 0);
+  const toggle = (i: number) => setOff((o) => { const n = new Set(o); if (n.has(i)) n.delete(i); else n.add(i); return n; });
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Записать несколько трат</DialogTitle></DialogHeader>
-        {!items ? (
+        <DialogHeader><DialogTitle>{photo ? "Траты со скриншота" : "Записать несколько трат"}</DialogTitle></DialogHeader>
+        {!items && photo ? (
+          <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">{busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Читаю скриншот… Переводы между счетами и поступления пропускаю.</> : "Не получилось прочитать. Попробуйте другой скриншот."}</p>
+        ) : !items ? (
           <>
-            <p className="text-sm text-muted-foreground">Напишите или надиктуйте как есть — приложение само разложит по категориям.</p>
+            <p className="text-sm text-muted-foreground">Вставьте скопированный текст, напишите или надиктуйте как есть — приложение само разложит по категориям.</p>
             <div className="relative">
               <Textarea autoFocus rows={4} placeholder="Такси 450, кофе с круассаном 380, в аптеке 1200" value={text} onChange={(e) => setText(e.target.value)} className="pr-12" />
               <MicButton onText={(t) => setText((p) => (p ? p + ", " : "") + t)} />
@@ -254,7 +272,7 @@ function PocketDialog({ open, onClose, s }: { open: boolean; onClose: () => void
             </label>
             <Button disabled={busy || !text.trim()} onClick={async () => {
               setBusy(true);
-              try { const r = await parseSmart(text, getState().ai); setItems(r.items); setVia(r.via); }
+              try { const r = await parseSmart(text, getState().ai); show(r.items); setVia(r.via); }
               catch (e) { toast((e as Error).message); }
               finally { setBusy(false); }
             }}>{busy ? <Loader2 className="animate-spin" /> : <Wand2 />} Разобрать</Button>
@@ -264,25 +282,26 @@ function PocketDialog({ open, onClose, s }: { open: boolean; onClose: () => void
           <>
             {items.length > 0 && <p className="text-xs text-muted-foreground">{via === "device" ? "Разобрано на телефоне, без ИИ." : `Разобрал ${via}.`} Нажмите на категорию, чтобы поменять.</p>}
             {items.length === 0 && <p className="text-sm text-muted-foreground">Не нашла сумм. Попробуйте «кофе 200, такси 450».</p>}
-            <ul className="space-y-2">
+            {items.length > 1 && <p className="text-xs text-muted-foreground">Снимите галочку с лишних или старых трат.</p>}
+            <ul className="max-h-[50vh] space-y-2 overflow-y-auto">
               {items.map((it, i) => (
-                <li key={i} className="flex items-center gap-2 rounded-xl bg-secondary p-2 text-sm">
+                <li key={i} className={`flex items-center gap-2 rounded-xl bg-secondary p-2 text-sm ${off.has(i) ? "opacity-40" : ""}`}>
+                  <button aria-label={off.has(i) ? "Включить" : "Не записывать"} onClick={() => toggle(i)} className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border border-primary ${off.has(i) ? "" : "bg-primary text-primary-foreground"}`}>{!off.has(i) && <Check className="h-3.5 w-3.5" />}</button>
                   <CategoryChip value={it.category} onChange={(id) => setItems(items.map((x, j) => (j === i ? { ...x, category: id } : x)))} />
                   <span className="flex-1 truncate">{it.note}</span>
                   <input inputMode="decimal" aria-label="Сумма" value={it.amount} onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, amount: Number(e.target.value.replace(/\D/g, "")) || 0 } : x)))} className="w-20 rounded-md bg-card p-1 text-right text-sm tabular-nums" />
-                  <button aria-label="Убрать" className="px-1 text-muted-foreground" onClick={() => setItems(items.filter((_, j) => j !== i))}>×</button>
-                </li>
+                                  </li>
               ))}
             </ul>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setItems(null)}>Назад</Button>
-              <Button className="flex-1" disabled={!items.length} onClick={() => {
-                const ok = items.filter((it) => it.amount > 0);
+              <Button variant="outline" className="flex-1" onClick={() => (photo ? close() : setItems(null))}>Назад</Button>
+              <Button className="flex-1" disabled={!chosen.length} onClick={() => {
+                const ok = chosen;
                 learnKeys(ok);
                 const ids = ok.map((it) => addTx({ kind: "expense", amount: it.amount, category: it.category, note: it.note }).id);
                 undoable(`Добавлено трат: ${ids.length}`, () => ids.forEach(removeTx));
                 close();
-              }}>Сохранить всё</Button>
+              }}>Сохранить {chosen.length} · {rub(chosen.reduce((a, x) => a + x.amount, 0))}</Button>
             </div>
           </>
         )}
