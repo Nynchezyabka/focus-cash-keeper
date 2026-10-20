@@ -59,7 +59,7 @@ const IMG_PROMPT = () => `На картинке скриншот чека, за�
 export async function parseImage(file: File, ai: AiSettings): Promise<Parsed[]> {
   const svc = detectService(ai.apiKey);
   if (!svc) throw new Error("Для скриншотов нужен ключ ИИ — добавьте его в Настройках.");
-  if (svc.name === "Groq" || svc.name === "DeepSeek") throw new Error(`${svc.name} не умеет читать картинки. Подойдёт ключ OpenAI, Gemini, OpenRouter или Anthropic.`);
+  if (svc.name === "Groq") throw new Error(`${svc.name} не умеет читать картинки. Подойдёт ключ OpenAI, Gemini, DeepSeek, OpenRouter или Anthropic.`);
   const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
   const b64 = dataUrl.split(",")[1] ?? "";
   let text = "";
