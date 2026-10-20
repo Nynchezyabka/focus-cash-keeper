@@ -54,7 +54,13 @@ export async function parseSmart(input: string, ai: AiSettings): Promise<{ items
   return { items: await parseAi(input, ai), via: svc.name };
 }
 
-const IMG_PROMPT = () => `На картинке скриншот чека, заказа из магазина или выписки банка. Выпиши ТОЛЬКО купленные товары или списания: короткое название и итоговую цену в рублях. НЕ включай даты, время, название магазина, адрес, номер заказа, скидки, бонусы, доставку со стоимостью 0, итоговую сумму «Итого». Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON {"items":[{"note":"молоко","amount":89,"category":"food"}]}.`;
+const IMG_PROMPT = () => `На картинке скриншот чека, заказа из магазина или списка операций банка. Выпиши ТОЛЬКО реальные траты (списания со знаком «−» или купленные товары): короткое название места/товара и сумму в рублях (число без знака).
+НЕ включай:
+- поступления со знаком «+», кэшбэк, бонусы, зачисления, возвраты;
+- переводы между своими счетами: «Между своими счетами», «Себе в другой банк», «Пополнение/Перевод средств из Кубышки», «Копилка», «Инвесткопилка», «Внесение наличных», «Снятие наличных», пополнение вкладов и кредиток;
+- даты, время, заголовки дней, итоги за день, «Итого», адреса, номера заказов, тип карты.
+Категорию выбирай по смыслу места, а НЕ по подписи банка (банк часто ошибается): «Городская ферма», парки, зоопарки, выставки, кино — развлечения; «Госуслуги»/«Gosuslugi» — сад, школа, кружки; Яндекс Такси, каршеринг — транспорт; кафе, фастфуд, бистро, пиццерии — кафе; Пятёрочка, ВкусВилл, супермаркеты — продукты; «Долями», «Сплит», рассрочки — кредиты.
+Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON {"items":[{"note":"Городская ферма","amount":2300,"category":"fun"}]}.`;
 
 export async function parseImage(file: File, ai: AiSettings): Promise<Parsed[]> {
   const svc = detectService(ai.apiKey);
@@ -67,7 +73,7 @@ export async function parseImage(file: File, ai: AiSettings): Promise<Parsed[]> 
     const r = await fetch(svc.url, {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": ai.apiKey.trim(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: svc.model, max_tokens: 1500, messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: file.type || "image/png", data: b64 } }, { type: "text", text: IMG_PROMPT() }] }] }),
+      body: JSON.stringify({ model: svc.model, max_tokens: 3000, messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: file.type || "image/png", data: b64 } }, { type: "text", text: IMG_PROMPT() }] }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     text = (await r.json()).content?.[0]?.text ?? "";
@@ -75,7 +81,7 @@ export async function parseImage(file: File, ai: AiSettings): Promise<Parsed[]> 
     const r = await fetch(svc.url, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-      body: JSON.stringify({ model: svc.model, messages: [{ role: "user", content: [{ type: "text", text: IMG_PROMPT() }, { type: "image_url", image_url: { url: dataUrl } }] }] }),
+      body: JSON.stringify({ model: svc.model, max_tokens: 3000, messages: [{ role: "user", content: [{ type: "text", text: IMG_PROMPT() }, { type: "image_url", image_url: { url: dataUrl } }] }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     text = (await r.json()).choices?.[0]?.message?.content ?? "";

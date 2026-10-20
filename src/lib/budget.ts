@@ -40,15 +40,15 @@ export interface Category { id: string; name: string; group: Group; icon: string
 export const COLORS = ["#7fb89a", "#e0a96d", "#6fa8dc", "#b49ad9", "#e48aa6", "#e07a5f", "#d4c46a", "#5fb7c4", "#8d8fd9", "#9cc56f", "#c79a7a", "#9aa5b1"];
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "food", name: "Еда", group: "life", icon: "ShoppingBasket", keys: ["продукт", "магазин", "еда", "пятёроч", "пятероч", "перекрест", "лента", "вкусвилл", "хлеб", "молоко"] },
-  { id: "cafe", name: "Кафе и кофе", group: "life", icon: "Coffee", keys: ["кофе", "кафе", "круассан", "обед", "ресторан", "бар", "пицц", "шаурм", "доставк"] },
-  { id: "taxi", name: "Транспорт", group: "life", icon: "Car", keys: ["такси", "метро", "автобус", "бензин", "проезд", "каршер"] },
+  { id: "cafe", name: "Кафе и кофе", group: "life", icon: "Coffee", keys: ["кофе", "кафе", "круассан", "обед", "ресторан", "бар", "пицц", "шаурм", "доставк", "бистро", "bistro", "фастфуд"] },
+  { id: "taxi", name: "Транспорт", group: "life", icon: "Car", keys: ["такси", "taxi", "метро", "автобус", "бензин", "проезд", "каршер"] },
   { id: "shop", name: "Покупки", group: "life", icon: "ShoppingBag", keys: ["одежд", "озон", "ozon", "wb", "вайлдб", "покуп", "обув"] },
-  { id: "fun", name: "Хобби и радости", group: "life", icon: "Sparkles", keys: ["кино", "книг", "игр", "хобби", "подарок", "цвет", "концерт"] },
+  { id: "fun", name: "Хобби и радости", group: "life", icon: "Sparkles", keys: ["кино", "книг", "игр", "хобби", "подарок", "цвет", "концерт", "ферм", "зоопарк", "парк", "музей", "выставк"] },
   { id: "health", name: "Лекарства", group: "must", icon: "Pill", keys: ["аптек", "лекарств", "врач", "анализ"] },
   { id: "home", name: "ЖКУ и аренда", group: "must", icon: "House", keys: ["жку", "аренд", "квартплат", "свет", "газ"] },
   { id: "phone", name: "Связь и подписки", group: "must", icon: "Smartphone", keys: ["связь", "телефон", "интернет", "подписк"] },
-  { id: "loan", name: "Кредиты и рассрочки", group: "must", icon: "Landmark", keys: ["кредит", "рассроч", "долг"] },
-  { id: "kids", name: "Сад и школа", group: "must", icon: "School", keys: ["сад", "школ", "кружок"] },
+  { id: "loan", name: "Кредиты и рассрочки", group: "must", icon: "Landmark", keys: ["кредит", "рассроч", "долг", "долями", "сплит"] },
+  { id: "kids", name: "Сад и школа", group: "must", icon: "School", keys: ["сад", "школ", "кружок", "госуслуг", "gosuslugi"] },
   { id: "savings", name: "Накопления", group: "safe", icon: "PiggyBank", keys: ["накоп", "копилк", "вклад"] },
   { id: "unexpected", name: "Непредвиденное", group: "safe", icon: "Umbrella", keys: ["ремонт", "штраф", "сломал"] },
 ];
@@ -271,9 +271,11 @@ export function learnKeys(items: { note: string; category: string }[]) {
   let changed = false;
   const next = list.map((c) => ({ ...c, keys: [...c.keys] }));
   for (const it of items) {
-    const word = it.note.toLowerCase().replace(/[^a-zа-яё\s-]/gi, " ").split(/\s+/).find((w) => w.length >= 3);
+    const words = it.note.toLowerCase().replace(/[^a-zа-яё\s-]/gi, " ").split(/\s+/).filter((w) => w.length >= 3);
+    // short names like «Городская ферма» are learned whole, so a generic first word doesn't steal other places
+    const word = words.length >= 2 && words.length <= 3 ? words.join(" ") : words[0];
     if (!word) continue;
-    const stem = word.length > 6 ? word.slice(0, word.length - 2) : word;
+    const stem = word.includes(" ") ? word : word.length > 6 ? word.slice(0, word.length - 2) : word;
     const owner = next.find((c) => c.keys.some((k) => word.includes(k)));
     if (owner?.id === it.category) continue;
     const target = next.find((c) => c.id === it.category);
