@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { APP_VERSION, checkForUpdates, hardReload, updatesSupported } from "@/lib/pwa";
 import { Download, Upload, ShieldCheck, ChevronRight, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { WhatsNew } from "@/components/WhatsNew";
 import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,7 @@ function Settings({ s }: { s: State }) {
 
 function Updates() {
   const [checking, setChecking] = useState(false);
+  const [news, setNews] = useState(false);
   return (
     <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
       <h2 className="font-display text-lg">Обновления</h2>
@@ -104,7 +106,8 @@ function Updates() {
         }}><RefreshCw className={checking ? "animate-spin" : ""} /> {checking ? "Проверяю…" : "Проверить"}</Button>
         <Button variant="secondary" onClick={() => { if (confirm("Перезагрузить начисто? Деньги, планы и категории сохранятся.")) void hardReload(); }}><RotateCcw /> Начисто</Button>
       </div>
-      <p className="text-[11px] text-muted-foreground">Версия {APP_VERSION}</p>
+      <button className="text-xs text-muted-foreground underline" onClick={() => setNews(true)}>Версия {APP_VERSION} · что нового</button>
+      <WhatsNew open={news} onClose={() => setNews(false)} />
     </section>
   );
 }
