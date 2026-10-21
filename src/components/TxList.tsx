@@ -60,7 +60,7 @@ function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
     const d = new Date(t.date);
     const [y, m, day] = date.split("-").map(Number);
     if (y && m && day) d.setFullYear(y, m - 1, day);
-    updateTx(t.id, { amount: signed && t.amount < 0 ? -a : a, note: note.trim() || undefined, category, method, date: d.toISOString() });
+    updateTx(t.id, { amount: signed && t.amount < 0 ? -a : a, note: note.trim(), category, method, date: d.toISOString() });
     onClose();
   };
   return (
