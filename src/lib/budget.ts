@@ -252,6 +252,13 @@ export function restoreTx(t: Tx) {
     cushion: s.cushion + (t.category === "savings" && t.kind === "expense" ? t.amount : 0) + (t.kind === "cushion" ? t.amount : 0),
   }));
 }
+/** Edit a recorded operation: undo its money effect, then apply the new version. */
+export function updateTx(id: string, patch: Partial<Omit<Tx, "id">>) {
+  const old = getState().txs.find((x) => x.id === id);
+  if (!old) return;
+  removeTx(id);
+  restoreTx({ ...old, ...patch, id });
+}
 export function reconcile(actual: number, method: Method = "card") {
   const st = getState();
   const diff = actual - (method === "cash" ? st.cash ?? 0 : st.balance);
