@@ -46,3 +46,14 @@ describe("budget rules", () => {
     expect(s.obligations[0]).toMatchObject({ amount: 700, once: "2026-10-30" });
   });
 });
+
+describe("editing", () => {
+  it("editing an expense amount and method moves the money correctly", async () => {
+    const { addTx, updateTx } = await import("@/lib/budget");
+    replaceState({ ...base(), balance: 1000, cash: 500 });
+    const t = addTx({ kind: "expense", amount: 100, category: "food", method: "card" });
+    updateTx(t.id, { amount: 300, method: "cash" });
+    expect(getState().balance).toBe(1000);
+    expect(getState().cash).toBe(200);
+  });
+});
