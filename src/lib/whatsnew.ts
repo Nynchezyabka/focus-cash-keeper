@@ -17,7 +17,11 @@ export const CHANGELOG: { version: string; date: string; items: string[] }[] = [
 const KEY = "berezhny-seen-version";
 export function unseenChanges(current: string) {
   const seen = localStorage.getItem(KEY);
-  if (!seen) { localStorage.setItem(KEY, current); return null; } // first launch: nothing to announce
+  if (!seen) {
+    // brand-new user: nothing to announce; existing user from before this feature: show latest
+    if (!localStorage.getItem("berezhny-budget-v1")) { localStorage.setItem(KEY, current); return null; }
+    return CHANGELOG.slice(0, 1);
+  }
   if (seen === current) return null;
   const idx = CHANGELOG.findIndex((c) => c.version === seen);
   const list = idx === -1 ? CHANGELOG.slice(0, 1) : CHANGELOG.slice(0, idx);
