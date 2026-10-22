@@ -161,7 +161,12 @@ function Today({ s }: { s: State }) {
         <Stat label="Отложено" value={rub(c.reserve)} icon />
       </div>
 
-      {s.cushion > 0 && <p className="text-center text-xs text-muted-foreground">В подушке: {rub(s.cushion)}</p>}
+      {s.cushion > 0 && <p className="text-center text-xs text-muted-foreground">В подушке: {rub(s.cushion)} — это траты в категории «Накопления»</p>}
+      {c.saving.length > 0 && (
+        <p className="text-center text-xs text-muted-foreground">
+          В «Отложено» копится понемногу на дальние платежи: {c.saving.map((x) => `${x.o.name} — ${rub(x.part)} из ${rub(x.o.amount)}`).join(", ")}
+        </p>
+      )}
       {c.total < 0 && <BorrowCard gap={-c.total} />}
       {c.total >= 0 && c.shortfall > 0 && (
         <p className="rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
