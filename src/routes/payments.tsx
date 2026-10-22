@@ -99,7 +99,7 @@ function Editor({ o, onClose }: { o: Obligation; onClose: () => void }) {
           )}
           <Button className="flex-1" disabled={!valid} onClick={() => {
             const item: Obligation = {
-              id: o.id || uid(), name: name.trim(), amount: a, category, method,
+              id: o.id || uid(), name: name.trim(), amount: a, category, method, from: o.from ?? new Date().toISOString().slice(0, 10),
               day: once ? Number(date.slice(8, 10)) : d, ...(once ? { once: date } : {}), ...(!once && o.nextOn ? { nextOn: o.nextOn } : {}),
             };
             setState((x) => ({ ...x, obligations: isNew ? [...x.obligations, item] : x.obligations.map((y) => (y.id === o.id ? item : y)) }));

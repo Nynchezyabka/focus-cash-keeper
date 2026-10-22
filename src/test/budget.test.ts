@@ -57,3 +57,21 @@ describe("editing", () => {
     expect(getState().cash).toBe(200);
   });
 });
+
+describe("reserve and cushion", () => {
+  beforeEach(() => replaceState(base()));
+
+  it("a far one-off payment is reserved in proportion to time passed", () => {
+    // planned 1 Oct, due 31 Dec (91 days); next income 26 Oct (25 days) -> 12 000 * 25/91 ≈ 3297
+    replaceState({ ...base(), balance: 20000, incomes: [{ id: "z", name: "З", amount: 1, day: 26 }],
+      obligations: [{ id: "t", name: "Налоги", amount: 12000, day: 31, category: "home", once: "2026-12-31", from: "2026-10-01" }] });
+    expect(calc(getState(), NOW).reserve).toBe(3297);
+  });
+
+  it("taking money from the cushion makes the cushion smaller", async () => {
+    const { addTx, coverFromCushion } = await import("@/lib/budget");
+    addTx({ kind: "expense", amount: 5000, category: "savings" });
+    coverFromCushion(2000);
+    expect(getState().cushion).toBe(3000);
+  });
+});
