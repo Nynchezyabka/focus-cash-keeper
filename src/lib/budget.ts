@@ -16,7 +16,7 @@ export interface Tx {
 }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
-export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method }
+export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly" }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; mode?: "auto" | "always" }
 
@@ -33,6 +33,7 @@ export interface State {
   overspendHandled?: string; // date key
   ai: AiSettings;
   categories?: Category[];
+  advisorAbout?: string;
   createdAt: string;
 }
 
@@ -200,7 +201,17 @@ export function calc(s: State, now = new Date()) {
   const reserved = s.obligations
     .map((o) => ({ o, due: obligationDue(o, now) }))
     .filter(({ o, due }) => due < next.date && !isPaid(s, o, due));
-  const reserve = reserved.reduce((a, x) => a + x.o.amount, 0);
+  // far one-off payments (e.g. taxes in December) are set aside little by little: by the next income
+  // the reserve holds the share proportional to the time passed since the payment was planned
+  const saving = s.obligations
+    .filter((o) => o.once && !isPaid(s, o, obligationDue(o, now)) && obligationDue(o, now) >= next.date)
+    .map((o) => {
+      const due = obligationDue(o, now);
+      const start = parseKey(o.from ?? s.createdAt.slice(0, 10));
+      const share = Math.min(1, Math.max(0, (+next.date - +start) / Math.max(1, +due - +start)));
+      return { o, due, part: Math.round(o.amount * share) };
+    });
+  const reserve = reserved.reduce((a, x) => a + x.o.amount, 0) + saving.reduce((a, x) => a + x.part, 0);
   const tk = dayKey(today);
   const todayLife = s.txs.filter((t) => t.kind === "expense" && cat(t.category).group === "life" && dayKey(new Date(t.date)) === tk);
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
@@ -210,7 +221,7 @@ export function calc(s: State, now = new Date()) {
   const overspend = freeToday < 0 ? -freeToday : 0;
   const afterSpread = days > 1 ? Math.max(0, (total - reserve) / (days - 1)) : 0;
   const shortfall = Math.max(0, reserve - total); // not enough even for planned payments
-  return { next, days, reserve, reserved, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, todayKey: tk };
+  return { next, days, reserve, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, todayKey: tk };
 }
 
 // ---------- actions ----------
@@ -220,13 +231,19 @@ export function addTx(t: Omit<Tx, "id" | "date"> & { date?: string }) {
     ...s,
     txs: [tx, ...s.txs],
     ...move(s, tx, 1),
-    cushion: s.cushion + (tx.category === "savings" && tx.kind === "expense" ? tx.amount : 0),
+    cushion: s.cushion + cushionDelta(tx),
   }));
   return tx;
 }
 function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
   const d = delta(t) * sign;
   return t.method === "cash" ? { cash: (s.cash ?? 0) + d } : { balance: s.balance + d };
+}
+/** cushion grows with «Накопления» expenses and shrinks when money is taken back from it */
+function cushionDelta(t: Tx) {
+  if (t.kind === "expense" && t.category === "savings") return t.amount;
+  if (t.kind === "cushion") return -t.amount;
+  return 0;
 }
 function delta(t: Tx) {
   if (t.kind === "income") return t.amount;
@@ -240,7 +257,7 @@ export function removeTx(id: string) {
     ...s,
     txs: s.txs.filter((x) => x.id !== id),
     ...move(s, t, -1),
-    cushion: s.cushion - (t.category === "savings" && t.kind === "expense" ? t.amount : 0) - (t.kind === "cushion" ? t.amount : 0),
+    cushion: s.cushion - cushionDelta(t),
   }));
   return t;
 }
@@ -249,7 +266,7 @@ export function restoreTx(t: Tx) {
     ...s,
     txs: [t, ...s.txs].sort((a, b) => b.date.localeCompare(a.date)),
     ...move(s, t, 1),
-    cushion: s.cushion + (t.category === "savings" && t.kind === "expense" ? t.amount : 0) + (t.kind === "cushion" ? t.amount : 0),
+    cushion: s.cushion + cushionDelta(t),
   }));
 }
 /** Edit a recorded operation: undo its money effect, then apply the new version. */
