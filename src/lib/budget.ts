@@ -34,6 +34,7 @@ export interface State {
   ai: AiSettings;
   categories?: Category[];
   advisorAbout?: string;
+  advisorLoans?: string;
   createdAt: string;
 }
 
@@ -59,7 +60,7 @@ const FALLBACK: Category = { id: "other", name: "Другое", group: "life", i
 export const cat = (id: string) => cats().find((c) => c.id === id) ?? FALLBACK;
 /** Each group has its own family of shades; categories get a shade by their position inside the group. */
 export const GROUP_SHADES: Record<Group, string[]> = {
-  must: ["#d9825f", "#c8664a", "#e8a283", "#b5523a", "#f0bea5", "#a8472f"],
+  must: ["#f2b544", "#e89a3c", "#f6cc7a", "#dd8a33", "#f9dca0", "#d07a2c"],
   safe: ["#6fa0cc", "#4f86b8", "#93bde0", "#3d6f9c", "#b3d1ea"],
   life: ["#7fb89a", "#5e9e78", "#a2cfb5", "#4a8562", "#c1e2cf", "#3d7254"],
 };

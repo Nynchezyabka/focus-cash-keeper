@@ -8,7 +8,7 @@ const NAV = [
   { to: "/payments", label: "Платежи", Icon: CalendarClock },
   { to: "/incomes", label: "Доходы", Icon: Wallet },
   { to: "/analytics", label: "Аналитика", Icon: PieChart },
-  { to: "/advisor", label: "Советник", Icon: MessageCircleHeart },
+  { to: "/advisor", label: "Помощник", Icon: MessageCircleHeart },
   { to: "/settings", label: "Настройки", Icon: Settings },
 ] as const;
 
