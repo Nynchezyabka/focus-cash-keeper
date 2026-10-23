@@ -43,7 +43,8 @@ export const Route = createFileRoute("/")({
 
 function Today({ s }: { s: State }) {
   const c = calc(s);
-  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket">(null);
+  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve">(null);
+  const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
   const showOver = c.overspend > 0 && s.overspendHandled !== c.todayKey;
@@ -71,7 +72,7 @@ function Today({ s }: { s: State }) {
 
       {empty && (
         <div className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
-          С чего начать: нажмите «Сверить баланс» и впишите, сколько сейчас на карте. Потом укажите, в каких числах
+          С чего начать: нажмите на «Карта» ниже и впишите, сколько сейчас на карте. Потом укажите, в каких числах
           приходят деньги, в{" "}
           <Link to="/incomes" className="underline">
             План доходов
@@ -156,17 +157,13 @@ function Today({ s }: { s: State }) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center">
-        <Stat label="Карта" value={rub(s.balance)} />
-        <Stat label="Наличные" value={rub(s.cash ?? 0)} />
-        <Stat label="Отложено" value={rub(c.reserve)} icon />
+        <Stat label="Карта" value={rub(s.balance)} onClick={() => { setRecMethod("card"); setDialog("reconcile"); }} />
+        <Stat label="Наличные" value={rub(s.cash ?? 0)} onClick={() => { setRecMethod("cash"); setDialog("reconcile"); }} />
+        <Stat label="Отложено" value={rub(c.reserve)} icon onClick={() => setDialog("reserve")} />
       </div>
 
       {s.cushion > 0 && <p className="text-center text-xs text-muted-foreground">В подушке: {rub(s.cushion)} — это траты в категории «Накопления»</p>}
-      {c.saving.length > 0 && (
-        <p className="text-center text-xs text-muted-foreground">
-          В «Отложено» копится понемногу на дальние платежи: {c.saving.map((x) => `${x.o.name} — ${rub(x.part)} из ${rub(x.o.amount)}`).join(", ")}
-        </p>
-      )}
+      <p className="text-center text-xs text-muted-foreground">Нажмите на сумму, чтобы поправить её или посмотреть, что отложено</p>
       {c.total < 0 && <BorrowCard gap={-c.total} />}
       {c.total >= 0 && c.shortfall > 0 && (
         <p className="rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
@@ -174,13 +171,6 @@ function Today({ s }: { s: State }) {
           Можно перенести платёж в «Плане платежей».
         </p>
       )}
-      <button
-        onClick={() => setDialog("reconcile")}
-        className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-border p-3 text-left text-sm text-muted-foreground"
-      >
-        <Scale className="h-5 w-5 shrink-0" />
-        <span className="flex-1">Сверить баланс — если цифра на карте не совпадает</span>
-      </button>
 
       {s.txs.length > 0 && (
         <section>
@@ -190,13 +180,14 @@ function Today({ s }: { s: State }) {
               Все операции
             </Link>
           </div>
-          <TxList txs={s.txs.slice(0, 2)} />
+          <TxList txs={s.txs.slice(0, 4)} />
         </section>
       )}
 
       <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} />
-      <ReconcileDialog open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
+      <ReconcileDialog key={recMethod} initialMethod={recMethod} open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
+      <ReserveDialog open={dialog === "reserve"} onClose={() => setDialog(null)} c={c} cushion={s.cushion} />
       <PocketDialog
         open={dialog === "pocket"}
         onClose={() => {
@@ -213,15 +204,51 @@ function Today({ s }: { s: State }) {
 const plural = (n: number, a: string, b: string, c: string) =>
   n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c;
 
-function Stat({ label, value, icon }: { label: string; value: string; icon?: boolean }) {
+function Stat({ label, value, icon, onClick }: { label: string; value: string; icon?: boolean; onClick: () => void }) {
   return (
-    <div className="rounded-2xl bg-card p-3 shadow-soft">
+    <button onClick={onClick} className="rounded-2xl bg-card p-3 shadow-soft active:scale-[0.98]">
       <p className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
         {icon && <Lock className="h-3 w-3" />}
         {label}
       </p>
       <p className="mt-1 text-sm text-foreground tabular-nums">{value}</p>
-    </div>
+    </button>
+  );
+}
+
+const dm = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+function ReserveDialog({ open, onClose, c, cushion }: { open: boolean; onClose: () => void; c: ReturnType<typeof calc>; cushion: number }) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Что отложено</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Эти деньги лежат на карте или наличными, но уже «заняты» платежами из Плана платежей. В «Сегодня свободно» они не входят.</p>
+        {c.reserved.length + c.saving.length === 0 && <p className="text-sm">Сейчас ничего не отложено — до {dm(c.next.date)} платежей нет.</p>}
+        {c.reserved.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-muted-foreground">Платежи до {dm(c.next.date)} — целиком</p>
+            <ul className="divide-y divide-border rounded-xl bg-secondary text-sm">
+              {c.reserved.map(({ o, due }) => (
+                <li key={o.id} className="flex justify-between gap-2 px-3 py-2"><span className="truncate">{o.name} · {dm(due)}</span><span className="tabular-nums">{rub(o.amount)}</span></li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {c.saving.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-muted-foreground">Дальние платежи — копится понемногу</p>
+            <ul className="divide-y divide-border rounded-xl bg-secondary text-sm">
+              {c.saving.map(({ o, due, part }) => (
+                <li key={o.id} className="flex justify-between gap-2 px-3 py-2"><span className="truncate">{o.name} · {dm(due)}</span><span className="tabular-nums">{rub(part)} из {rub(o.amount)}</span></li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{rub(c.reserve)}</span></p>
+        <p className="text-xs text-muted-foreground">Подушка (отдельно, из трат «Накопления»): {rub(cushion)}</p>
+        <Button asChild variant="secondary"><Link to="/payments">Открыть План платежей</Link></Button>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -332,15 +359,15 @@ function IncomeDialog({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
-function ReconcileDialog({ open, onClose, balance }: { open: boolean; onClose: () => void; balance: number }) {
+function ReconcileDialog({ open, onClose, balance, initialMethod }: { open: boolean; onClose: () => void; balance: number; initialMethod: Method }) {
   const [v, setV] = useState("");
-  const [method, setMethod] = useState<Method>("card");
+  const [method, setMethod] = useState<Method>(initialMethod);
   const was = method === "cash" ? (getState().cash ?? 0) : balance;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Сверить баланс</DialogTitle>
+          <DialogTitle>{method === "cash" ? "Сколько наличных сейчас?" : "Сколько на карте сейчас?"}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
           Не нужно вспоминать каждую покупку. Посмотрите, сколько есть сейчас, — и начнём с этой точки.
