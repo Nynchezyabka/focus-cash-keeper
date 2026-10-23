@@ -131,14 +131,18 @@ export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> 
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 /** free conversation with the user's own AI key */
-export async function aiChat(system: string, messages: ChatMsg[], ai: AiSettings): Promise<string> {
+export async function aiChat(system: string, messages: ChatMsg[], ai: AiSettings, image?: { dataUrl: string; type: string }): Promise<string> {
   const svc = detectService(ai.apiKey);
-  if (!svc) throw new Error("Для советника нужен ключ ИИ — добавьте его в Настройках.");
+  if (!svc) throw new Error("Для помощника нужен ключ ИИ — добавьте его в Настройках.");
+  if (image && svc.name === "Groq") throw new Error("Groq не умеет читать картинки. Подойдёт ключ OpenAI, Gemini, DeepSeek, OpenRouter или Anthropic.");
+  // the screenshot is attached only to the latest user message
+  const last = messages.length - 1;
+  const b64 = image?.dataUrl.split(",")[1] ?? "";
   if (svc.kind === "anthropic") {
     const r = await fetch(svc.url, {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": ai.apiKey.trim(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: svc.model, max_tokens: 1500, system, messages }),
+      body: JSON.stringify({ model: svc.model, max_tokens: 1500, system, messages: messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "image", source: { type: "base64", media_type: image.type || "image/png", data: b64 } }, { type: "text", text: m.content }] } : m)) }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     return (await r.json()).content?.[0]?.text ?? "";
@@ -146,7 +150,7 @@ export async function aiChat(system: string, messages: ChatMsg[], ai: AiSettings
   const r = await fetch(svc.url, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-    body: JSON.stringify({ model: svc.model, messages: [{ role: "system", content: system }, ...messages] }),
+    body: JSON.stringify({ model: svc.model, messages: [{ role: "system", content: system }, ...messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "text", text: m.content }, { type: "image_url", image_url: { url: image.dataUrl } }] } : m))] }),
   });
   if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
   return (await r.json()).choices?.[0]?.message?.content ?? "";
