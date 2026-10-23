@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Minus, Scale, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
+import { Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
