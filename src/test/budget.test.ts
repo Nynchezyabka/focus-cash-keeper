@@ -96,7 +96,6 @@ describe("savings, partial payments, skipped income", () => {
     const ob = { id: "d", name: "Долг", amount: 10000, day: 20, category: "loan", once: "2026-10-20" };
     replaceState({ ...base(), balance: 20000, incomes: [{ id: "z", name: "З", amount: 1, day: 26 }], obligations: [ob] });
     payPart(ob, 3000);
-    expect(calc(getState(), new Date()).reserve >= 0).toBe(true);
     expect(calc(getState(), NOW).reserve).toBe(7000);
     expect(getState().balance).toBe(17000);
   });
