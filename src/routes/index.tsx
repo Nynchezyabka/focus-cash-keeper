@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
+import { PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -21,6 +21,9 @@ import {
   learnKeys,
   moveIncome,
   pendingIncome,
+  nextIncome,
+  markIncomeArrived,
+  setCushion,
   reconcile,
   removeTx,
   rub,
@@ -43,7 +46,7 @@ export const Route = createFileRoute("/")({
 
 function Today({ s }: { s: State }) {
   const c = calc(s);
-  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve">(null);
+  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve" | "savings">(null);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
@@ -162,7 +165,10 @@ function Today({ s }: { s: State }) {
         <Stat label="Отложено" value={rub(c.reserve)} icon onClick={() => setDialog("reserve")} />
       </div>
 
-      {s.cushion > 0 && <p className="text-center text-xs text-muted-foreground">В подушке: {rub(s.cushion)} — это траты в категории «Накопления»</p>}
+      <button onClick={() => setDialog("savings")} className="flex w-full items-center justify-between rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]">
+        <span className="flex items-center gap-2 text-sm"><PiggyBank className="h-4 w-4 text-muted-foreground" /> Накопления</span>
+        <span className="text-sm tabular-nums">{rub(s.cushion)}</span>
+      </button>
       <p className="text-center text-xs text-muted-foreground">Нажмите на сумму, чтобы поправить её или посмотреть, что отложено</p>
       {c.total < 0 && <BorrowCard gap={-c.total} />}
       {c.total >= 0 && c.shortfall > 0 && (
@@ -185,7 +191,8 @@ function Today({ s }: { s: State }) {
       )}
 
       <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
-      <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} />
+      <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} s={s} />
+      <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} cushion={s.cushion} />
       <ReconcileDialog key={recMethod} initialMethod={recMethod} open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
       <ReserveDialog open={dialog === "reserve"} onClose={() => setDialog(null)} c={c} cushion={s.cushion} />
       <PocketDialog
@@ -315,7 +322,9 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-function IncomeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void; s: State }) {
+  const planned = (() => { const p = pendingIncome(s); if (p) return p.income; const n = nextIncome(s); return n.income && +n.date - Date.now() < 10 * 86400000 ? n.income : undefined; })();
+  const [mark, setMark] = useState(true);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<Method>("card");
@@ -339,14 +348,21 @@ function IncomeDialog({ open, onClose }: { open: boolean; onClose: () => void })
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
+        {planned && (
+          <label className="flex items-start gap-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
+            <input type="checkbox" className="mt-1" checked={mark} onChange={(e) => setMark(e.target.checked)} />
+            <span>Это «{planned.name}» из плана — отметить пришедшей, чтобы не считать её дважды</span>
+          </label>
+        )}
         <Button
           onClick={() => {
             const a = Number(amount.replace(",", "."));
             if (!a) return;
             addedToast(
-              addTx({ kind: "income", amount: a, category: "income", note: note || "Разовый доход", method }),
+              addTx({ kind: "income", amount: a, category: "income", note: note || (planned && mark ? planned.name : "Разовый доход"), method }),
               `+${rub(a)} — дневная норма подросла`,
             );
+            if (planned && mark) markIncomeArrived(s, planned);
             setAmount("");
             setNote("");
             onClose();
@@ -623,6 +639,26 @@ function PocketDialog({
             </div>
           </>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SavingsDialog({ open, onClose, cushion }: { open: boolean; onClose: () => void; cushion: number }) {
+  const [amount, setAmount] = useState("");
+  const a = Number(amount.replace(/\s/g, "").replace(",", "."));
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Накопления</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Сейчас: {rub(cushion)}. Накопления не входят в «Сегодня свободно».</p>
+        <div className="space-y-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
+          <p className="font-medium">Просто указать сумму</p>
+          <p className="text-xs">Сколько накоплено на самом деле. Карта и наличные не меняются.</p>
+          <Input inputMode="decimal" placeholder="Сейчас накоплено, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <Button className="w-full" disabled={amount.trim() === "" || isNaN(a)} onClick={() => { const t = setCushion(a); if (t) addedToast(t, `Накопления: ${rub(a)}`); setAmount(""); onClose(); }}>Сохранить</Button>
+        </div>
+        <p className="text-xs text-muted-foreground"><b>Отложил(а) с карты</b> — запишите трату в категории «Накопления»: деньги уйдут с карты в накопления.</p>
       </DialogContent>
     </Dialog>
   );
