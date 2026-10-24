@@ -16,7 +16,7 @@ export function TxList({ txs }: { txs: Tx[] }) {
       <ul className="divide-y divide-border rounded-2xl bg-card shadow-soft">
         {txs.map((t) => {
           const c = cat(t.category);
-          const Icon = t.kind === "adjust" ? Scale : t.kind === "income" ? ArrowDownLeft : t.kind === "cushion" ? PiggyBank : null;
+          const Icon = t.kind === "adjust" ? Scale : t.kind === "income" ? ArrowDownLeft : t.kind === "cushion" || t.kind === "savings" ? PiggyBank : null;
           const sign = t.kind === "expense" ? "−" : t.amount >= 0 ? "+" : "−";
           return (
             <li key={t.id} className="flex items-center gap-3 px-4 py-3">
@@ -53,7 +53,7 @@ function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
   const [category, setCategory] = useState(t.category);
   const [method, setMethod] = useState<Method>(t.method ?? "card");
   const [date, setDate] = useState(t.date.slice(0, 10));
-  const signed = t.kind === "adjust" || t.kind === "cushion";
+  const signed = t.kind === "adjust" || t.kind === "cushion" || t.kind === "savings";
   const save = () => {
     const a = Math.abs(Number(amount.replace(",", ".").replace(/\s/g, "")));
     if (!a) return;

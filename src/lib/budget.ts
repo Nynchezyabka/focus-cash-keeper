@@ -227,7 +227,7 @@ export function calc(s: State, now = new Date()) {
       const due = obligationDue(o, now);
       const start = parseKey(o.from ?? s.createdAt.slice(0, 10));
       const share = Math.min(1, Math.max(0, (+next.date - +start) / Math.max(1, +due - +start)));
-      return { o, due, part: Math.round(o.amount * share) };
+      return { o, due, part: Math.max(0, Math.round(o.amount * share) - paidAmount(s, o, due)) };
     });
   const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0) + saving.reduce((a, x) => a + x.part, 0);
   const tk = dayKey(today);
