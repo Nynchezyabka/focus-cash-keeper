@@ -14,7 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      families: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      family_members: {
+        Row: {
+          family_id: string
+          id: string
+          name: string
+          share_txs: boolean
+          snapshot: Json | null
+          token_hash: string
+          txs: Json | null
+          updated_at: string
+        }
+        Insert: {
+          family_id: string
+          id?: string
+          name?: string
+          share_txs?: boolean
+          snapshot?: Json | null
+          token_hash: string
+          txs?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          family_id?: string
+          id?: string
+          name?: string
+          share_txs?: boolean
+          snapshot?: Json | null
+          token_hash?: string
+          txs?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_members_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
