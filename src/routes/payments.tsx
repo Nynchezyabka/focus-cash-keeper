@@ -7,7 +7,7 @@ import { CategoryPicker, DateDialog, MethodBadge, MethodToggle } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { calc, cat, catColor, dayKey, isPaid, moveObligation, obligationDue, payObligation, rub, setState, uid, type Method, type Obligation, type State } from "@/lib/budget";
+import { calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, moveObligation, obligationDue, payObligation, rub, setState, uid, type Method, type Obligation, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("План платежей — Бережный бюджет", "Регулярные и разовые платежи, долги к возврату. Эти деньги откладываются заранее."),
@@ -18,6 +18,7 @@ function Payments({ s }: { s: State }) {
   const c = calc(s);
   const [edit, setEdit] = useState<Obligation | null>(null);
   const [moving, setMoving] = useState<Obligation | null>(null);
+  const [part, setPart] = useState<Obligation | null>(null);
   const list = [...s.obligations].map((o) => ({ o, due: obligationDue(o) })).sort((a, b) => +a.due - +b.due);
   const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   return (
@@ -27,6 +28,7 @@ function Payments({ s }: { s: State }) {
       <ul className="space-y-2">
         {list.map(({ o, due }) => {
           const paid = isPaid(s, o, due);
+          const done = paidAmount(s, o, due);
           const reserved = c.reserved.some((r) => r.o.id === o.id);
           const k = cat(o.category);
           return (
@@ -42,11 +44,18 @@ function Payments({ s }: { s: State }) {
                 <span className="text-sm tabular-nums">{rub(o.amount)}</span>
                 <Pencil className="h-4 w-4 text-muted-foreground" />
               </button>
+              {!paid && done > 0 && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs text-muted-foreground">Внесено {rub(done)} из {rub(o.amount)}, осталось {rub(o.amount - done)}</p>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (done / o.amount) * 100)}%` }} /></div>
+                </div>
+              )}
               {!paid && (
                 <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
                   <span className="flex-1"><MethodBadge m={o.method} /></span>
                   <Button size="sm" variant="ghost" onClick={() => setMoving(o)}><CalendarClock /> Перенести</Button>
-                  <Button size="sm" variant="secondary" onClick={() => addedToast(payObligation(o), `${o.name} оплачено`)}><Check /> Оплачено</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPart(o)}>Часть</Button>
+                  <Button size="sm" variant="secondary" onClick={() => { const rest = o.amount - done; addedToast(done > 0 ? payPart(o, rest) : payObligation(o), `${o.name} оплачено`); }}><Check /> Оплачено</Button>
                 </div>
               )}
             </li>
@@ -57,6 +66,7 @@ function Payments({ s }: { s: State }) {
       <Button className="h-12 w-full rounded-2xl" onClick={() => setEdit({ id: "", name: "", amount: 0, day: 0, category: "home" })}><Plus /> Добавить платёж</Button>
 
       <DateDialog open={!!moving} title={`Новая дата: «${moving?.name ?? ""}»`} initial={moving ? dayKey(obligationDue(moving)) : ""} onClose={() => setMoving(null)} onSave={(d) => moving && moveObligation(moving.id, d)} />
+      {part && <PartDialog o={part} left={part.amount - paidAmount(s, part, obligationDue(part))} onClose={() => setPart(null)} />}
       {edit && <Editor o={edit} onClose={() => setEdit(null)} />}
     </div>
   );
@@ -106,6 +116,23 @@ function Editor({ o, onClose }: { o: Obligation; onClose: () => void }) {
             onClose();
           }}>Сохранить</Button>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PartDialog({ o, left, onClose }: { o: Obligation; left: number; onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<Method>(o.method ?? "card");
+  const a = Number(amount.replace(/\s/g, "").replace(",", "."));
+  return (
+    <Dialog open onOpenChange={(x) => !x && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Внести часть: «{o.name}»</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Осталось {rub(left)}. Остаток так и будет отложен до даты платежа.</p>
+        <Input autoFocus inputMode="decimal" placeholder="Сколько внесли, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-14 text-center text-2xl" />
+        <MethodToggle value={method} onChange={setMethod} />
+        <Button disabled={!(a > 0)} onClick={() => { addedToast(payPart(o, Math.min(a, left), method), `${o.name}: внесено ${rub(Math.min(a, left))}`); onClose(); }}>Внести</Button>
       </DialogContent>
     </Dialog>
   );

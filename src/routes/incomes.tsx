@@ -7,8 +7,9 @@ import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { confirmIncome, dayKey, incomeUpcoming, moveIncome, nextIncome, pendingIncome, rub, setState, uid, type Income, type State } from "@/lib/budget";
+import { confirmIncome, dayKey, periodOf, toggleIncomeSkip, incomeUpcoming, moveIncome, nextIncome, pendingIncome, rub, setState, uid, type Income, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/incomes")({
   head: () => meta("План доходов — Бережный бюджет", "Какого числа приходят аванс, зарплата, наличные или пособия. По этим датам считается дневной бюджет."),
@@ -59,6 +60,10 @@ function Incomes({ s }: { s: State }) {
                     <span className="text-sm tabular-nums">{rub(i.amount)}</span>
                     <Pencil className="h-4 w-4 text-muted-foreground" />
                   </button>
+                  <label className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
+                    <span>{i.skip === periodOf(new Date()) ? "В этом месяце не учитывается — уже внесли вручную" : "Учитывать в этом месяце"}</span>
+                    <Switch checked={i.skip !== periodOf(new Date())} onCheckedChange={() => toggleIncomeSkip(i.id, periodOf(new Date()))} />
+                  </label>
                   <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
                     <span className="flex-1 text-xs text-muted-foreground">
                       {pending?.income.id === i.id ? "Дата наступила — пришли?" : (() => { const d = incomeUpcoming(s, i); return d ? `Ближайший раз: ${d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}${i.nextOn ? " (перенесён)" : ""}` : ""; })()}

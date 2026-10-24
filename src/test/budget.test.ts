@@ -75,3 +75,33 @@ describe("reserve and cushion", () => {
     expect(getState().cushion).toBe(3000);
   });
 });
+
+describe("savings, partial payments, skipped income", () => {
+  beforeEach(() => replaceState(base()));
+
+  it("setting savings to 100 000 leaves card and free today untouched, and undo restores", async () => {
+    const { setCushion, removeTx } = await import("@/lib/budget");
+    replaceState({ ...base(), balance: 10000, incomes: [{ id: "z", name: "З", amount: 1, day: 26 }] });
+    const before = calc(getState(), NOW).freeToday;
+    const t = setCushion(100000)!;
+    expect(getState().cushion).toBe(100000);
+    expect(getState().balance).toBe(10000);
+    expect(calc(getState(), NOW).freeToday).toBe(before);
+    removeTx(t.id);
+    expect(getState().cushion).toBe(0);
+  });
+
+  it("a partial payment lowers the reserve by the paid part", async () => {
+    const { payPart } = await import("@/lib/budget");
+    const ob = { id: "d", name: "Долг", amount: 10000, day: 20, category: "loan", once: "2026-10-20" };
+    replaceState({ ...base(), balance: 20000, incomes: [{ id: "z", name: "З", amount: 1, day: 26 }], obligations: [ob] });
+    payPart(ob, 3000);
+    expect(calc(getState(), NOW).reserve).toBe(7000);
+    expect(getState().balance).toBe(17000);
+  });
+
+  it("an income switched off for this month is skipped", () => {
+    replaceState({ ...base(), incomes: [{ id: "z", name: "З", amount: 1, day: 20, skip: "2026-10" }, { id: "y", name: "А", amount: 1, day: 25 }] });
+    expect(nextIncome(getState(), NOW).date.getDate()).toBe(25);
+  });
+});

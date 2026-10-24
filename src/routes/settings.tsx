@@ -70,8 +70,8 @@ function Settings({ s }: { s: State }) {
             const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
             const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${new Date().toISOString().slice(0, 10)}.json`;
             document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
-          }}><Download /> Экспорт</Button>
-          <Button variant="secondary" onClick={() => file.current?.click()}><Upload /> Импорт</Button>
+          }}><Upload /> Экспорт</Button>
+          <Button variant="secondary" onClick={() => file.current?.click()}><Download /> Импорт</Button>
         </div>
         <input ref={file} type="file" accept="application/json" className="hidden" onChange={async (e) => {
           const f = e.target.files?.[0]; if (!f) return;
