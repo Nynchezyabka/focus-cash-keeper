@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 export type Group = "must" | "safe" | "life";
-export type TxKind = "expense" | "income" | "adjust" | "cushion";
+export type TxKind = "expense" | "income" | "adjust" | "cushion" | "savings";
 
 export interface Tx {
   id: string;
@@ -17,7 +17,7 @@ export interface Tx {
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string }
-export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly" }
+export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; mode?: "auto" | "always" }
 
 export interface State {
@@ -108,6 +108,7 @@ export const rub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`
 
 // ---------- dates ----------
 export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const periodOf = (d: Date) => dayKey(d).slice(0, 7);
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const parseKey = (k: string) => { const [y = 2000, m = 1, d = 1] = k.split("-").map(Number); return new Date(y, m - 1, d); };
 function onDay(y: number, m: number, day: number) {
@@ -128,7 +129,7 @@ export function incomeUpcoming(s: State, inc: Income, now = new Date()): Date | 
   const today = startOfDay(now);
   if (inc.nextOn) { const d = parseKey(inc.nextOn); return d > today ? d : null; }
   const ack = s.incomeAck[inc.id];
-  return incomeDates(inc, today).find((x) => x > today && (!ack || dayKey(x) > ack)) ?? null;
+  return incomeDates(inc, today).find((x) => x > today && (!ack || dayKey(x) > ack) && periodOf(x) !== inc.skip) ?? null;
 }
 export function nextIncome(s: State, now = new Date()): { date: Date; income?: Income } {
   const today = startOfDay(now);
@@ -149,7 +150,7 @@ export function pendingIncome(s: State, now = new Date()): { income: Income; dat
       if (parseKey(inc.nextOn) <= today) return { income: inc, date: inc.nextOn };
       continue;
     }
-    const past = incomeDates(inc, today).filter((d) => d <= today && d >= created);
+    const past = incomeDates(inc, today).filter((d) => d <= today && d >= created && periodOf(d) !== inc.skip);
     const last = past[past.length - 1];
     if (!last) continue;
     const k = dayKey(last);
@@ -165,9 +166,25 @@ export function obligationDue(o: Obligation, now = new Date()) {
   const d = onDay(today.getFullYear(), today.getMonth(), o.day);
   return d >= today ? d : onDay(today.getFullYear(), today.getMonth() + 1, o.day);
 }
-const periodOf = (d: Date) => dayKey(d).slice(0, 7);
+export function paidAmount(s: State, o: Obligation, due: Date) {
+  return s.txs.filter((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due))).reduce((a, t) => a + t.amount, 0);
+}
 export function isPaid(s: State, o: Obligation, due: Date) {
-  return s.txs.some((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due)));
+  return paidAmount(s, o, due) >= o.amount;
+}
+/** part of a payment or debt paid now; the rest stays reserved */
+export function payPart(o: Obligation, amount: number, method: Method = o.method ?? "card") {
+  const due = obligationDue(o);
+  return addTx({ kind: "expense", amount, category: o.category, note: `${o.name} (часть)`, obligationId: o.id, period: periodOf(due), method });
+}
+/** planned income came early / was entered by hand: mark this month's occurrence handled */
+export function markIncomeArrived(s: State, inc: Income) {
+  const p = pendingIncome(s);
+  const key = inc.nextOn ?? (p?.income.id === inc.id ? p.date : dayKey(incomeUpcoming(s, inc) ?? new Date()));
+  setState((x) => ({ ...x, incomeAck: { ...x.incomeAck, [inc.id]: key }, incomes: x.incomes.map((y) => (y.id === inc.id ? { ...y, nextOn: undefined } : y)) }));
+}
+export function toggleIncomeSkip(id: string, period: string) {
+  setState((s) => ({ ...s, incomes: s.incomes.map((y) => (y.id === id ? { ...y, skip: y.skip === period ? undefined : period } : y)) }));
 }
 export function payObligation(o: Obligation, method: Method = o.method ?? "card") {
   const due = obligationDue(o);
@@ -212,7 +229,7 @@ export function calc(s: State, now = new Date()) {
       const share = Math.min(1, Math.max(0, (+next.date - +start) / Math.max(1, +due - +start)));
       return { o, due, part: Math.round(o.amount * share) };
     });
-  const reserve = reserved.reduce((a, x) => a + x.o.amount, 0) + saving.reduce((a, x) => a + x.part, 0);
+  const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0) + saving.reduce((a, x) => a + x.part, 0);
   const tk = dayKey(today);
   const todayLife = s.txs.filter((t) => t.kind === "expense" && cat(t.category).group === "life" && dayKey(new Date(t.date)) === tk);
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
@@ -237,6 +254,7 @@ export function addTx(t: Omit<Tx, "id" | "date"> & { date?: string }) {
   return tx;
 }
 function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
+  if (t.kind === "savings") return {};
   const d = delta(t) * sign;
   return t.method === "cash" ? { cash: (s.cash ?? 0) + d } : { balance: s.balance + d };
 }
@@ -244,6 +262,7 @@ function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
 function cushionDelta(t: Tx) {
   if (t.kind === "expense" && t.category === "savings") return t.amount;
   if (t.kind === "cushion") return -t.amount;
+  if (t.kind === "savings") return t.amount; // signed correction, card untouched
   return 0;
 }
 function delta(t: Tx) {
@@ -309,6 +328,12 @@ export function learnKeys(items: { note: string; category: string }[]) {
   }
   if (changed) saveCategories(next);
   return changed;
+}
+/** «сейчас накоплено N»: corrects the savings total without touching card or cash */
+export function setCushion(actual: number) {
+  const diff = actual - getState().cushion;
+  if (diff === 0) return null;
+  return addTx({ kind: "savings", amount: diff, category: "savings", note: "Накопления: пересчёт" });
 }
 export function coverFromCushion(amount: number) {
   const a = Math.min(amount, getState().cushion);
