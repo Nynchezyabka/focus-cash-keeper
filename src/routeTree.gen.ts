@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as CategoriesRouteImport } from './routes/categories'
+import { Route as FamilyRouteImport } from './routes/family'
 import { Route as IncomesRouteImport } from './routes/incomes'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -37,6 +38,11 @@ const CategoriesRoute = CategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FamilyRoute = FamilyRouteImport.update({
+  id: '/family',
+  path: '/family',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IncomesRoute = IncomesRouteImport.update({
   id: '/incomes',
   path: '/incomes',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
   '/categories': typeof CategoriesRoute
+  '/family': typeof FamilyRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
   '/categories': typeof CategoriesRoute
+  '/family': typeof FamilyRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
   '/categories': typeof CategoriesRoute
+  '/family': typeof FamilyRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/analytics'
     | '/categories'
+    | '/family'
     | '/incomes'
     | '/payments'
     | '/settings'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/analytics'
     | '/categories'
+    | '/family'
     | '/incomes'
     | '/payments'
     | '/settings'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/analytics'
     | '/categories'
+    | '/family'
     | '/incomes'
     | '/payments'
     | '/settings'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AdvisorRoute: typeof AdvisorRoute
   AnalyticsRoute: typeof AnalyticsRoute
   CategoriesRoute: typeof CategoriesRoute
+  FamilyRoute: typeof FamilyRoute
   IncomesRoute: typeof IncomesRoute
   PaymentsRoute: typeof PaymentsRoute
   SettingsRoute: typeof SettingsRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family': {
+      id: '/family'
+      path: '/family'
+      fullPath: '/family'
+      preLoaderRoute: typeof FamilyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/incomes': {
       id: '/incomes'
       path: '/incomes'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdvisorRoute: AdvisorRoute,
   AnalyticsRoute: AnalyticsRoute,
   CategoriesRoute: CategoriesRoute,
+  FamilyRoute: FamilyRoute,
   IncomesRoute: IncomesRoute,
   PaymentsRoute: PaymentsRoute,
   SettingsRoute: SettingsRoute,

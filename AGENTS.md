@@ -9,8 +9,10 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- App is local-first: all data lives in localStorage via src/lib/budget.ts (no backend, no login) — user requirement for privacy and instant start.
-- AI expense parsing runs in the browser with the user’s own key (BYOK) and falls back to a local parser — keeps the app backend-free.
+- App is local-first: each person's budget lives only in localStorage via src/lib/budget.ts, no login — user requirement for privacy and instant start.
+- Family sharing (src/lib/family.ts + family.functions.ts) sends only a whitelisted snapshot (`snapshotOf`, optional `sharedTxs`) to Lovable Cloud; access is by hashed family code + per-member token checked in server functions, tables have RLS with no policies — the cloud is optional and the app must keep working without it.
+- Family numbers are always recomputed by `familyTotals` from members' snapshots, never stored — they must stay correct as dates move.
+- AI expense parsing runs in the browser with the user’s own key (BYOK) and falls back to a local parser — no server is involved in AI.
 - Money is split into card (`balance`) and `cash`; every tx carries `method`, and `calc` uses their sum — keeps card/cash consistent everywhere.
 - Category colors are derived from their group's shade family (`GROUP_SHADES`), not picked by the user — fewer decisions for the user.
 - One `CategoryPicker` (src/components/Pickers.tsx) is used on every screen that chooses a category — the same chooser everywhere.

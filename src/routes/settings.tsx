@@ -54,6 +54,11 @@ function Settings({ s }: { s: State }) {
         {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
 
+      <Link to="/family" search={{ join: undefined }} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="block font-display text-lg">Семейный доступ</span><span className="text-xs text-muted-foreground">Общая картина двух бюджетов по коду</span></span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
+
       <Link to="/categories" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
         <span><span className="block font-display text-lg">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
         <ChevronRight className="h-5 w-5 text-muted-foreground" />

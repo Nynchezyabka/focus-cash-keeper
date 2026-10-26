@@ -34,6 +34,8 @@ import {
 import { detectService, parseImage, parseSmart, type Parsed } from "@/lib/parse";
 import { CategoryChip, CategoryPicker, MethodToggle } from "@/components/Pickers";
 import { MicButton } from "@/components/Mic";
+import { useFamily } from "@/lib/family";
+import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/")({
   head: () =>
@@ -289,13 +291,16 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
 function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<Method>("card");
+  const [family, setFam] = useState(false);
+  const fam = useFamily();
   const save = (category: string) => {
     const a = Number(amount.replace(",", "."));
     if (!a) {
       toast("Сначала впишите сумму");
       return;
     }
-    const t = addTx({ kind: "expense", amount: a, category, method });
+    const t = addTx({ kind: "expense", amount: a, category, method, ...(family ? { family: true } : {}) });
+    setFam(false);
     addedToast(t, `${cat(category).name}: ${rub(a)}`);
     setAmount("");
     onClose();
@@ -315,6 +320,7 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
           className="h-14 text-center text-2xl"
         />
         <MethodToggle value={method} onChange={setMethod} />
+        {fam && <FamilyToggle value={family} onChange={setFam} />}
         <CategoryPicker onPick={save} />
         <p className="text-center text-xs text-muted-foreground">Нажмите на категорию — трата сохранится</p>
       </DialogContent>
@@ -325,6 +331,8 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
 function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void; s: State }) {
   const planned = (() => { const p = pendingIncome(s); if (p) return p.income; const n = nextIncome(s); return n.income && +n.date - Date.now() < 10 * 86400000 ? n.income : undefined; })();
   const [mark, setMark] = useState(true);
+  const [family, setFam] = useState(false);
+  const fam = useFamily();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [method, setMethod] = useState<Method>("card");
@@ -348,7 +356,8 @@ function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        {planned && (
+        {fam && <FamilyToggle value={family} onChange={setFam} />}
+        {planned && !family && (
           <label className="flex items-start gap-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
             <input type="checkbox" className="mt-1" checked={mark} onChange={(e) => setMark(e.target.checked)} />
             <span>Это «{planned.name}» из плана — отметить пришедшей, чтобы не считать её дважды</span>
@@ -359,10 +368,11 @@ function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void
             const a = Number(amount.replace(",", "."));
             if (!a) return;
             addedToast(
-              addTx({ kind: "income", amount: a, category: "income", note: note || (planned && mark ? planned.name : "Разовый доход"), method }),
+              addTx({ kind: "income", amount: a, category: "income", note: note || (planned && mark && !family ? planned.name : "Разовый доход"), method, ...(family ? { family: true } : {}) }),
               `+${rub(a)} — дневная норма подросла`,
             );
-            if (planned && mark) markIncomeArrived(s, planned);
+            if (planned && mark && !family) markIncomeArrived(s, planned);
+            setFam(false);
             setAmount("");
             setNote("");
             onClose();
@@ -661,5 +671,14 @@ function SavingsDialog({ open, onClose, cushion }: { open: boolean; onClose: () 
         <p className="text-xs text-muted-foreground"><b>Отложил(а) с карты</b> — запишите трату в категории «Накопления»: деньги уйдут с карты в накопления.</p>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FamilyToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-2 rounded-xl bg-muted px-3 py-2 text-sm">
+      <span>Перевод внутри семьи<span className="block text-xs text-muted-foreground">Остаток меняется, но в семейных итогах не считается</span></span>
+      <Switch checked={value} onCheckedChange={onChange} />
+    </label>
   );
 }

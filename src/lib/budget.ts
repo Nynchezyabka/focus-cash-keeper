@@ -13,6 +13,7 @@ export interface Tx {
   obligationId?: string;
   period?: string; // "YYYY-MM" for obligation payments
   method?: Method; // where the money moved; default card
+  family?: boolean; // transfer inside the family: moves money, not counted in family totals
 }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
@@ -95,6 +96,7 @@ export function setState(fn: (s: State) => State) {
   listeners.forEach((l) => l());
 }
 export function replaceState(s: State) { setState(() => ({ ...initial(), ...s })); }
+export function subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; }
 export function useBudget(): State | null {
   return useSyncExternalStore(
     (l) => { listeners.add(l); return () => listeners.delete(l); },

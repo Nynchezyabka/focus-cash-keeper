@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { initPwa } from "@/lib/pwa";
+import { startFamilySync } from "@/lib/family";
 import { WhatsNew } from "@/components/WhatsNew";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -120,7 +121,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => { initPwa(); }, []);
+  useEffect(() => { initPwa(); startFamilySync(); }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
