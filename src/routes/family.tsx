@@ -10,7 +10,7 @@ import { getState, rub } from "@/lib/budget";
 import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, type FamilyLocal } from "@/lib/family";
 
 export const Route = createFileRoute("/family")({
-  validateSearch: (s: Record<string, unknown>) => ({ join: typeof s.join === "string" ? s.join : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ join: typeof s["join"] === "string" ? (s["join"] as string) : undefined }),
   head: () => meta("Семья — Бережный бюджет", "Общая картина двух личных бюджетов: сколько свободно сегодня и до ближайшего дохода."),
   component: () => <Shell title="Семья">{() => <Family />}</Shell>,
 });

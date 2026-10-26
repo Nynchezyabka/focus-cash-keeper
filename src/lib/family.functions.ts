@@ -14,8 +14,8 @@ function randomCode(n = 16) {
 const norm = (c: string) => c.toUpperCase().replace(/[^A-Z0-9]/g, "");
 const MAX = 6;
 
-type Snap = Record<string, unknown> | null;
-type Txs = unknown[] | null;
+type Snap = Record<string, string | number> | null;
+type Txs = { date: string; kind: string; amount: number; note: string; category: string }[] | null;
 const clip = (s: string) => String(s ?? "").slice(0, 40);
 
 async function admin() { return (await import("@/integrations/supabase/client.server")).supabaseAdmin; }
