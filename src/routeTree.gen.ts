@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as FamilyRouteImport } from './routes/family'
 import { Route as IncomesRouteImport } from './routes/incomes'
@@ -31,6 +32,11 @@ const AdvisorRoute = AdvisorRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CategoriesRoute = CategoriesRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/categories': typeof CategoriesRoute
   '/family': typeof FamilyRoute
   '/incomes': typeof IncomesRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/categories': typeof CategoriesRoute
   '/family': typeof FamilyRoute
   '/incomes': typeof IncomesRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/categories': typeof CategoriesRoute
   '/family': typeof FamilyRoute
   '/incomes': typeof IncomesRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/advisor'
     | '/analytics'
+    | '/calendar'
     | '/categories'
     | '/family'
     | '/incomes'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/advisor'
     | '/analytics'
+    | '/calendar'
     | '/categories'
     | '/family'
     | '/incomes'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/advisor'
     | '/analytics'
+    | '/calendar'
     | '/categories'
     | '/family'
     | '/incomes'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdvisorRoute: typeof AdvisorRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CalendarRoute: typeof CalendarRoute
   CategoriesRoute: typeof CategoriesRoute
   FamilyRoute: typeof FamilyRoute
   IncomesRoute: typeof IncomesRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/categories': {
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdvisorRoute: AdvisorRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CalendarRoute: CalendarRoute,
   CategoriesRoute: CategoriesRoute,
   FamilyRoute: FamilyRoute,
   IncomesRoute: IncomesRoute,
