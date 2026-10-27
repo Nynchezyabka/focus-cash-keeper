@@ -10,7 +10,7 @@ import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
+import { MIN_DAILY, getState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/settings")({
   head: () => meta("Настройки — Бережный бюджет", "Резервная копия в JSON, свой ключ ИИ для разбора трат. Данные хранятся только на устройстве."),
