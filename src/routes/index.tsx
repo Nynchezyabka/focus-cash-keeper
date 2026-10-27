@@ -70,6 +70,11 @@ function Today({ s }: { s: State }) {
           {c.days} {plural(c.days, "день", "дня", "дней")} до дохода ·{" "}
           {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
         </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {c.days > 1
+            ? <>С завтра — по {rub(c.afterSpread)} в день</>
+            : <>Завтра придёт доход</>}
+        </p>
         {c.spentToday > 0 && (
           <p className="mt-1 text-xs text-muted-foreground">
             Уже потрачено сегодня: {rub(c.spentToday)} из {rub(c.dailyNorm)}
