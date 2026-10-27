@@ -80,14 +80,14 @@ export async function syncFamily() {
   if (!f || busy) return;
   busy = true;
   try {
-    const { pushFamily, pullFamily } = await import("@/lib/family.functions");
+    const { api } = await import("@/lib/family-api");
     const s = getState();
     if (f.dirty || !f.lastPush) {
-      await pushFamily({ data: { memberId: f.memberId, token: f.token, name: f.name, shareTxs: f.shareTxs, snapshot: snapshotOf(s) as never, txs: f.shareTxs ? (sharedTxs(s) as never) : null } });
+      await api.push(f.memberId, f.token, f.name, f.shareTxs, snapshotOf(s), f.shareTxs ? sharedTxs(s) : null);
       patchFamily({ dirty: false, lastPush: new Date().toISOString() });
     }
-    const r = await pullFamily({ data: { memberId: f.memberId, token: f.token } });
-    patchFamily({ members: r.members as Member[], lastPull: new Date().toISOString() });
+    const members = await api.pull(f.memberId, f.token);
+    patchFamily({ members: members as Member[], lastPull: new Date().toISOString() });
   } catch (e) {
     if (String(e).includes("not-member")) patchFamily({ members: [] });
   } finally { busy = false; }

@@ -13,6 +13,7 @@ export interface Tx {
   obligationId?: string;
   period?: string; // "YYYY-MM" for obligation payments
   method?: Method; // where the money moved; default card
+  orig?: { amount: number; currency: string; rate: number }; // spent in another currency; amount is in rubles
   family?: boolean; // transfer inside the family: moves money, not counted in family totals
 }
 export type Method = "card" | "cash";
@@ -25,7 +26,8 @@ export interface State {
   version: 1;
   balance: number; // card
   cash?: number;
-  cushion: number;
+  cushion: number; // savings total
+  cushionCash?: number; // part of savings kept in cash
   txs: Tx[];
   obligations: Obligation[];
   incomes: Income[];
@@ -251,7 +253,7 @@ export function addTx(t: Omit<Tx, "id" | "date"> & { date?: string }) {
     ...s,
     txs: [tx, ...s.txs],
     ...move(s, tx, 1),
-    cushion: s.cushion + cushionDelta(tx),
+    ...cushionMove(s, tx, 1),
   }));
   return tx;
 }
@@ -261,6 +263,12 @@ function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
   return t.method === "cash" ? { cash: (s.cash ?? 0) + d } : { balance: s.balance + d };
 }
 /** cushion grows with «Накопления» expenses and shrinks when money is taken back from it */
+function cushionMove(s: State, t: Tx, sign: 1 | -1): Partial<State> {
+  const d = cushionDelta(t) * sign;
+  if (!d) return {};
+  const where = t.method;
+  return { cushion: s.cushion + d, ...(where === "cash" ? { cushionCash: (s.cushionCash ?? 0) + d } : {}) };
+}
 function cushionDelta(t: Tx) {
   if (t.kind === "expense" && t.category === "savings") return t.amount;
   if (t.kind === "cushion") return -t.amount;
@@ -279,7 +287,7 @@ export function removeTx(id: string) {
     ...s,
     txs: s.txs.filter((x) => x.id !== id),
     ...move(s, t, -1),
-    cushion: s.cushion - cushionDelta(t),
+    ...cushionMove(s, t, -1),
   }));
   return t;
 }
@@ -288,7 +296,7 @@ export function restoreTx(t: Tx) {
     ...s,
     txs: [t, ...s.txs].sort((a, b) => b.date.localeCompare(a.date)),
     ...move(s, t, 1),
-    cushion: s.cushion + cushionDelta(t),
+    ...cushionMove(s, t, 1),
   }));
 }
 /** Edit a recorded operation: undo its money effect, then apply the new version. */
@@ -305,9 +313,11 @@ export function reconcile(actual: number, method: Method = "card") {
   return addTx({ kind: "adjust", amount: diff, category: "adjust", note: method === "cash" ? "Пересчёт наличных" : "Сверка баланса", method });
 }
 /** money borrowed to cover a gap: adds it to the card and plans the return as a one-off payment */
-export function borrow(amount: number, from: string, returnOn: string) {
-  const ob: Obligation = { id: uid(), name: `Вернуть: ${from}`, amount, day: parseKey(returnOn).getDate(), category: "loan", once: returnOn };
-  const t = addTx({ kind: "adjust", amount, category: "adjust", note: `Взяла: ${from}` });
+export function borrow(amount: number, from: string, returnOn: string, method: Method = "card", monthly?: number) {
+  const ob: Obligation = monthly
+    ? { id: uid(), name: `Вернуть: ${from}`, amount: monthly, day: parseKey(returnOn).getDate(), category: "loan", method, from: dayKey(new Date()) }
+    : { id: uid(), name: `Вернуть: ${from}`, amount, day: parseKey(returnOn).getDate(), category: "loan", once: returnOn, method, from: dayKey(new Date()) };
+  const t = addTx({ kind: "adjust", amount, category: "adjust", note: `Взяла: ${from}`, method });
   setState((s) => ({ ...s, obligations: [...s.obligations, ob] }));
   return { t, ob };
 }
@@ -332,10 +342,30 @@ export function learnKeys(items: { note: string; category: string }[]) {
   return changed;
 }
 /** «сейчас накоплено N»: corrects the savings total without touching card or cash */
-export function setCushion(actual: number) {
-  const diff = actual - getState().cushion;
-  if (diff === 0) return null;
-  return addTx({ kind: "savings", amount: diff, category: "savings", note: "Накопления: пересчёт" });
+export function setCushion(card: number, cash?: number) {
+  const st = getState();
+  const curCash = st.cushionCash ?? 0, curCard = st.cushion - curCash;
+  const out: Tx[] = [];
+  if (card !== curCard) out.push(addTx({ kind: "savings", amount: card - curCard, category: "savings", note: "Накопления: пересчёт", method: "card" }));
+  if (cash !== undefined && cash !== curCash) out.push(addTx({ kind: "savings", amount: cash - curCash, category: "savings", note: "Накопления: пересчёт наличных", method: "cash" }));
+  return out;
+}
+/** take money out of savings at any time; optionally plan to put it back */
+export function takeFromCushion(amount: number, to: Method = "card", returnOn?: string) {
+  const t = addTx({ kind: "cushion", amount, category: "cushion", note: "Из накоплений", method: to });
+  let ob: Obligation | undefined;
+  if (returnOn) {
+    ob = { id: uid(), name: "Вернуть в накопления", amount, day: parseKey(returnOn).getDate(), category: "savings", once: returnOn, method: to, from: dayKey(new Date()) };
+    setState((s) => ({ ...s, obligations: [...s.obligations, ob!] }));
+  }
+  return { t, ob };
+}
+/** a paid payment becomes active again */
+export function unpay(o: Obligation) {
+  const due = obligationDue(o);
+  const list = getState().txs.filter((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due)));
+  list.forEach((t) => removeTx(t.id));
+  return list;
 }
 export function coverFromCushion(amount: number) {
   const a = Math.min(amount, getState().cushion);

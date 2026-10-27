@@ -1,3 +1,5 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Send, Trash2, X } from "lucide-react";
@@ -5,7 +7,7 @@ import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { calc, cat, GROUPS, obligationDue, incomeUpcoming, rub, setState, type State } from "@/lib/budget";
+import { calc, cat, GROUPS, obligationDue, paidAmount, incomeUpcoming, rub, setState, type State } from "@/lib/budget";
 import { aiChat, detectService, type ChatMsg } from "@/lib/parse";
 
 export const Route = createFileRoute("/advisor")({
@@ -23,16 +25,22 @@ function context(s: State) {
   const by: Record<string, number> = {};
   for (const t of s.txs) if (t.kind === "expense" && +new Date(t.date) >= since) by[t.category] = (by[t.category] ?? 0) + t.amount;
   const spent = Object.entries(by).sort((a, b) => b[1] - a[1]).map(([id, v]) => `${cat(id).name} (${GROUPS[cat(id).group]}): ${rub(v)}`).join("; ") || "нет записей";
-  const obl = s.obligations.map((o) => `${o.name} ${rub(o.amount)} — ${d(obligationDue(o))}${o.once ? " (разово)" : " (ежемесячно)"}`).join("; ") || "нет";
+  const obl = s.obligations.map((o) => {
+    const due = obligationDue(o), paid = paidAmount(s, o, due);
+    const st = paid >= o.amount ? "ОПЛАЧЕНО" : paid > 0 ? `внесено ${rub(paid)} из ${rub(o.amount)}, осталось ${rub(o.amount - paid)}` : "ещё не оплачено";
+    return `${o.name} ${rub(o.amount)} — ${d(due)}${o.once ? " (разово)" : " (ежемесячно)"} — ${st}`;
+  }).join("; ") || "нет";
+  const resv = [...c.reserved.map((r) => `${r.o.name} ${rub(r.o.amount - paidAmount(s, r.o, r.due))}`), ...c.saving.map((x) => `${x.o.name} (копится) ${rub(x.part)}`)].join("; ") || "ничего";
   const inc = s.incomes.map((i) => { const u = incomeUpcoming(s, i); return `${i.name} ${rub(i.amount)}${u ? ` — ${d(u)}` : ""}`; }).join("; ") || "нет";
   return `ФАКТЫ БЮДЖЕТА (единственный источник цифр):
 Сегодня ${d(new Date())}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
-Подушка (уже отложенные накопления, в «всего» НЕ входит): ${rub(s.cushion)}.
+Накопления (в «всего» НЕ входят): ${rub(s.cushion)}, из них наличными ${rub(s.cushionCash ?? 0)}.
 Ближайший доход ${d(c.next.date)}, через ${c.days} дн.
 Зарезервировано под обязательные платежи до дохода и накопление на дальние: ${rub(c.reserve)}.
 Свободно сегодня: ${rub(Math.max(0, c.freeToday))}, дневной ориентир ${rub(c.dailyNorm)}.
 Свободно до дохода всего (всего − резерв): ${rub(Math.max(0, c.total - c.reserve))}.
-Плановые платежи: ${obl}.
+Что именно отложено сейчас: ${resv}.
+Платежи и их состояние (оплаченные уже списаны и не резервируются): ${obl}.
 Плановые доходы: ${inc}.
 Траты за 30 дней: ${spent}.
 О пользователе: ${s.advisorAbout?.trim() || "не указано"}.
@@ -117,7 +125,9 @@ function Chat({ s }: { s: State }) {
 
       <div className="space-y-3">
         {msgs.map((m, i) => (
-          <div key={i} className={`whitespace-pre-wrap rounded-2xl p-3 text-sm ${m.role === "user" ? "ml-8 bg-primary text-primary-foreground" : "mr-4 bg-card"}`}>{m.content}</div>
+          m.role === "user"
+            ? <div key={i} className="ml-8 whitespace-pre-wrap rounded-2xl bg-primary p-3 text-sm text-primary-foreground">{m.content}</div>
+            : <div key={i} className="md mr-4 rounded-2xl bg-card p-3 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: (p) => <a {...p} target="_blank" rel="noreferrer" /> }}>{m.content}</ReactMarkdown></div>
         ))}
         {busy && <div className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground">Думаю…</div>}
         {err && <p className="rounded-2xl bg-accent p-3 text-sm text-accent-foreground">{err}</p>}

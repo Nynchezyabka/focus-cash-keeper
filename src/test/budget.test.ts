@@ -83,7 +83,7 @@ describe("savings, partial payments, skipped income", () => {
     const { setCushion, removeTx } = await import("@/lib/budget");
     replaceState({ ...base(), balance: 10000, incomes: [{ id: "z", name: "З", amount: 1, day: 26 }] });
     const before = calc(getState(), NOW).freeToday;
-    const t = setCushion(100000)!;
+    const t = setCushion(100000)[0]!;
     expect(getState().cushion).toBe(100000);
     expect(getState().balance).toBe(10000);
     expect(calc(getState(), NOW).freeToday).toBe(before);
@@ -103,5 +103,54 @@ describe("savings, partial payments, skipped income", () => {
   it("an income switched off for this month is skipped", () => {
     replaceState({ ...base(), incomes: [{ id: "z", name: "З", amount: 1, day: 20, skip: "2026-10" }, { id: "y", name: "А", amount: 1, day: 25 }] });
     expect(nextIncome(getState(), NOW).date.getDate()).toBe(25);
+  });
+});
+
+describe("payments, savings and loans", () => {
+  beforeEach(() => replaceState(base()));
+
+  it("cancelling a payment makes it reserved again", async () => {
+    const { payObligation, unpay, isPaid, obligationDue } = await import("@/lib/budget");
+    const ob = { id: "r", name: "Аренда", amount: 5000, day: 20, category: "home" };
+    replaceState({ ...base(), balance: 10000, obligations: [ob] });
+    payObligation(ob);
+    expect(isPaid(getState(), ob, obligationDue(ob))).toBe(true);
+    unpay(ob);
+    expect(isPaid(getState(), ob, obligationDue(ob))).toBe(false);
+    expect(getState().balance).toBe(10000);
+  });
+
+  it("taking 2000 from savings adds it to the card and plans the return", async () => {
+    const { setCushion, takeFromCushion } = await import("@/lib/budget");
+    setCushion(10000);
+    takeFromCushion(2000, "card", "2026-11-20");
+    expect(getState().cushion).toBe(8000);
+    expect(getState().balance).toBe(2000);
+    expect(getState().obligations[0]).toMatchObject({ amount: 2000, once: "2026-11-20", category: "savings" });
+  });
+
+  it("savings in cash are kept apart from savings on the card", async () => {
+    const { setCushion } = await import("@/lib/budget");
+    setCushion(7000, 3000);
+    expect(getState().cushion).toBe(10000);
+    expect(getState().cushionCash).toBe(3000);
+    expect(getState().cash).toBe(0);
+  });
+
+  it("a monthly loan puts the money on the card and a monthly payment in the plan", () => {
+    borrow(30000, "банк", "2026-11-05", "card", 3000);
+    expect(getState().balance).toBe(30000);
+    expect(getState().obligations[0]).toMatchObject({ amount: 3000, day: 5 });
+    expect(getState().obligations[0]!.once).toBeUndefined();
+  });
+});
+
+describe("currency", () => {
+  it("12 dollars at 95 become 1140 rubles and keep the original", async () => {
+    localStorage.setItem("berezhny-fx", JSON.stringify({ at: new Date().toISOString(), rates: { USD: 95 } }));
+    const { applyFx, parseLocal } = await import("@/lib/parse");
+    const [it] = applyFx(parseLocal("кофе 12$"));
+    expect(it!.amount).toBe(1140);
+    expect(it!.orig).toMatchObject({ amount: 12, currency: "USD" });
   });
 });
