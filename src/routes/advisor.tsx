@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { calc, cat, GROUPS, obligationDue, paidAmount, incomeUpcoming, periodOf, rub, setState, type State } from "@/lib/budget";
+import { calc, cat, forecast, GROUPS, obligationDue, paidAmount, incomeUpcoming, periodOf, rub, setState, type State } from "@/lib/budget";
 import { aiChat, detectService, type ChatMsg } from "@/lib/parse";
 import { familyTotals, getFamily } from "@/lib/family";
 
@@ -59,7 +59,19 @@ function context(s: State) {
 Операции в валюте и семейные переводы за 30 дней: ${recent}.
 Семья: ${fam}
 О пользователе: ${s.advisorAbout?.trim() || "не указано"}.
-Кредиты и долги (условия со слов пользователя): ${s.advisorLoans?.trim() || "не указаны"}.`;
+Кредиты и долги (условия со слов пользователя): ${s.advisorLoans?.trim() || "не указаны"}.
+ПРОГНОЗ НА 60 ДНЕЙ (раздел «План», отрезки от дохода до дохода; траты на жизнь не учтены, «в день» = (деньги на начало − платежи) / дней):
+${forecastText(s)}`;
+}
+
+function forecastText(s: State) {
+  const segs = forecast(s, 60);
+  if (!segs.length) return "нет данных";
+  return segs.map((g, i) => {
+    const inc = g.incomes.map((e) => `+${rub(e.amount)} ${e.name}`).join(", ");
+    const pays = g.events.map((e) => `${d(e.date)} ${e.name} ${e.paid ? "оплачено" : rub(e.amount)}`).join(", ") || "нет";
+    return `${i + 1}) ${d(g.start)} – ${d(g.end)} (${g.days} дн.)${inc ? `, в начале приходит ${inc}` : ""}; деньги на начало ${rub(g.money)}; платежи: ${pays}; итого платежей ${rub(g.payments)}; свободно ≈ ${rub(g.perDay)} в день${g.gap > 0 ? `; НЕ ХВАТАЕТ ${rub(g.gap)}` : ""}.`;
+  }).join("\n");
 }
 
 const RULES = `Ты — бережный финансовый помощник в приложении «Бережный бюджет» для людей с СДВГ. Отвечай по-русски, коротко (до 8 предложений или короткий список), тепло и без морали.
