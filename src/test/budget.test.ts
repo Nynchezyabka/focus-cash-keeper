@@ -168,3 +168,19 @@ describe("life minimum and honest reserve", () => {
     expect(c.shortfall).toBe(22000);
   });
 });
+
+describe("calendar forecast", () => {
+  it("splits days by incomes and shows free money per day on each stretch", async () => {
+    const { forecast } = await import("@/lib/budget");
+    replaceState({
+      ...base(), balance: 10000,
+      incomes: [{ id: "z", name: "Зарплата", amount: 30000, day: 26 }],
+      obligations: [{ id: "o", name: "Кредит", amount: 5000, day: 20, category: "loan" }],
+    });
+    const [a, b] = forecast(getState(), 45, NOW);
+    expect(a!.days).toBe(10);
+    expect(a!.perDay).toBe(500); // (10000 − 5000) / 10
+    expect(b!.money).toBe(30000);
+    expect(b!.incomes[0]!.name).toBe("Зарплата");
+  });
+});
