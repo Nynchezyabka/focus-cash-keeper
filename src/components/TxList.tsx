@@ -1,3 +1,4 @@
+import { currency } from "@/lib/fx";
 import { useState } from "react";
 import { Trash2, Scale, ArrowDownLeft, PiggyBank } from "lucide-react";
 import { cat, catColor, rub, updateTx, type Method, type Tx } from "@/lib/budget";
@@ -29,6 +30,7 @@ export function TxList({ txs }: { txs: Tx[] }) {
                   <p className="text-xs text-muted-foreground">
                     {t.kind === "expense" ? c.name + " · " : ""}
                     {new Date(t.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                    {t.orig ? ` · ${t.orig.amount} ${currency(t.orig.currency).sign} → ${rub(t.amount)}` : ""}
                   </p>
                 </div>
                 <span className={`text-sm tabular-nums ${t.kind === "expense" ? "text-foreground" : "text-primary"}`}>
