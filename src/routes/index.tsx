@@ -174,7 +174,7 @@ function Today({ s }: { s: State }) {
       <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label="Карта" value={rub(s.balance)} onClick={() => { setRecMethod("card"); setDialog("reconcile"); }} />
         <Stat label="Наличные" value={rub(s.cash ?? 0)} onClick={() => { setRecMethod("cash"); setDialog("reconcile"); }} />
-        <Stat label="Отложено" value={rub(c.reserve)} icon onClick={() => setDialog("reserve")} />
+        <Stat label="Отложено" value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)} icon onClick={() => setDialog("reserve")} />
       </div>
 
       <button onClick={() => setDialog("savings")} className="flex w-full items-center justify-between rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]">
@@ -183,12 +183,7 @@ function Today({ s }: { s: State }) {
       </button>
       <p className="text-center text-xs text-muted-foreground">Нажмите на сумму, чтобы поправить её или посмотреть, что отложено</p>
       {c.total < 0 && <BorrowCard gap={-c.total} />}
-      {c.total >= 0 && c.shortfall > 0 && (
-        <p className="rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
-          Сейчас денег меньше, чем нужно на платежи до дохода: не хватает {rub(c.shortfall)}. Поэтому «свободно» — 0.
-          Можно перенести платёж в «Плане платежей».
-        </p>
-      )}
+      {c.total >= 0 && c.shortfall > 0 && <ShortfallCard gap={c.shortfall} minDaily={c.minDaily} cushion={s.cushion} />}
 
       {s.txs.length > 0 && (
         <section>
@@ -264,7 +259,7 @@ function ReserveDialog({ open, onClose, c, cushion }: { open: boolean; onClose: 
             </ul>
           </div>
         )}
-        <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{rub(c.reserve)}</span></p>
+        <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}</span></p>
         <p className="text-xs text-muted-foreground">Подушка (отдельно, из трат «Накопления»): {rub(cushion)}</p>
         <Button asChild variant="secondary"><Link to="/payments">Открыть План платежей</Link></Button>
       </DialogContent>
@@ -446,6 +441,35 @@ function ReconcileDialog({ open, onClose, balance, initialMethod }: { open: bool
         </Button>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: number; cushion: number }) {
+  const [mode, setMode] = useState<null | "borrow">(null);
+  if (mode === "borrow") return <BorrowCard gap={gap} />;
+  return (
+    <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
+      <p className="text-sm">
+        На платежи до дохода не хватает {rub(gap)}. Сначала оставила вам минимум на жизнь — {rub(minDaily)} в день, а платежи получили то, что осталось. Что делаем?
+      </p>
+      <div className="grid gap-2">
+        <Button asChild variant="secondary" className="h-auto whitespace-normal py-2">
+          <Link to="/payments">Перенести или оплатить частично</Link>
+        </Button>
+        <Button variant="secondary" className="h-auto whitespace-normal py-2" onClick={() => setMode("borrow")}>
+          Закрыть кредиткой или займом
+        </Button>
+        {cushion > 0 && (
+          <Button
+            variant="secondary"
+            className="h-auto whitespace-normal py-2"
+            onClick={() => addedToast(coverFromCushion(Math.min(gap, cushion)), "Взяли из подушки")}
+          >
+            Взять из накоплений ({rub(Math.min(gap, cushion))})
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 

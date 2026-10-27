@@ -154,3 +154,17 @@ describe("currency", () => {
     expect(it!.orig).toMatchObject({ amount: 12, currency: "USD" });
   });
 });
+
+describe("life minimum and honest reserve", () => {
+  it("keeps 500 ₽ a day for life and never sets aside more than there is", () => {
+    replaceState({
+      ...base(), balance: 8000,
+      incomes: [{ id: "z", name: "Зарплата", amount: 1, day: 26 }],
+      obligations: [{ id: "o", name: "Кредит", amount: 25000, day: 20, category: "loan" }],
+    });
+    const c = calc(getState(), NOW); // 10 days
+    expect(c.dailyNorm).toBe(500);
+    expect(c.held).toBe(3000);
+    expect(c.shortfall).toBe(22000);
+  });
+});

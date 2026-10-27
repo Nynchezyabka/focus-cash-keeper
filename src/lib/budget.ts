@@ -34,6 +34,7 @@ export interface State {
   incomeAck: Record<string, string>; // incomeId -> last handled occurrence (YYYY-MM-DD)
   nextIncomeOverride?: string | undefined; // YYYY-MM-DD
   overspendHandled?: string; // date key
+  minDaily?: number; // protected minimum for life per day
   ai: AiSettings;
   categories?: Category[];
   advisorAbout?: string;
@@ -216,6 +217,7 @@ export function moveObligation(id: string, date: string) {
 }
 
 // ---------- core calc ----------
+export const MIN_DAILY = 500;
 export function calc(s: State, now = new Date()) {
   const today = startOfDay(now);
   const next = nextIncome(s, now);
@@ -238,12 +240,18 @@ export function calc(s: State, now = new Date()) {
   const todayLife = s.txs.filter((t) => t.kind === "expense" && cat(t.category).group === "life" && dayKey(new Date(t.date)) === tk);
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
   const total = s.balance + (s.cash ?? 0);
-  const dailyNorm = Math.max(0, (total + spentToday - reserve) / days);
+  // life minimum comes first: payments get only what's left after it, and "set aside" never exceeds real money
+  const minDaily = s.minDaily ?? MIN_DAILY;
+  const pool = Math.max(0, total + spentToday);
+  const floor = Math.min(pool, minDaily * days);
+  const held = Math.min(reserve, Math.max(0, pool - floor));
+  const shortfall = Math.max(0, reserve - held); // planned payments not covered by money now
+  const dailyNorm = Math.max(0, (pool - held) / days);
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
-  const afterSpread = days > 1 ? Math.max(0, (total - reserve) / (days - 1)) : 0;
-  const shortfall = Math.max(0, reserve - total); // not enough even for planned payments
-  return { next, days, reserve, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, todayKey: tk };
+  const rest = Math.max(0, total);
+  const afterSpread = days > 1 ? Math.max(0, (rest - Math.min(reserve, Math.max(0, rest - Math.min(rest, minDaily * (days - 1))))) / (days - 1)) : 0;
+  return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, minDaily, todayKey: tk };
 }
 
 // ---------- actions ----------
