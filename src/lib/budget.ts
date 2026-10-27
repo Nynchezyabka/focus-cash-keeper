@@ -266,7 +266,7 @@ function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
 function cushionMove(s: State, t: Tx, sign: 1 | -1): Partial<State> {
   const d = cushionDelta(t) * sign;
   if (!d) return {};
-  const where = t.kind === "savings" ? t.method : t.note === "cushion-cash" ? "cash" : t.method;
+  const where = t.method;
   return { cushion: s.cushion + d, ...(where === "cash" ? { cushionCash: (s.cushionCash ?? 0) + d } : {}) };
 }
 function cushionDelta(t: Tx) {
