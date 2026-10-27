@@ -66,10 +66,10 @@ function Today({ s }: { s: State }) {
         <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
           {rub(Math.max(0, c.freeToday))}
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">
+        <Link to="/calendar" className="mt-3 inline-block text-sm text-muted-foreground underline decoration-dotted underline-offset-4">
           {c.days} {plural(c.days, "день", "дня", "дней")} до дохода ·{" "}
-          {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-        </p>
+          {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })} · календарь
+        </Link>
         <p className="mt-1 text-sm text-muted-foreground">
           {c.days > 1
             ? <>С завтра — по {rub(c.afterSpread)} в день</>
