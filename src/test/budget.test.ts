@@ -160,7 +160,7 @@ describe("life minimum and honest reserve", () => {
     replaceState({
       ...base(), balance: 8000,
       incomes: [{ id: "z", name: "Зарплата", amount: 1, day: 26 }],
-      obligations: [{ id: "o", name: "Кредит", amount: 25000, day: 20 }],
+      obligations: [{ id: "o", name: "Кредит", amount: 25000, day: 20, category: "loan" }],
     });
     const c = calc(getState(), NOW); // 10 days
     expect(c.dailyNorm).toBe(500);
