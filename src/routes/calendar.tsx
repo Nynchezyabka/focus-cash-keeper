@@ -47,10 +47,12 @@ function Calendar({ s }: { s: State }) {
               <p className="text-xs text-muted-foreground">
                 {i === 0 ? "Сейчас" : "С " + g.start.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })} · {g.days} дн.
               </p>
-              <p className="text-sm">
+              {g.open && i > 0 ? (
+                <p className="text-xs text-muted-foreground">дальше — когда появятся следующие выплаты</p>
+              ) : <p className="text-sm">
                 <span className="font-display text-lg tabular-nums">{rub(perDay)}</span>
                 <span className="text-muted-foreground"> в день</span>
-              </p>
+              </p>}
             </div>
             {g.events.length === 0 ? (
               <p className="pt-2 text-xs text-muted-foreground">Платежей на этом отрезке нет</p>

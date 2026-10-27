@@ -383,7 +383,7 @@ export function coverFromCushion(amount: number) {
 
 // ---------- calendar forecast ----------
 export interface CalEvent { date: Date; kind: "income" | "payment"; name: string; amount: number; paid?: boolean; method?: Method; refId: string }
-export interface CalSegment { start: Date; end: Date; days: number; money: number; payments: number; perDay: number; gap: number; events: CalEvent[]; incomes: CalEvent[] }
+export interface CalSegment { start: Date; end: Date; days: number; money: number; payments: number; perDay: number; gap: number; events: CalEvent[]; incomes: CalEvent[]; open: boolean }
 /** chain «доход → платежи → доход» for the coming days with how much is free per day on each stretch */
 export function forecast(s: State, horizon = 45, now = new Date()): CalSegment[] {
   const today = startOfDay(now);
@@ -420,7 +420,7 @@ export function forecast(s: State, horizon = 45, now = new Date()): CalSegment[]
     const payments = inSeg.filter((e) => !e.paid).reduce((a, e) => a + e.amount, 0);
     const days = Math.max(1, Math.round((+end - +start) / 86400000));
     const left = money - payments;
-    segs.push({ start, end, days, money, payments, perDay: Math.max(0, left / days), gap: Math.max(0, -left), events: inSeg, incomes: incs.filter((e) => +e.date === +start) });
+    segs.push({ start, end, days, money, payments, perDay: Math.max(0, left / days), gap: Math.max(0, -left), events: inSeg, incomes: incs.filter((e) => +e.date === +start), open: end === limit });
     if (end === limit) break;
     // spending the daily amount uses the stretch up; a gap carries into the next one
     money = Math.min(0, left) + incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0);
