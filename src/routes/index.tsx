@@ -32,7 +32,8 @@ import {
   type Method,
   type State,
 } from "@/lib/budget";
-import { detectService, parseImage, parseSmart, type Parsed } from "@/lib/parse";
+import { applyFx, detectService, parseImage, parseSmart, type Parsed } from "@/lib/parse";
+import { CURRENCIES, cachedRate, currency, loadRates, toRub } from "@/lib/fx";
 import { CategoryChip, CategoryPicker, MethodToggle } from "@/components/Pickers";
 import { MicButton } from "@/components/Mic";
 import { useFamily } from "@/lib/family";
@@ -294,13 +295,19 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const [method, setMethod] = useState<Method>("card");
   const [family, setFam] = useState(false);
   const fam = useFamily();
+  const [cur, setCur] = useState("RUB");
+  const [rate, setRate] = useState("");
+  useEffect(() => { if (cur === "RUB") return; const c = cachedRate(cur); setRate(c ? String(Math.round(c * 10000) / 10000) : ""); void loadRates().then((x) => { const r = x?.rates[cur]; if (r) setRate(String(Math.round(r * 10000) / 10000)); }); }, [cur]);
   const save = (category: string) => {
-    const a = Number(amount.replace(",", "."));
-    if (!a) {
+    const raw = Number(amount.replace(/\s/g, "").replace(",", "."));
+    if (!raw) {
       toast("Сначала впишите сумму");
       return;
     }
-    const t = addTx({ kind: "expense", amount: a, category, method, ...(family ? { family: true } : {}) });
+    const r = cur === "RUB" ? 1 : Number(rate.replace(",", "."));
+    if (!r) { toast("Впишите курс"); return; }
+    const a = Math.round(toRub(raw, r));
+    const t = addTx({ kind: "expense", amount: a, category, method, ...(family ? { family: true } : {}), ...(cur !== "RUB" ? { orig: { amount: raw, currency: cur, rate: r }, note: `${cat(category).name} · ${raw} ${currency(cur).sign}` } : {}) });
     setFam(false);
     addedToast(t, `${cat(category).name}: ${rub(a)}`);
     setAmount("");
@@ -320,6 +327,13 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
           onChange={(e) => setAmount(e.target.value)}
           className="h-14 text-center text-2xl"
         />
+        <div className="flex gap-2">
+          <select aria-label="Валюта" value={cur} onChange={(e) => setCur(e.target.value)} className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+            {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.sign} {c.name}</option>)}
+          </select>
+          {cur !== "RUB" && <Input inputMode="decimal" aria-label="Курс" placeholder="Курс, ₽ за 1" value={rate} onChange={(e) => setRate(e.target.value)} />}
+        </div>
+        {cur !== "RUB" && Number(rate.replace(",", ".")) > 0 && Number(amount.replace(",", ".")) > 0 && <p className="text-center text-xs text-muted-foreground">≈ {rub(toRub(Number(amount.replace(",", ".")), Number(rate.replace(",", "."))))} по курсу ЦБ. Можно поправить на курс банка.</p>}
         <MethodToggle value={method} onChange={setMethod} />
         {fam && <FamilyToggle value={family} onChange={setFam} />}
         <CategoryPicker onPick={save} />
@@ -488,7 +502,7 @@ function PocketDialog({
     if (!f) return;
     setBusy(true);
     try {
-      show(await parseImage(f, getState().ai));
+      await loadRates(); show(applyFx(await parseImage(f, getState().ai)));
       setVia(detectService(getState().ai.apiKey)?.name ?? "");
     } catch (e) {
       toast((e as Error).message);
@@ -566,7 +580,9 @@ function PocketDialog({
                 onClick={async () => {
                   setBusy(true);
                   try {
-                    const r = await parseSmart(text, getState().ai);
+                    await loadRates();
+                    const r0 = await parseSmart(text, getState().ai);
+                    const r = { ...r0, items: applyFx(r0.items) };
                     show(r.items);
                     setVia(r.via);
                   } catch (e) {
@@ -639,7 +655,7 @@ function PocketDialog({
                   const ok = chosen;
                   learnKeys(ok);
                   const ids = ok.map(
-                    (it) => addTx({ kind: "expense", amount: it.amount, category: it.category, note: it.note }).id,
+                    (it) => addTx({ kind: "expense", amount: it.amount, category: it.category, note: it.note, ...(it.orig ? { orig: it.orig } : {}) }).id,
                   );
                   undoable(`Добавлено трат: ${ids.length}`, () => ids.forEach(removeTx));
                   close();
