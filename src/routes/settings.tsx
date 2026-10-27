@@ -1,9 +1,10 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { detectService } from "@/lib/parse";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { APP_VERSION, checkForUpdates, hardReload, updatesSupported } from "@/lib/pwa";
 import { Download, Upload, ShieldCheck, ChevronRight, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { WhatsNew } from "@/components/WhatsNew";
 import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
@@ -64,6 +65,8 @@ function Settings({ s }: { s: State }) {
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </Link>
 
+      <Appearance />
+
       <Updates />
 
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
@@ -91,6 +94,21 @@ function Settings({ s }: { s: State }) {
         }} />
       </section>
     </div>
+  );
+}
+
+function Appearance() {
+  const [t, setT] = useState<Theme>("system");
+  useEffect(() => setT(getTheme()), []);
+  return (
+    <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
+      <h2 className="font-display text-lg">Оформление</h2>
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1 text-xs">
+        {([["light", "Дневная"], ["dark", "Ночная"], ["system", "Как в телефоне"]] as const).map(([m, l]) => (
+          <button key={m} onClick={() => { setTheme(m); setT(m); }} className={`rounded-lg py-2 ${t === m ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{l}</button>
+        ))}
+      </div>
+    </section>
   );
 }
 
