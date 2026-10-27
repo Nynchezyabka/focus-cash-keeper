@@ -7,8 +7,12 @@ import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { calc, cat, GROUPS, obligationDue, paidAmount, incomeUpcoming, rub, setState, type State } from "@/lib/budget";
+import { calc, cat, GROUPS, obligationDue, paidAmount, incomeUpcoming, periodOf, rub, setState, type State } from "@/lib/budget";
 import { aiChat, detectService, type ChatMsg } from "@/lib/parse";
+import { familyTotals, getFamily } from "@/lib/family";
+
+/** Key used by «Оценить покупку» on the home screen to hand a ready question to the chat. */
+export const ASK_KEY = "berezhny-advisor-ask";
 
 export const Route = createFileRoute("/advisor")({
   head: () => meta("Помощник — Бережный бюджет", "Бережный финансовый помощник: можно ли купить, как дела до дохода, обсуждение трат без упрёков."),
@@ -31,18 +35,29 @@ function context(s: State) {
     return `${o.name} ${rub(o.amount)} — ${d(due)}${o.once ? " (разово)" : " (ежемесячно)"} — ${st}`;
   }).join("; ") || "нет";
   const resv = [...c.reserved.map((r) => `${r.o.name} ${rub(r.o.amount - paidAmount(s, r.o, r.due))}`), ...c.saving.map((x) => `${x.o.name} (копится) ${rub(x.part)}`)].join("; ") || "ничего";
-  const inc = s.incomes.map((i) => { const u = incomeUpcoming(s, i); return `${i.name} ${rub(i.amount)}${u ? ` — ${d(u)}` : ""}`; }).join("; ") || "нет";
+  const month = periodOf(new Date());
+  const inc = s.incomes.map((i) => { const u = incomeUpcoming(s, i); return `${i.name} ${rub(i.amount)}${i.method === "cash" ? " наличными" : ""}${i.skip === month ? " — В ЭТОМ МЕСЯЦЕ ОТКЛЮЧЕНА, не рассчитывай на неё" : ""}${u ? ` — ${d(u)}` : ""}`; }).join("; ") || "нет";
+  const recent = s.txs.filter((t) => +new Date(t.date) >= since && (t.orig || t.family)).slice(0, 15)
+    .map((t) => `${d(new Date(t.date))} ${t.note || cat(t.category).name} ${rub(t.amount)}${t.orig ? ` (= ${t.orig.amount} ${t.orig.currency} по курсу ${t.orig.rate})` : ""}${t.family ? " — перевод внутри семьи, не трата" : ""}`).join("; ") || "нет";
+  const f = getFamily();
+  let fam = "семейный доступ не подключён";
+  if (f?.members?.length) {
+    const ft = familyTotals(f.members);
+    fam = `участников ${f.members.length}; свободно сегодня вместе ${rub(ft.today)}; на картах и наличными вместе ${rub(ft.total)}; отложено на платежи вместе ${rub(ft.reserve)}; накопления вместе ${rub(ft.cushion)}; до ближайшего дохода через ${ft.nearestDays} дн. вместе можно ${rub(ft.untilIncome)}. Бюджеты раздельные: деньги партнёра — не твои, предлагай их только как тему для разговора, не как источник.`;
+  }
   return `ФАКТЫ БЮДЖЕТА (единственный источник цифр):
 Сегодня ${d(new Date())}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
 Накопления (в «всего» НЕ входят): ${rub(s.cushion)}, из них наличными ${rub(s.cushionCash ?? 0)}.
 Ближайший доход ${d(c.next.date)}, через ${c.days} дн.
 Зарезервировано под обязательные платежи до дохода и накопление на дальние: ${rub(c.reserve)}.
-Свободно сегодня: ${rub(Math.max(0, c.freeToday))}, дневной ориентир ${rub(c.dailyNorm)}.
+Свободно сегодня: ${rub(Math.max(0, c.freeToday))}, дневной ориентир ${rub(c.dailyNorm)}, с завтра по ${rub(c.afterSpread)} в день.
 Свободно до дохода всего (всего − резерв): ${rub(Math.max(0, c.total - c.reserve))}.
 Что именно отложено сейчас: ${resv}.
 Платежи и их состояние (оплаченные уже списаны и не резервируются): ${obl}.
 Плановые доходы: ${inc}.
 Траты за 30 дней: ${spent}.
+Операции в валюте и семейные переводы за 30 дней: ${recent}.
+Семья: ${fam}
 О пользователе: ${s.advisorAbout?.trim() || "не указано"}.
 Кредиты и долги (условия со слов пользователя): ${s.advisorLoans?.trim() || "не указаны"}.`;
 }
@@ -54,7 +69,7 @@ const RULES = `Ты — бережный финансовый помощник �
 3. Не советуй тратить подушку или резерв на обязательные платежи на желания и крупные цели (ипотека, вложения). Подушка — на непредвиденное.
 4. Не предлагай брать новые кредиты, рассрочки и инвестиции. По уже имеющимся долгам из блока «Кредиты и долги» можно помочь посчитать: когда выгоднее вернуть (учитывай ставку, льготный период, штрафы, дату платежа) — но только из свободных денег, не трогая резерв обязательных платежей и подушку. Если условий не хватает — спроси. Налоговые и медицинские вопросы — к специалисту.
 8. Если приложен скриншот — сначала коротко перечисли, что на нём видно (цена, товар, условия), затем отвечай по правилам выше.
-5. Оценка покупки: сравни цену со «Свободно до дохода всего» и с дневным ориентиром. Дай вердикт одной фразой («спокойно можно», «можно, но станет тесно до ДАТЫ: ≈ N ₽ в день», «лучше подождать до ДАТЫ»), потом 1–3 мягких варианта: подождать дохода, копить по N ₽ с каждого дохода (посчитай), посмотреть б/у или подождать акцию. Упомяни правило 48 часов для импульсивных покупок без давления.
+5. Оценка покупки: сравни цену со «Свободно до дохода всего» и с дневным ориентиром. Дай вердикт одной фразой («спокойно можно», «можно, но станет тесно до ДАТЫ: ≈ N ₽ в день», «лучше подождать до ДАТЫ»), покажи, сколько останется в день до дохода после покупки (свободно до дохода − цена) / дней. Если сейчас тесно — 1–2 варианта: купить после ДАТЫ дохода или откладывать по N ₽ с каждого дохода (посчитай). Не предлагай таймеры, вишлисты и «подождать 48 часов».
 6. Считай аккуратно, показывай простую арифметику.
 7. Если человек просто хочет обсудить траты — слушай, отражай, задавай один уточняющий вопрос.`;
 
