@@ -174,7 +174,7 @@ function Today({ s }: { s: State }) {
       <div className="grid grid-cols-3 gap-2 text-center">
         <Stat label="Карта" value={rub(s.balance)} onClick={() => { setRecMethod("card"); setDialog("reconcile"); }} />
         <Stat label="Наличные" value={rub(s.cash ?? 0)} onClick={() => { setRecMethod("cash"); setDialog("reconcile"); }} />
-        <Stat label="Отложено" value={rub(c.reserve)} icon onClick={() => setDialog("reserve")} />
+        <Stat label="Отложено" value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)} icon onClick={() => setDialog("reserve")} />
       </div>
 
       <button onClick={() => setDialog("savings")} className="flex w-full items-center justify-between rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]">
@@ -264,7 +264,7 @@ function ReserveDialog({ open, onClose, c, cushion }: { open: boolean; onClose: 
             </ul>
           </div>
         )}
-        <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{rub(c.reserve)}</span></p>
+        <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}</span></p>
         <p className="text-xs text-muted-foreground">Подушка (отдельно, из трат «Накопления»): {rub(cushion)}</p>
         <Button asChild variant="secondary"><Link to="/payments">Открыть План платежей</Link></Button>
       </DialogContent>

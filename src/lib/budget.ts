@@ -217,6 +217,7 @@ export function moveObligation(id: string, date: string) {
 }
 
 // ---------- core calc ----------
+export const MIN_DAILY = 500;
 export function calc(s: State, now = new Date()) {
   const today = startOfDay(now);
   const next = nextIncome(s, now);
