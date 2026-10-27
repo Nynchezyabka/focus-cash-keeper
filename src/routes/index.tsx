@@ -24,6 +24,7 @@ import {
   nextIncome,
   markIncomeArrived,
   setCushion,
+  takeFromCushion,
   reconcile,
   removeTx,
   rub,
@@ -194,7 +195,7 @@ function Today({ s }: { s: State }) {
 
       <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} s={s} />
-      <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} cushion={s.cushion} />
+      <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} s={s} />
       <ReconcileDialog key={recMethod} initialMethod={recMethod} open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
       <ReserveDialog open={dialog === "reserve"} onClose={() => setDialog(null)} c={c} cushion={s.cushion} />
       <PocketDialog
@@ -453,7 +454,7 @@ function BorrowCard({ gap }: { gap: number }) {
       >
         Записать
       </Button>
-      <p className="text-xs">Если просто ошиблись в сумме — нажмите «Сверить баланс».</p>
+      <p className="text-xs">Если просто ошиблись в сумме — нажмите на «Карта» и впишите, сколько есть.</p>
     </div>
   );
 }
@@ -654,21 +655,49 @@ function PocketDialog({
   );
 }
 
-function SavingsDialog({ open, onClose, cushion }: { open: boolean; onClose: () => void; cushion: number }) {
-  const [amount, setAmount] = useState("");
-  const a = Number(amount.replace(/\s/g, "").replace(",", "."));
+function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => void; s: State }) {
+  const cashNow = Math.max(0, s.cushionCash ?? 0), cardNow = s.cushion - cashNow;
+  const [card, setCard] = useState("");
+  const [cash, setCash] = useState("");
+  const [take, setTake] = useState("");
+  const [to, setTo] = useState<Method>("card");
+  const [back, setBack] = useState(false);
+  const [date, setDate] = useState("");
+  const num = (v: string) => Number(v.replace(/\s/g, "").replace(",", "."));
+  const close = () => { setCard(""); setCash(""); setTake(""); setBack(false); setDate(""); onClose(); };
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm">
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+      <DialogContent className="max-h-[92vh] max-w-sm overflow-y-auto">
         <DialogHeader><DialogTitle>Накопления</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Сейчас: {rub(cushion)}. Накопления не входят в «Сегодня свободно».</p>
+        <p className="text-sm text-muted-foreground">Сейчас {rub(s.cushion)}: на карте {rub(cardNow)}, наличными {rub(cashNow)}. В «Сегодня свободно» не входят.</p>
         <div className="space-y-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
           <p className="font-medium">Просто указать сумму</p>
-          <p className="text-xs">Сколько накоплено на самом деле. Карта и наличные не меняются.</p>
-          <Input inputMode="decimal" placeholder="Сейчас накоплено, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Button className="w-full" disabled={amount.trim() === "" || isNaN(a)} onClick={() => { const t = setCushion(a); if (t) addedToast(t, `Накопления: ${rub(a)}`); setAmount(""); onClose(); }}>Сохранить</Button>
+          <p className="text-xs">Сколько накоплено на самом деле. Остаток на карте и наличные не меняются.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input inputMode="decimal" placeholder={`На карте (${Math.round(cardNow)})`} value={card} onChange={(e) => setCard(e.target.value)} />
+            <Input inputMode="decimal" placeholder={`Наличными (${Math.round(cashNow)})`} value={cash} onChange={(e) => setCash(e.target.value)} />
+          </div>
+          <Button className="w-full" disabled={!card.trim() && !cash.trim()} onClick={() => {
+            const list = setCushion(card.trim() ? num(card) : cardNow, cash.trim() ? num(cash) : cashNow);
+            if (list.length) undoable("Накопления обновлены", () => list.forEach((t) => removeTx(t.id)));
+            close();
+          }}>Сохранить</Button>
         </div>
-        <p className="text-xs text-muted-foreground"><b>Отложил(а) с карты</b> — запишите трату в категории «Накопления»: деньги уйдут с карты в накопления.</p>
+        <div className="space-y-2 rounded-xl bg-muted p-3 text-sm">
+          <p className="font-medium">Взять из накоплений</p>
+          <p className="text-xs text-muted-foreground">Например, из «Кубышки». Деньги прибавятся к карте или наличным и к «Сегодня свободно».</p>
+          <Input inputMode="decimal" placeholder="Сколько, ₽" value={take} onChange={(e) => setTake(e.target.value)} />
+          <MethodToggle value={to} onChange={setTo} />
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={back} onChange={(e) => setBack(e.target.checked)} /> Хочу вернуть до даты (появится в Плане платежей)</label>
+          {back && <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />}
+          <Button variant="secondary" className="w-full" disabled={!(num(take) > 0) || (back && !date)} onClick={() => {
+            const a = Math.min(num(take), s.cushion > 0 ? s.cushion : num(take));
+            const { t, ob } = takeFromCushion(a, to, back ? date : undefined);
+            undoable(`Из накоплений: ${rub(a)}`, () => { removeTx(t.id); if (ob) setState((x) => ({ ...x, obligations: x.obligations.filter((o) => o.id !== ob.id) })); });
+            close();
+          }}>Взять</Button>
+        </div>
+        <p className="text-xs text-muted-foreground"><b>Отложил(а) с карты</b> — запишите трату в категории «Накопления» и выберите карту или наличные: деньги перейдут в накопления.</p>
       </DialogContent>
     </Dialog>
   );
