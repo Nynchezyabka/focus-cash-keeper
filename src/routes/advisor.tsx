@@ -11,8 +11,8 @@ import { calc, cat, GROUPS, obligationDue, paidAmount, incomeUpcoming, periodOf,
 import { aiChat, detectService, type ChatMsg } from "@/lib/parse";
 import { familyTotals, getFamily } from "@/lib/family";
 
-/** Key used by «Оценить покупку» on the home screen to hand a ready question to the chat. */
-export const ASK_KEY = "berezhny-advisor-ask";
+/** «Оценить покупку» on the home screen leaves a ready question here (sessionStorage). */
+const ASK_KEY = "berezhny-advisor-ask";
 
 export const Route = createFileRoute("/advisor")({
   head: () => meta("Помощник — Бережный бюджет", "Бережный финансовый помощник: можно ли купить, как дела до дохода, обсуждение трат без упрёков."),
@@ -95,14 +95,23 @@ function Chat({ s }: { s: State }) {
   const end = useRef<HTMLDivElement>(null);
   const hasKey = !!detectService(s.ai.apiKey);
 
-  useEffect(() => { try { setMsgs(JSON.parse(localStorage.getItem(HKEY) ?? "[]")); } catch { /* empty */ } }, []);
+  useEffect(() => {
+    let h: ChatMsg[] = [];
+    try { h = JSON.parse(localStorage.getItem(HKEY) ?? "[]"); } catch { /* empty */ }
+    setMsgs(h);
+    const raw = sessionStorage.getItem(ASK_KEY);
+    if (raw && hasKey) {
+      sessionStorage.removeItem(ASK_KEY);
+      try { const a = JSON.parse(raw); void send(a.q, h, a.img ?? null); } catch { /* ignore */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { localStorage.setItem(HKEY, JSON.stringify(msgs.slice(-30))); end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
-  async function send(q: string) {
-    if ((!q.trim() && !img) || busy) return;
-    const shot = img;
+  async function send(q: string, base: ChatMsg[] = msgs, shot = img) {
+    if ((!q.trim() && !shot) || busy) return;
     const content = (q.trim() || "Посмотри скриншот") + (shot ? "\n📷 скриншот" : "");
-    const next = [...msgs, { role: "user" as const, content }];
+    const next = [...base, { role: "user" as const, content }];
     setMsgs(next); setText(""); setImg(null); setErr(""); setBusy(true);
     try {
       const a = await aiChat(`${RULES}\n\n${context(s)}`, next.slice(-12), s.ai, shot ?? undefined);
