@@ -73,12 +73,66 @@ export type Database = {
           },
         ]
       }
+      family_ping: {
+        Row: {
+          at: string
+          id: number
+        }
+        Insert: {
+          at?: string
+          id: number
+        }
+        Update: {
+          at?: string
+          id?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      _fam_code: { Args: { n: number }; Returns: string }
+      _fam_hash: { Args: { t: string }; Returns: string }
+      _fam_me: { Args: { p_member: string; p_token: string }; Returns: string }
+      _fam_norm: { Args: { t: string }; Returns: string }
+      family_create: {
+        Args: { p_name: string; p_snapshot: Json }
+        Returns: Json
+      }
+      family_delete: {
+        Args: { p_member: string; p_token: string }
+        Returns: undefined
+      }
+      family_join: {
+        Args: { p_code: string; p_name: string; p_snapshot: Json }
+        Returns: Json
+      }
+      family_leave: {
+        Args: { p_member: string; p_token: string }
+        Returns: undefined
+      }
+      family_ping: { Args: never; Returns: Json }
+      family_pull: {
+        Args: { p_member: string; p_token: string }
+        Returns: Json
+      }
+      family_push: {
+        Args: {
+          p_member: string
+          p_name: string
+          p_share: boolean
+          p_snapshot: Json
+          p_token: string
+          p_txs: Json
+        }
+        Returns: undefined
+      }
+      family_rotate: {
+        Args: { p_member: string; p_token: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
