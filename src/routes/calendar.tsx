@@ -120,12 +120,12 @@ function Grid({ s, horizon }: { s: State; horizon: number }) {
   for (const g of segs) for (const e of [...g.incomes, ...g.events]) { const k = dayKey(e.date); byDay.set(k, [...(byDay.get(k) ?? []), e]); }
   const perDayOf = (d: Date) => {
     const i = segs.findIndex((g) => +d >= +g.start && +d < +g.end);
-    if (i < 0) return null;
-    if (segs[i].open && i > 0) return null;
-    return i === 0 ? c.dailyNorm : segs[i].perDay;
+    const g = segs[i];
+    if (!g || (g.open && i > 0)) return null;
+    return i === 0 ? c.dailyNorm : g.perDay;
   };
   const days: (Date | null)[] = Array((today.getDay() + 6) % 7).fill(null);
-  for (let i = 0; i < horizon; i++) days.push(new Date(+today + i * 86400000 + 3600000 * 2));
+  for (let i = 0; i < horizon; i++) days.push(new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
   const selDate = days.find((d) => d && dayKey(d) === sel) ?? today;
   const selEv = byDay.get(sel) ?? [];
   const pd = perDayOf(selDate);
