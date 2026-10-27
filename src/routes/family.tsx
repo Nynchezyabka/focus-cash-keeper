@@ -7,6 +7,7 @@ import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getState, rub } from "@/lib/budget";
+import { familyConfigured } from "@/lib/family-api";
 import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, type FamilyLocal } from "@/lib/family";
 
 export const Route = createFileRoute("/family")({
@@ -36,22 +37,23 @@ function Setup({ initialCode }: { initialCode: string }) {
     if (!name.trim()) { toast("Напишите, как вас назвать"); return; }
     setBusy(true);
     try {
-      const fn = await import("@/lib/family.functions");
-      const snapshot = snapshotOf(getState()) as never;
+      const { api } = await import("@/lib/family-api");
+      const snapshot = snapshotOf(getState());
       if (kind === "create") {
-        const r = await fn.createFamily({ data: { name, snapshot } });
+        const r = await api.create(name, snapshot);
         setFamily({ ...r, name, shareTxs: false, dirty: false, lastPush: new Date().toISOString() });
       } else {
-        const r = await fn.joinFamily({ data: { code, name, snapshot } });
+        const r = await api.join(code, name, snapshot);
         if ("error" in r) { toast(r.error === "full" ? "В этой семье уже много участников" : "Код не подошёл. Проверьте его или попросите новый"); return; }
         setFamily({ ...r, name, shareTxs: false, dirty: false, lastPush: new Date().toISOString() });
       }
       void syncFamily();
-    } catch { toast("Нет связи с облаком. Попробуйте позже — приложение работает и без этого"); }
+    } catch { const { checkCloud } = await import("@/lib/family-api"); toast((await checkCloud()).text); }
     finally { setBusy(false); }
   };
   return (
     <div className="space-y-5">
+      {!familyConfigured() && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">На этом сайте семейный доступ ещё не настроен. Личный бюджет работает полностью. Чтобы включить семью, владельцу сайта нужно один раз подготовить базу и вписать два значения на хостинге — шаги в README.</p>}
       <p className="text-sm text-muted-foreground">Каждый ведёт свой бюджет на своём телефоне. Здесь будет общая картина двух бюджетов. Ничего не объединяется и не заменяется.</p>
       <Input placeholder="Как вас назвать? (Наталья, Муж)" value={name} onChange={(e) => setName(e.target.value)} />
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
@@ -77,11 +79,10 @@ function Joined({ f }: { f: FamilyLocal }) {
   const link = typeof window !== "undefined" ? `${window.location.origin}/family?join=${encodeURIComponent(f.code)}` : "";
   const [showCode, setShowCode] = useState(members.length < 2);
   const act = async (k: "leave" | "rotate" | "delete") => {
-    const fn = await import("@/lib/family.functions");
-    const d = { data: { memberId: f.memberId, token: f.token } };
+    const { api } = await import("@/lib/family-api");
     try {
-      if (k === "rotate") { const r = await fn.rotateFamilyCode(d); patchFamily({ code: r.code }); toast("Новый код готов, старый больше не работает"); return; }
-      if (k === "leave") await fn.leaveFamily(d); else await fn.deleteFamily(d);
+      if (k === "rotate") { const code = await api.rotate(f.memberId, f.token); patchFamily({ code }); toast("Новый код готов, старый больше не работает"); return; }
+      if (k === "leave") await api.leave(f.memberId, f.token); else await api.remove(f.memberId, f.token);
       setFamily(null);
       toast(k === "leave" ? "Вы вышли из семьи. Ваш бюджет остался на телефоне" : "Семья и облачные данные удалены");
     } catch { toast("Нет связи. Попробуйте, когда появится интернет"); }
@@ -160,9 +161,8 @@ function CloudCheck() {
     <div className="space-y-1 text-center">
       <Button variant="ghost" size="sm" onClick={async () => {
         setR("Проверяю…");
-        const t0 = performance.now();
-        try { const { familyPing } = await import("@/lib/family.functions"); await familyPing(); setR(`Облако на связи (${Math.round(performance.now() - t0)} мс)`); }
-        catch { setR("Облако сейчас не отвечает. Приложение работает и без него"); }
+        const { checkCloud } = await import("@/lib/family-api");
+        setR((await checkCloud()).text);
       }}><Wifi /> Проверить связь с облаком</Button>
       {r && <p className="text-xs text-muted-foreground">{r}</p>}
     </div>
