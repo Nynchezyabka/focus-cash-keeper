@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { detectService } from "@/lib/parse";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { APP_VERSION, checkForUpdates, hardReload, updatesSupported } from "@/lib/pwa";
 import { Download, Upload, ShieldCheck, ChevronRight, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -98,7 +98,8 @@ function Settings({ s }: { s: State }) {
 }
 
 function Appearance() {
-  const [t, setT] = useState<Theme>(() => (typeof window === "undefined" ? "system" : getTheme()));
+  const [t, setT] = useState<Theme>("system");
+  useEffect(() => setT(getTheme()), []);
   return (
     <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
       <h2 className="font-display text-lg">Оформление</h2>
