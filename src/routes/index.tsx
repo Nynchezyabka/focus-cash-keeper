@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
+import { ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -50,7 +50,7 @@ export const Route = createFileRoute("/")({
 
 function Today({ s }: { s: State }) {
   const c = calc(s);
-  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve" | "savings">(null);
+  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve" | "savings" | "buy">(null);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
@@ -61,7 +61,7 @@ function Today({ s }: { s: State }) {
     <div className="space-y-5">
       {pending && <IncomeArrived p={pending} />}
 
-      <section className="pt-10 text-center">
+      <section className="pt-4 text-center">
         <p className="text-sm text-muted-foreground">Сегодня свободно</p>
         <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
           {rub(Math.max(0, c.freeToday))}
@@ -80,6 +80,9 @@ function Today({ s }: { s: State }) {
             Уже потрачено сегодня: {rub(c.spentToday)} из {rub(c.dailyNorm)}
           </p>
         )}
+        <button onClick={() => setDialog("buy")} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-secondary px-4 py-1.5 text-sm text-secondary-foreground active:scale-[0.98]">
+          <ShoppingBag className="h-4 w-4" /> Хочу купить — оценить
+        </button>
       </section>
 
       {empty && (
@@ -199,6 +202,7 @@ function Today({ s }: { s: State }) {
         </section>
       )}
 
+      <BuyDialog open={dialog === "buy"} onClose={() => setDialog(null)} />
       <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} s={s} />
       <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} s={s} />
@@ -730,5 +734,42 @@ function FamilyToggle({ value, onChange }: { value: boolean; onChange: (v: boole
       <span>Перевод внутри семьи<span className="block text-xs text-muted-foreground">Остаток меняется, но в семейных итогах не считается</span></span>
       <Switch checked={value} onCheckedChange={onChange} />
     </label>
+  );
+}
+
+/** Quick purchase check: price (+ optional name/photo) → ready question for the Помощник. */
+function BuyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const nav = useNavigate();
+  const [price, setPrice] = useState("");
+  const [what, setWhat] = useState("");
+  const [img, setImg] = useState<{ dataUrl: string; type: string; name: string } | null>(null);
+  const ok = Number(price.replace(",", ".")) > 0 || !!img;
+  function go() {
+    const n = Number(price.replace(",", "."));
+    const q = `Хочу купить${what.trim() ? ` ${what.trim()}` : ""}${n > 0 ? ` за ${rub(n)}` : " (цена на скриншоте)"}. Можно ли спокойно, и сколько останется в день до дохода?`;
+    sessionStorage.setItem("berezhny-advisor-ask", JSON.stringify({ q, img }));
+    setPrice(""); setWhat(""); setImg(null); onClose();
+    void nav({ to: "/advisor" });
+  }
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Оценить покупку</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Помощник посчитает по вашим цифрам, впишется ли покупка и сколько останется в день.</p>
+        <Input inputMode="decimal" autoFocus placeholder="Цена, ₽" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <Input placeholder="Что это (необязательно)" value={what} onChange={(e) => setWhat(e.target.value)} />
+        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-input p-2 text-sm text-muted-foreground">
+          {img ? <img src={img.dataUrl} alt="" className="h-10 w-10 rounded object-cover" /> : <ImageUp className="h-4 w-4" />}
+          <span className="flex-1 truncate">{img ? img.name : "Добавить фото или скриншот товара"}</span>
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+            const f = e.target.files?.[0]; e.target.value = "";
+            if (!f) return;
+            const r = new FileReader(); r.onload = () => setImg({ dataUrl: String(r.result), type: f.type, name: f.name }); r.readAsDataURL(f);
+          }} />
+        </label>
+        {!detectService(getState().ai.apiKey) && <p className="text-xs text-muted-foreground">Для оценки нужен ключ ИИ — его можно добавить в Настройках.</p>}
+        <Button disabled={!ok} onClick={go}>Оценить</Button>
+      </DialogContent>
+    </Dialog>
   );
 }

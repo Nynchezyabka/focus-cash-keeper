@@ -10,7 +10,6 @@ const NAV = [
   { to: "/incomes", label: "Доходы", Icon: Wallet },
   { to: "/analytics", label: "Аналитика", Icon: PieChart },
   { to: "/advisor", label: "Помощник", Icon: MessageCircleHeart },
-  { to: "/settings", label: "Настройки", Icon: Settings },
 ] as const;
 
 export function CatIcon({ name, className }: { name: string; className?: string }) {
@@ -24,10 +23,15 @@ export function Shell({ title, children }: { title?: string; children: (s: State
   const nav = fam ? [...NAV.slice(0, 4), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(4)] : NAV;
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
-      {title && <h1 className="px-5 pt-8 font-display text-2xl text-foreground">{title}</h1>}
+      <div className="flex items-start justify-between gap-3 px-5 pt-6">
+        {title ? <h1 className="pt-2 font-display text-2xl text-foreground">{title}</h1> : <span />}
+        <Link to="/settings" aria-label="Настройки" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
+          <Settings className="h-5 w-5" />
+        </Link>
+      </div>
       <main className="flex-1 px-5 pb-28 pt-4">{s ? children(s) : <div className="py-20 text-center text-muted-foreground">…</div>}</main>
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur">
-        <div className={`mx-auto grid max-w-md ${fam ? "grid-cols-7" : "grid-cols-6"}`}>
+        <div className={`mx-auto grid max-w-md ${fam ? "grid-cols-6" : "grid-cols-5"}`}>
           {nav.map(({ to, label, Icon }) => (
             <Link key={to} to={to} className="flex flex-col items-center gap-1 py-3 text-[10px] text-muted-foreground" activeProps={{ className: "text-primary" }} activeOptions={{ exact: true }}>
               <Icon className="h-5 w-5" />
