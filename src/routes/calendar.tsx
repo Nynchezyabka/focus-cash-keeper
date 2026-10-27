@@ -27,13 +27,7 @@ function Calendar({ s }: { s: State }) {
   const pickH = (h: number) => { setHorizon(h); localStorage.setItem(H_KEY, String(h)); };
   const pickV = (v: "list" | "grid") => { setView(v); localStorage.setItem(V_KEY, v); };
 
-  if (!s.incomes.length && !s.obligations.length)
-    return (
-      <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
-        Пока пусто. Добавьте выплаты во вкладке <Link to="/incomes" className="underline">Доходы</Link> и счета во вкладке{" "}
-        <Link to="/payments" className="underline">Платежи</Link> — здесь появится план.
-      </p>
-    );
+  if (!s.incomes.length && !s.obligations.length) return <EmptyPlan />;
 
   return (
     <div className="space-y-4">
@@ -50,6 +44,41 @@ function Calendar({ s }: { s: State }) {
         ))}
       </div>
       {view === "grid" ? <Grid s={s} horizon={horizon} /> : <Segments s={s} horizon={horizon} />}
+    </div>
+  );
+}
+
+function EmptyPlan() {
+  const steps = [
+    { to: "/incomes" as const, n: 1, title: "Когда приходят деньги", text: "Аванс, зарплата, пособие — сумма и число месяца.", btn: "Добавить доход", Icon: ArrowDownLeft, tone: "bg-primary/15 text-primary" },
+    { to: "/payments" as const, n: 2, title: "Что нужно оплатить", text: "Кредит, ЖКУ, связь — приложение заранее отложит на них.", btn: "Добавить платёж", Icon: ArrowUpRight, tone: "bg-accent text-accent-foreground" },
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-card p-4 shadow-soft">
+        <h2 className="font-display text-lg">Здесь будет ваш план</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Два шага — и вы увидите, сколько можно тратить в день до каждой выплаты.</p>
+      </div>
+      {steps.map(({ to, n, title, text, btn, Icon, tone }) => (
+        <Link key={to} to={to} className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-soft">
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${tone}`}><Icon className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm">{n}. {title}</span>
+            <span className="block text-xs text-muted-foreground">{text}</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs text-primary-foreground">{btn}</span>
+        </Link>
+      ))}
+      <section className="rounded-2xl border border-dashed border-border p-4" aria-label="Пример плана">
+        <p className="mb-3 text-xs text-muted-foreground">Так это будет выглядеть</p>
+        <ul className="space-y-2 text-sm">
+          <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-primary"><ArrowDownLeft className="h-4 w-4" /></span><span className="flex-1">Зарплата · 25-е</span><span className="tabular-nums text-primary">+40 000 ₽</span></li>
+          <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-accent text-accent-foreground"><ArrowUpRight className="h-4 w-4" /></span><span className="flex-1">Кредит · 28-е</span><span className="tabular-nums">−12 000 ₽</span></li>
+        </ul>
+        <p className="mt-3 rounded-xl bg-secondary p-2.5 text-xs text-secondary-foreground">
+          Платёж отложится заранее, а остаток разделится на дни до следующей выплаты: <span className="tabular-nums">≈ 1 900 ₽ в день</span>.
+        </p>
+      </section>
     </div>
   );
 }
