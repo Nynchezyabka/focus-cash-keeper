@@ -1,6 +1,17 @@
+import { cachedRate, currency, detectCurrency, stripCurrency, toRub } from "@/lib/fx";
 import { cats, type AiSettings } from "./budget";
 
-export interface Parsed { note: string; amount: number; category: string; known?: boolean }
+export interface Parsed { note: string; amount: number; category: string; known?: boolean; currency?: string; orig?: { amount: number; currency: string; rate: number } }
+/** converts items in other currencies to rubles with the cached Bank of Russia rate */
+export function applyFx(items: Parsed[]): Parsed[] {
+  return items.map((i) => {
+    const code = (i.currency ?? "RUB").toUpperCase();
+    if (code === "RUB") return i;
+    const rate = cachedRate(code);
+    if (!rate) return { ...i, note: `${i.note} (${i.amount} ${currency(code).sign}, курс неизвестен)` };
+    return { ...i, amount: Math.round(toRub(i.amount, rate)), orig: { amount: i.amount, currency: code, rate } };
+  });
+}
 
 /** best match = longest key found in the text (learned keys are more specific) */
 export function matchCategory(text: string): string | null {
@@ -23,13 +34,14 @@ export function parseLocal(input: string): Parsed[] {
       if (!m) return [];
       let amount = parseFloat((m[1] ?? "0").replace(/\s/g, "").replace(",", "."));
       if (m[2]) amount *= 1000;
-      const note = p.replace(m[0], "").replace(/(₽|руб\.?|р\.)/gi, "").trim() || "Трата";
+      const cur = detectCurrency(p);
+      const note = stripCurrency(p.replace(m[0], "")).trim() || "Трата";
       const m2 = matchCategory(note);
-      return [{ note, amount, category: m2 ?? "shop", known: !!m2 }];
+      return [{ note, amount, category: m2 ?? "shop", known: !!m2, currency: cur }];
     });
 }
 
-const PROMPT = () => `Разбери текст пользователя на отдельные траты. Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON вида {"items":[{"note":"кофе с круассаном","amount":380,"category":"cafe"}]}.`;
+const PROMPT = () => `Разбери текст пользователя на отдельные траты. Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON вида {"items":[{"note":"кофе с круассаном","amount":380,"category":"cafe","currency":"RUB"}]}. currency — код ISO (RUB, USD, EUR, KZT, TRY, CNY, AMD, GEL…), amount — в этой валюте.`;
 
 type Svc = { name: string; url: string; model: string; kind: "openai" | "anthropic" | "google" };
 export function detectService(key: string): Svc | null {
@@ -60,7 +72,7 @@ const IMG_PROMPT = () => `На картинке скриншот чека, за�
 - переводы между своими счетами: «Между своими счетами», «Себе в другой банк», «Пополнение/Перевод средств из Кубышки», «Копилка», «Инвесткопилка», «Внесение наличных», «Снятие наличных», пополнение вкладов и кредиток;
 - даты, время, заголовки дней, итоги за день, «Итого», адреса, номера заказов, тип карты.
 Категорию выбирай по смыслу места, а НЕ по подписи банка (банк часто ошибается): «Городская ферма», парки, зоопарки, выставки, кино — развлечения; «Госуслуги»/«Gosuslugi» — сад, школа, кружки; Яндекс Такси, каршеринг — транспорт; кафе, фастфуд, бистро, пиццерии — кафе; Пятёрочка, ВкусВилл, супермаркеты — продукты; «Долями», «Сплит», рассрочки — кредиты.
-Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON {"items":[{"note":"Городская ферма","amount":2300,"category":"fun"}]}.`;
+Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON {"items":[{"note":"Городская ферма","amount":2300,"category":"fun","currency":"RUB"}]}. currency — код ISO валюты списания, amount — в этой валюте.`;
 
 export async function parseImage(file: File, ai: AiSettings): Promise<Parsed[]> {
   const svc = detectService(ai.apiKey);
@@ -95,7 +107,7 @@ function toItems(text: string): Parsed[] {
   const items = (JSON.parse(json).items ?? []) as Parsed[];
   return items
     .filter((i) => Number(i.amount) > 0)
-    .map((i) => ({ note: String(i.note || "Трата"), amount: Number(i.amount), category: cats().some((c) => c.id === i.category) ? i.category : guessCategory(i.note) }));
+    .map((i) => ({ note: String(i.note || "Трата"), amount: Number(i.amount), currency: typeof i.currency === "string" ? i.currency : "RUB", category: cats().some((c) => c.id === i.category) ? i.category : guessCategory(i.note) }));
 }
 
 export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> {
