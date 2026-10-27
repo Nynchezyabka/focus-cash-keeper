@@ -1,3 +1,5 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Send, Trash2, X } from "lucide-react";
@@ -5,7 +7,7 @@ import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { calc, cat, GROUPS, obligationDue, incomeUpcoming, rub, setState, type State } from "@/lib/budget";
+import { calc, cat, GROUPS, obligationDue, paidAmount, incomeUpcoming, rub, setState, type State } from "@/lib/budget";
 import { aiChat, detectService, type ChatMsg } from "@/lib/parse";
 
 export const Route = createFileRoute("/advisor")({
@@ -123,7 +125,9 @@ function Chat({ s }: { s: State }) {
 
       <div className="space-y-3">
         {msgs.map((m, i) => (
-          <div key={i} className={`whitespace-pre-wrap rounded-2xl p-3 text-sm ${m.role === "user" ? "ml-8 bg-primary text-primary-foreground" : "mr-4 bg-card"}`}>{m.content}</div>
+          m.role === "user"
+            ? <div key={i} className="ml-8 whitespace-pre-wrap rounded-2xl bg-primary p-3 text-sm text-primary-foreground">{m.content}</div>
+            : <div key={i} className="md mr-4 rounded-2xl bg-card p-3 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: (p) => <a {...p} target="_blank" rel="noreferrer" /> }}>{m.content}</ReactMarkdown></div>
         ))}
         {busy && <div className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground">Думаю…</div>}
         {err && <p className="rounded-2xl bg-accent p-3 text-sm text-accent-foreground">{err}</p>}
