@@ -1,5 +1,5 @@
 // Обновления приложения: сервис-воркер «сначала сеть», ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.11.0";
+export const APP_VERSION = "1.15.0";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;

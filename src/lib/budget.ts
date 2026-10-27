@@ -34,6 +34,7 @@ export interface State {
   incomeAck: Record<string, string>; // incomeId -> last handled occurrence (YYYY-MM-DD)
   nextIncomeOverride?: string | undefined; // YYYY-MM-DD
   overspendHandled?: string; // date key
+  minDaily?: number | undefined; // protected minimum for life per day
   ai: AiSettings;
   categories?: Category[];
   advisorAbout?: string;
@@ -216,6 +217,7 @@ export function moveObligation(id: string, date: string) {
 }
 
 // ---------- core calc ----------
+export const MIN_DAILY = 500;
 export function calc(s: State, now = new Date()) {
   const today = startOfDay(now);
   const next = nextIncome(s, now);
@@ -238,12 +240,18 @@ export function calc(s: State, now = new Date()) {
   const todayLife = s.txs.filter((t) => t.kind === "expense" && cat(t.category).group === "life" && dayKey(new Date(t.date)) === tk);
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
   const total = s.balance + (s.cash ?? 0);
-  const dailyNorm = Math.max(0, (total + spentToday - reserve) / days);
+  // life minimum comes first: payments get only what's left after it, and "set aside" never exceeds real money
+  const minDaily = s.minDaily ?? MIN_DAILY;
+  const pool = Math.max(0, total + spentToday);
+  const floor = Math.min(pool, minDaily * days);
+  const held = Math.min(reserve, Math.max(0, pool - floor));
+  const shortfall = Math.max(0, reserve - held); // planned payments not covered by money now
+  const dailyNorm = Math.max(0, (pool - held) / days);
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
-  const afterSpread = days > 1 ? Math.max(0, (total - reserve) / (days - 1)) : 0;
-  const shortfall = Math.max(0, reserve - total); // not enough even for planned payments
-  return { next, days, reserve, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, todayKey: tk };
+  const rest = Math.max(0, total);
+  const afterSpread = days > 1 ? Math.max(0, (rest - Math.min(reserve, Math.max(0, rest - Math.min(rest, minDaily * (days - 1))))) / (days - 1)) : 0;
+  return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, minDaily, todayKey: tk };
 }
 
 // ---------- actions ----------
@@ -371,4 +379,52 @@ export function coverFromCushion(amount: number) {
   const a = Math.min(amount, getState().cushion);
   if (a <= 0) return null;
   return addTx({ kind: "cushion", amount: a, category: "cushion", note: "Из подушки" });
+}
+
+// ---------- calendar forecast ----------
+export interface CalEvent { date: Date; kind: "income" | "payment"; name: string; amount: number; paid?: boolean; method?: Method | undefined; refId: string }
+export interface CalSegment { start: Date; end: Date; days: number; money: number; payments: number; perDay: number; gap: number; events: CalEvent[]; incomes: CalEvent[]; open: boolean }
+/** chain «доход → платежи → доход» for the coming days with how much is free per day on each stretch */
+export function forecast(s: State, horizon = 45, now = new Date()): CalSegment[] {
+  const today = startOfDay(now);
+  const limit = new Date(+today + horizon * 86400000);
+  const ev: CalEvent[] = [];
+  for (const inc of s.incomes) {
+    const ack = s.incomeAck[inc.id];
+    const dates: Date[] = [];
+    for (let i = 0; i < 3; i++) {
+      const d = onDay(today.getFullYear(), today.getMonth() + i, inc.day);
+      if (d > today && d <= limit && (!ack || dayKey(d) > ack) && periodOf(d) !== inc.skip) dates.push(d);
+    }
+    if (inc.nextOn) { const m = parseKey(inc.nextOn); if (dates.length) dates[0] = m; else if (m > today) dates.push(m); }
+    for (const d of dates) if (d > today && d <= limit) ev.push({ date: d, kind: "income", name: inc.name, amount: inc.amount, method: inc.method, refId: inc.id });
+  }
+  for (const o of s.obligations) {
+    const first = obligationDue(o, now);
+    const dates = o.once ? [first] : [first, onDay(first.getFullYear(), first.getMonth() + 1, o.day), onDay(first.getFullYear(), first.getMonth() + 2, o.day)];
+    dates.forEach((d, i) => {
+      if (d > limit) return;
+      const left = o.amount - (i === 0 ? paidAmount(s, o, d) : 0);
+      ev.push({ date: d, kind: "payment", name: o.name, amount: Math.max(0, left), paid: left <= 0, method: o.method, refId: o.id });
+    });
+  }
+  ev.sort((a, b) => +a.date - +b.date || (a.kind === "income" ? -1 : 1));
+  const segs: CalSegment[] = [];
+  let money = s.balance + (s.cash ?? 0);
+  let start = today;
+  const incs = ev.filter((e) => e.kind === "income");
+  const ends = [...incs.map((e) => e.date), limit];
+  for (const end of ends) {
+    if (+end <= +start && segs.length) continue;
+    const inSeg = ev.filter((e) => e.kind === "payment" && +e.date >= +start && +e.date < +end);
+    const payments = inSeg.filter((e) => !e.paid).reduce((a, e) => a + e.amount, 0);
+    const days = Math.max(1, Math.round((+end - +start) / 86400000));
+    const left = money - payments;
+    segs.push({ start, end, days, money, payments, perDay: Math.max(0, left / days), gap: Math.max(0, -left), events: inSeg, incomes: incs.filter((e) => +e.date === +start), open: end === limit });
+    if (end === limit) break;
+    // spending the daily amount uses the stretch up; a gap carries into the next one
+    money = Math.min(0, left) + incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0);
+    start = end;
+  }
+  return segs;
 }

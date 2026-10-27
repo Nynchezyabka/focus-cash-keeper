@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
+import { ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check, CalendarDays, ChevronRight, CreditCard, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -61,28 +61,26 @@ function Today({ s }: { s: State }) {
     <div className="space-y-5">
       {pending && <IncomeArrived p={pending} />}
 
-      <section className="pt-4 text-center">
+      <section className="pt-2 text-center">
         <p className="text-sm text-muted-foreground">Сегодня свободно</p>
         <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
           {rub(Math.max(0, c.freeToday))}
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {c.days} {plural(c.days, "день", "дня", "дней")} до дохода ·{" "}
-          {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {c.days > 1
-            ? <>С завтра — по {rub(c.afterSpread)} в день</>
-            : <>Завтра придёт доход</>}
-        </p>
         {c.spentToday > 0 && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Уже потрачено сегодня: {rub(c.spentToday)} из {rub(c.dailyNorm)}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">потрачено {rub(c.spentToday)} из {rub(c.dailyNorm)}</p>
         )}
-        <button onClick={() => setDialog("buy")} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-secondary px-4 py-1.5 text-sm text-secondary-foreground active:scale-[0.98]">
-          <ShoppingBag className="h-4 w-4" /> Хочу купить — оценить
-        </button>
+        <Link to="/calendar" className="mt-4 flex items-center gap-3 rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><CalendarDays className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm text-foreground">
+              {c.days} {plural(c.days, "день", "дня", "дней")} до дохода · {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {c.days > 1 ? <>с завтра — по {rub(c.afterSpread)} в день</> : <>завтра придёт доход</>}
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+        </Link>
       </section>
 
       {empty && (
@@ -90,7 +88,7 @@ function Today({ s }: { s: State }) {
           С чего начать: нажмите на «Карта» ниже и впишите, сколько сейчас на карте. Потом укажите, в каких числах
           приходят деньги, в{" "}
           <Link to="/incomes" className="underline">
-            План доходов
+            вкладке «Доходы» раздела «План»
           </Link>
           .
         </div>
@@ -136,59 +134,23 @@ function Today({ s }: { s: State }) {
           <Plus /> Доход
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="outline"
-          className="h-auto flex-col gap-0.5 rounded-2xl py-2.5"
-          onClick={() => {
-            setPhoto(null);
-            setDialog("pocket");
-          }}
-        >
-          <span className="flex items-center gap-1.5 text-sm">
-            <MicIcon className="h-4 w-4" /> Текст или голос
-          </span>
-          <span className="text-xs font-normal text-muted-foreground">вставить или надиктовать</span>
-        </Button>
-        <label className="inline-flex h-auto cursor-pointer flex-col items-center justify-center gap-0.5 rounded-2xl border border-input bg-background py-2.5">
-          <span className="flex items-center gap-1.5 text-sm font-medium">
-            <ImageUp className="h-4 w-4" /> Чек или скриншот
-          </span>
-          <span className="text-xs text-muted-foreground">из банка или магазина</span>
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (f) {
-                setPhoto(f);
-                setDialog("pocket");
-              }
-            }}
-          />
-        </label>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <Stat label="Карта" value={rub(s.balance)} onClick={() => { setRecMethod("card"); setDialog("reconcile"); }} />
-        <Stat label="Наличные" value={rub(s.cash ?? 0)} onClick={() => { setRecMethod("cash"); setDialog("reconcile"); }} />
-        <Stat label="Отложено" value={rub(c.reserve)} icon onClick={() => setDialog("reserve")} />
-      </div>
-
-      <button onClick={() => setDialog("savings")} className="flex w-full items-center justify-between rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]">
-        <span className="flex items-center gap-2 text-sm"><PiggyBank className="h-4 w-4 text-muted-foreground" /> Накопления</span>
-        <span className="text-sm tabular-nums">{rub(s.cushion)}</span>
+      <button onClick={() => setDialog("buy")} className="mx-auto -mt-1 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground active:scale-[0.98]">
+        <ShoppingBag className="h-4 w-4" /> Хочу купить — оценить
       </button>
-      <p className="text-center text-xs text-muted-foreground">Нажмите на сумму, чтобы поправить её или посмотреть, что отложено</p>
+
+      <section className="rounded-2xl bg-card p-1 shadow-soft">
+        <div className="grid grid-cols-2">
+          <Stat label="Карта" Icon={CreditCard} value={rub(s.balance)} onClick={() => { setRecMethod("card"); setDialog("reconcile"); }} />
+          <Stat label="Наличные" Icon={Banknote} value={rub(s.cash ?? 0)} onClick={() => { setRecMethod("cash"); setDialog("reconcile"); }} />
+        </div>
+        <div className="mx-3 border-t border-border" />
+        <div className="grid grid-cols-2">
+          <Stat label="Отложено на счета" Icon={Lock} value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)} onClick={() => setDialog("reserve")} />
+          <Stat label="Накопления" Icon={PiggyBank} value={rub(s.cushion)} onClick={() => setDialog("savings")} />
+        </div>
+      </section>
       {c.total < 0 && <BorrowCard gap={-c.total} />}
-      {c.total >= 0 && c.shortfall > 0 && (
-        <p className="rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
-          Сейчас денег меньше, чем нужно на платежи до дохода: не хватает {rub(c.shortfall)}. Поэтому «свободно» — 0.
-          Можно перенести платёж в «Плане платежей».
-        </p>
-      )}
+      {c.total >= 0 && c.shortfall > 0 && <ShortfallCard gap={c.shortfall} minDaily={c.minDaily} cushion={s.cushion} />}
 
       {s.txs.length > 0 && (
         <section>
@@ -203,7 +165,7 @@ function Today({ s }: { s: State }) {
       )}
 
       <BuyDialog open={dialog === "buy"} onClose={() => setDialog(null)} />
-      <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
+      <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} onSmart={(f) => { setPhoto(f); setDialog("pocket"); }} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} s={s} />
       <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} s={s} />
       <ReconcileDialog key={recMethod} initialMethod={recMethod} open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
@@ -224,14 +186,14 @@ function Today({ s }: { s: State }) {
 const plural = (n: number, a: string, b: string, c: string) =>
   n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c;
 
-function Stat({ label, value, icon, onClick }: { label: string; value: string; icon?: boolean; onClick: () => void }) {
+function Stat({ label, value, Icon, onClick }: { label: string; value: string; Icon: typeof Lock; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="rounded-2xl bg-card p-3 shadow-soft active:scale-[0.98]">
-      <p className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
-        {icon && <Lock className="h-3 w-3" />}
+    <button onClick={onClick} className="rounded-xl p-3 text-left active:scale-[0.98] active:bg-secondary">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
         {label}
       </p>
-      <p className="mt-1 text-sm text-foreground tabular-nums">{value}</p>
+      <p className="mt-1 text-base text-foreground tabular-nums">{value}</p>
     </button>
   );
 }
@@ -264,9 +226,9 @@ function ReserveDialog({ open, onClose, c, cushion }: { open: boolean; onClose: 
             </ul>
           </div>
         )}
-        <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{rub(c.reserve)}</span></p>
+        <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}</span></p>
         <p className="text-xs text-muted-foreground">Подушка (отдельно, из трат «Накопления»): {rub(cushion)}</p>
-        <Button asChild variant="secondary"><Link to="/payments">Открыть План платежей</Link></Button>
+        <Button asChild variant="secondary"><Link to="/payments">Открыть платежи</Link></Button>
       </DialogContent>
     </Dialog>
   );
@@ -299,7 +261,7 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
   );
 }
 
-function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ExpenseDialog({ open, onClose, onSmart }: { open: boolean; onClose: () => void; onSmart: (photo: File | null) => void }) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<Method>("card");
   const [family, setFam] = useState(false);
@@ -328,6 +290,15 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
         <DialogHeader>
           <DialogTitle>Новая трата</DialogTitle>
         </DialogHeader>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="rounded-xl" onClick={() => onSmart(null)}>
+            <MicIcon className="h-4 w-4" /> Текст или голос
+          </Button>
+          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 text-sm font-medium">
+            <ImageUp className="h-4 w-4" /> Чек, скриншот
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onSmart(f); }} />
+          </label>
+        </div>
         <Input
           autoFocus
           inputMode="decimal"
@@ -446,6 +417,35 @@ function ReconcileDialog({ open, onClose, balance, initialMethod }: { open: bool
         </Button>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: number; cushion: number }) {
+  const [mode, setMode] = useState<null | "borrow">(null);
+  if (mode === "borrow") return <BorrowCard gap={gap} />;
+  return (
+    <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
+      <p className="text-sm">
+        На платежи до дохода не хватает {rub(gap)}. Сначала оставила вам минимум на жизнь — {rub(minDaily)} в день, а платежи получили то, что осталось. Что делаем?
+      </p>
+      <div className="grid gap-2">
+        <Button asChild variant="secondary" className="h-auto whitespace-normal py-2">
+          <Link to="/payments">Перенести или оплатить частично</Link>
+        </Button>
+        <Button variant="secondary" className="h-auto whitespace-normal py-2" onClick={() => setMode("borrow")}>
+          Закрыть кредиткой или займом
+        </Button>
+        {cushion > 0 && (
+          <Button
+            variant="secondary"
+            className="h-auto whitespace-normal py-2"
+            onClick={() => addedToast(coverFromCushion(Math.min(gap, cushion)), "Взяли из подушки")}
+          >
+            Взять из накоплений ({rub(Math.min(gap, cushion))})
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 

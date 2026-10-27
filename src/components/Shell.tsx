@@ -1,13 +1,14 @@
-import { Link } from "@tanstack/react-router";
-import { Users, Sun, CalendarClock, Wallet, PieChart, Settings, MessageCircleHeart, icons } from "lucide-react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { Users, Sun, CalendarDays, PieChart, Settings, MessageCircleHeart, icons } from "lucide-react";
 import type { ReactNode } from "react";
 import { useBudget, type State } from "@/lib/budget";
 import { useFamily } from "@/lib/family";
 
+const PLAN_PATHS = ["/calendar", "/payments", "/incomes"];
+
 const NAV = [
   { to: "/", label: "Сегодня", Icon: Sun },
-  { to: "/payments", label: "Платежи", Icon: CalendarClock },
-  { to: "/incomes", label: "Доходы", Icon: Wallet },
+  { to: "/calendar", label: "План", Icon: CalendarDays },
   { to: "/analytics", label: "Аналитика", Icon: PieChart },
   { to: "/advisor", label: "Помощник", Icon: MessageCircleHeart },
 ] as const;
@@ -20,24 +21,30 @@ export function CatIcon({ name, className }: { name: string; className?: string 
 export function Shell({ title, children }: { title?: string; children: (s: State) => ReactNode }) {
   const s = useBudget();
   const fam = useFamily();
-  const nav = fam ? [...NAV.slice(0, 4), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(4)] : NAV;
+  const path = useRouterState({ select: (r) => r.location.pathname });
+  const nav = fam ? [...NAV.slice(0, 3), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(3)] : NAV;
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
-      <div className="flex items-start justify-between gap-3 px-5 pt-6">
+      <div className="flex items-start justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(1.5rem,env(safe-area-inset-top))]">
         {title ? <h1 className="pt-2 font-display text-2xl text-foreground">{title}</h1> : <span />}
-        <Link to="/settings" aria-label="Настройки" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
+        <Link to="/settings" aria-label="Настройки" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
           <Settings className="h-5 w-5" />
         </Link>
       </div>
-      <main className="flex-1 px-5 pb-28 pt-4">{s ? children(s) : <div className="py-20 text-center text-muted-foreground">…</div>}</main>
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur">
-        <div className={`mx-auto grid max-w-md ${fam ? "grid-cols-6" : "grid-cols-5"}`}>
-          {nav.map(({ to, label, Icon }) => (
-            <Link key={to} to={to} className="flex flex-col items-center gap-1 py-3 text-[10px] text-muted-foreground" activeProps={{ className: "text-primary" }} activeOptions={{ exact: true }}>
-              <Icon className="h-5 w-5" />
-              {label}
-            </Link>
-          ))}
+      <main className="flex-1 px-[max(1.25rem,env(safe-area-inset-left))] pb-[calc(7rem+env(safe-area-inset-bottom))] pt-4">
+        {s ? children(s) : <div className="py-20 text-center text-muted-foreground">…</div>}
+      </main>
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        <div className={`mx-auto grid max-w-md px-[env(safe-area-inset-left)] ${fam ? "grid-cols-5" : "grid-cols-4"}`}>
+          {nav.map(({ to, label, Icon }) => {
+            const active = to === "/calendar" ? PLAN_PATHS.includes(path) : path === to;
+            return (
+              <Link key={to} to={to} className={`flex min-h-14 flex-col items-center justify-center gap-1 py-2.5 text-[11px] ${active ? "text-primary" : "text-muted-foreground"}`}>
+                <Icon className="h-5 w-5" />
+                {label}
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </div>

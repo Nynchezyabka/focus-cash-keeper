@@ -4,6 +4,7 @@ import { Check, CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
 import { DateDialog, MethodBadge as Badge, MethodToggle } from "@/components/Pickers";
 import { addedToast } from "@/components/Undo";
 import { Shell, meta } from "@/components/Shell";
+import { PlanTabs } from "@/components/PlanTabs";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { confirmIncome, dayKey, periodOf, toggleIncomeSkip, incomeUpcoming, move
 
 export const Route = createFileRoute("/incomes")({
   head: () => meta("План доходов — Бережный бюджет", "Какого числа приходят аванс, зарплата, наличные или пособия. По этим датам считается дневной бюджет."),
-  component: () => <Shell title="План доходов">{(s) => <Incomes s={s} />}</Shell>,
+  component: () => <Shell title="План">{(s) => <><PlanTabs /><Incomes s={s} /></>}</Shell>,
 });
 
 type Draft = { id?: string; name: string; amount: string; day: string; method: "card" | "cash" };
