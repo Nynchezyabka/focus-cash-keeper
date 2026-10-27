@@ -83,7 +83,7 @@ describe("savings, partial payments, skipped income", () => {
     const { setCushion, removeTx } = await import("@/lib/budget");
     replaceState({ ...base(), balance: 10000, incomes: [{ id: "z", name: "З", amount: 1, day: 26 }] });
     const before = calc(getState(), NOW).freeToday;
-    const t = setCushion(100000)!;
+    const t = setCushion(100000)[0]!;
     expect(getState().cushion).toBe(100000);
     expect(getState().balance).toBe(10000);
     expect(calc(getState(), NOW).freeToday).toBe(before);
