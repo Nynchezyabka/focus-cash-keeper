@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { initPwa } from "@/lib/pwa";
 import { startFamilySync } from "@/lib/family";
+import { initTheme, THEME_BOOT } from "@/lib/theme";
 import { WhatsNew } from "@/components/WhatsNew";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -107,8 +108,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="ru">
+    <html lang="ru" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <HeadContent />
       </head>
       <body>
@@ -121,7 +123,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => { initPwa(); startFamilySync(); }, []);
+  useEffect(() => { initTheme(); initPwa(); startFamilySync(); }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

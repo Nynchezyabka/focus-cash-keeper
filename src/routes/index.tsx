@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
+import { ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -24,6 +24,7 @@ import {
   nextIncome,
   markIncomeArrived,
   setCushion,
+  takeFromCushion,
   reconcile,
   removeTx,
   rub,
@@ -31,7 +32,8 @@ import {
   type Method,
   type State,
 } from "@/lib/budget";
-import { detectService, parseImage, parseSmart, type Parsed } from "@/lib/parse";
+import { applyFx, detectService, parseImage, parseSmart, type Parsed } from "@/lib/parse";
+import { CURRENCIES, cachedRate, currency, loadRates, toRub } from "@/lib/fx";
 import { CategoryChip, CategoryPicker, MethodToggle } from "@/components/Pickers";
 import { MicButton } from "@/components/Mic";
 import { useFamily } from "@/lib/family";
@@ -48,7 +50,7 @@ export const Route = createFileRoute("/")({
 
 function Today({ s }: { s: State }) {
   const c = calc(s);
-  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve" | "savings">(null);
+  const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve" | "savings" | "buy">(null);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
@@ -59,7 +61,7 @@ function Today({ s }: { s: State }) {
     <div className="space-y-5">
       {pending && <IncomeArrived p={pending} />}
 
-      <section className="pt-10 text-center">
+      <section className="pt-4 text-center">
         <p className="text-sm text-muted-foreground">Сегодня свободно</p>
         <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
           {rub(Math.max(0, c.freeToday))}
@@ -68,11 +70,19 @@ function Today({ s }: { s: State }) {
           {c.days} {plural(c.days, "день", "дня", "дней")} до дохода ·{" "}
           {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
         </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {c.days > 1
+            ? <>С завтра — по {rub(c.afterSpread)} в день</>
+            : <>Завтра придёт доход</>}
+        </p>
         {c.spentToday > 0 && (
           <p className="mt-1 text-xs text-muted-foreground">
             Уже потрачено сегодня: {rub(c.spentToday)} из {rub(c.dailyNorm)}
           </p>
         )}
+        <button onClick={() => setDialog("buy")} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-secondary px-4 py-1.5 text-sm text-secondary-foreground active:scale-[0.98]">
+          <ShoppingBag className="h-4 w-4" /> Хочу купить — оценить
+        </button>
       </section>
 
       {empty && (
@@ -192,9 +202,10 @@ function Today({ s }: { s: State }) {
         </section>
       )}
 
+      <BuyDialog open={dialog === "buy"} onClose={() => setDialog(null)} />
       <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} s={s} />
-      <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} cushion={s.cushion} />
+      <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} s={s} />
       <ReconcileDialog key={recMethod} initialMethod={recMethod} open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
       <ReserveDialog open={dialog === "reserve"} onClose={() => setDialog(null)} c={c} cushion={s.cushion} />
       <PocketDialog
@@ -293,13 +304,19 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const [method, setMethod] = useState<Method>("card");
   const [family, setFam] = useState(false);
   const fam = useFamily();
+  const [cur, setCur] = useState("RUB");
+  const [rate, setRate] = useState("");
+  useEffect(() => { if (cur === "RUB") return; const c = cachedRate(cur); setRate(c ? String(Math.round(c * 10000) / 10000) : ""); void loadRates().then((x) => { const r = x?.rates[cur]; if (r) setRate(String(Math.round(r * 10000) / 10000)); }); }, [cur]);
   const save = (category: string) => {
-    const a = Number(amount.replace(",", "."));
-    if (!a) {
+    const raw = Number(amount.replace(/\s/g, "").replace(",", "."));
+    if (!raw) {
       toast("Сначала впишите сумму");
       return;
     }
-    const t = addTx({ kind: "expense", amount: a, category, method, ...(family ? { family: true } : {}) });
+    const r = cur === "RUB" ? 1 : Number(rate.replace(",", "."));
+    if (!r) { toast("Впишите курс"); return; }
+    const a = Math.round(toRub(raw, r));
+    const t = addTx({ kind: "expense", amount: a, category, method, ...(family ? { family: true } : {}), ...(cur !== "RUB" ? { orig: { amount: raw, currency: cur, rate: r }, note: `${cat(category).name} · ${raw} ${currency(cur).sign}` } : {}) });
     setFam(false);
     addedToast(t, `${cat(category).name}: ${rub(a)}`);
     setAmount("");
@@ -319,6 +336,13 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
           onChange={(e) => setAmount(e.target.value)}
           className="h-14 text-center text-2xl"
         />
+        <div className="flex gap-2">
+          <select aria-label="Валюта" value={cur} onChange={(e) => setCur(e.target.value)} className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+            {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.sign} {c.name}</option>)}
+          </select>
+          {cur !== "RUB" && <Input inputMode="decimal" aria-label="Курс" placeholder="Курс, ₽ за 1" value={rate} onChange={(e) => setRate(e.target.value)} />}
+        </div>
+        {cur !== "RUB" && Number(rate.replace(",", ".")) > 0 && Number(amount.replace(",", ".")) > 0 && <p className="text-center text-xs text-muted-foreground">≈ {rub(toRub(Number(amount.replace(",", ".")), Number(rate.replace(",", "."))))} по курсу ЦБ. Можно поправить на курс банка.</p>}
         <MethodToggle value={method} onChange={setMethod} />
         {fam && <FamilyToggle value={family} onChange={setFam} />}
         <CategoryPicker onPick={save} />
@@ -453,7 +477,7 @@ function BorrowCard({ gap }: { gap: number }) {
       >
         Записать
       </Button>
-      <p className="text-xs">Если просто ошиблись в сумме — нажмите «Сверить баланс».</p>
+      <p className="text-xs">Если просто ошиблись в сумме — нажмите на «Карта» и впишите, сколько есть.</p>
     </div>
   );
 }
@@ -487,7 +511,7 @@ function PocketDialog({
     if (!f) return;
     setBusy(true);
     try {
-      show(await parseImage(f, getState().ai));
+      await loadRates(); show(applyFx(await parseImage(f, getState().ai)));
       setVia(detectService(getState().ai.apiKey)?.name ?? "");
     } catch (e) {
       toast((e as Error).message);
@@ -565,7 +589,9 @@ function PocketDialog({
                 onClick={async () => {
                   setBusy(true);
                   try {
-                    const r = await parseSmart(text, getState().ai);
+                    await loadRates();
+                    const r0 = await parseSmart(text, getState().ai);
+                    const r = { ...r0, items: applyFx(r0.items) };
                     show(r.items);
                     setVia(r.via);
                   } catch (e) {
@@ -638,7 +664,7 @@ function PocketDialog({
                   const ok = chosen;
                   learnKeys(ok);
                   const ids = ok.map(
-                    (it) => addTx({ kind: "expense", amount: it.amount, category: it.category, note: it.note }).id,
+                    (it) => addTx({ kind: "expense", amount: it.amount, category: it.category, note: it.note, ...(it.orig ? { orig: it.orig } : {}) }).id,
                   );
                   undoable(`Добавлено трат: ${ids.length}`, () => ids.forEach(removeTx));
                   close();
@@ -654,21 +680,49 @@ function PocketDialog({
   );
 }
 
-function SavingsDialog({ open, onClose, cushion }: { open: boolean; onClose: () => void; cushion: number }) {
-  const [amount, setAmount] = useState("");
-  const a = Number(amount.replace(/\s/g, "").replace(",", "."));
+function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => void; s: State }) {
+  const cashNow = Math.max(0, s.cushionCash ?? 0), cardNow = s.cushion - cashNow;
+  const [card, setCard] = useState("");
+  const [cash, setCash] = useState("");
+  const [take, setTake] = useState("");
+  const [to, setTo] = useState<Method>("card");
+  const [back, setBack] = useState(false);
+  const [date, setDate] = useState("");
+  const num = (v: string) => Number(v.replace(/\s/g, "").replace(",", "."));
+  const close = () => { setCard(""); setCash(""); setTake(""); setBack(false); setDate(""); onClose(); };
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-sm">
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+      <DialogContent className="max-h-[92vh] max-w-sm overflow-y-auto">
         <DialogHeader><DialogTitle>Накопления</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Сейчас: {rub(cushion)}. Накопления не входят в «Сегодня свободно».</p>
+        <p className="text-sm text-muted-foreground">Сейчас {rub(s.cushion)}: на карте {rub(cardNow)}, наличными {rub(cashNow)}. В «Сегодня свободно» не входят.</p>
         <div className="space-y-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
           <p className="font-medium">Просто указать сумму</p>
-          <p className="text-xs">Сколько накоплено на самом деле. Карта и наличные не меняются.</p>
-          <Input inputMode="decimal" placeholder="Сейчас накоплено, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Button className="w-full" disabled={amount.trim() === "" || isNaN(a)} onClick={() => { const t = setCushion(a); if (t) addedToast(t, `Накопления: ${rub(a)}`); setAmount(""); onClose(); }}>Сохранить</Button>
+          <p className="text-xs">Сколько накоплено на самом деле. Остаток на карте и наличные не меняются.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input inputMode="decimal" placeholder={`На карте (${Math.round(cardNow)})`} value={card} onChange={(e) => setCard(e.target.value)} />
+            <Input inputMode="decimal" placeholder={`Наличными (${Math.round(cashNow)})`} value={cash} onChange={(e) => setCash(e.target.value)} />
+          </div>
+          <Button className="w-full" disabled={!card.trim() && !cash.trim()} onClick={() => {
+            const list = setCushion(card.trim() ? num(card) : cardNow, cash.trim() ? num(cash) : cashNow);
+            if (list.length) undoable("Накопления обновлены", () => list.forEach((t) => removeTx(t.id)));
+            close();
+          }}>Сохранить</Button>
         </div>
-        <p className="text-xs text-muted-foreground"><b>Отложил(а) с карты</b> — запишите трату в категории «Накопления»: деньги уйдут с карты в накопления.</p>
+        <div className="space-y-2 rounded-xl bg-muted p-3 text-sm">
+          <p className="font-medium">Взять из накоплений</p>
+          <p className="text-xs text-muted-foreground">Например, из «Кубышки». Деньги прибавятся к карте или наличным и к «Сегодня свободно».</p>
+          <Input inputMode="decimal" placeholder="Сколько, ₽" value={take} onChange={(e) => setTake(e.target.value)} />
+          <MethodToggle value={to} onChange={setTo} />
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={back} onChange={(e) => setBack(e.target.checked)} /> Хочу вернуть до даты (появится в Плане платежей)</label>
+          {back && <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />}
+          <Button variant="secondary" className="w-full" disabled={!(num(take) > 0) || (back && !date)} onClick={() => {
+            const a = Math.min(num(take), s.cushion > 0 ? s.cushion : num(take));
+            const { t, ob } = takeFromCushion(a, to, back ? date : undefined);
+            undoable(`Из накоплений: ${rub(a)}`, () => { removeTx(t.id); if (ob) setState((x) => ({ ...x, obligations: x.obligations.filter((o) => o.id !== ob.id) })); });
+            close();
+          }}>Взять</Button>
+        </div>
+        <p className="text-xs text-muted-foreground"><b>Отложил(а) с карты</b> — запишите трату в категории «Накопления» и выберите карту или наличные: деньги перейдут в накопления.</p>
       </DialogContent>
     </Dialog>
   );
@@ -680,5 +734,42 @@ function FamilyToggle({ value, onChange }: { value: boolean; onChange: (v: boole
       <span>Перевод внутри семьи<span className="block text-xs text-muted-foreground">Остаток меняется, но в семейных итогах не считается</span></span>
       <Switch checked={value} onCheckedChange={onChange} />
     </label>
+  );
+}
+
+/** Quick purchase check: price (+ optional name/photo) → ready question for the Помощник. */
+function BuyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const nav = useNavigate();
+  const [price, setPrice] = useState("");
+  const [what, setWhat] = useState("");
+  const [img, setImg] = useState<{ dataUrl: string; type: string; name: string } | null>(null);
+  const ok = Number(price.replace(",", ".")) > 0 || !!img;
+  function go() {
+    const n = Number(price.replace(",", "."));
+    const q = `Хочу купить${what.trim() ? ` ${what.trim()}` : ""}${n > 0 ? ` за ${rub(n)}` : " (цена на скриншоте)"}. Можно ли спокойно, и сколько останется в день до дохода?`;
+    sessionStorage.setItem("berezhny-advisor-ask", JSON.stringify({ q, img }));
+    setPrice(""); setWhat(""); setImg(null); onClose();
+    void nav({ to: "/advisor" });
+  }
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Оценить покупку</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">Помощник посчитает по вашим цифрам, впишется ли покупка и сколько останется в день.</p>
+        <Input inputMode="decimal" autoFocus placeholder="Цена, ₽" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <Input placeholder="Что это (необязательно)" value={what} onChange={(e) => setWhat(e.target.value)} />
+        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-input p-2 text-sm text-muted-foreground">
+          {img ? <img src={img.dataUrl} alt="" className="h-10 w-10 rounded object-cover" /> : <ImageUp className="h-4 w-4" />}
+          <span className="flex-1 truncate">{img ? img.name : "Добавить фото или скриншот товара"}</span>
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+            const f = e.target.files?.[0]; e.target.value = "";
+            if (!f) return;
+            const r = new FileReader(); r.onload = () => setImg({ dataUrl: String(r.result), type: f.type, name: f.name }); r.readAsDataURL(f);
+          }} />
+        </label>
+        {!detectService(getState().ai.apiKey) && <p className="text-xs text-muted-foreground">Для оценки нужен ключ ИИ — его можно добавить в Настройках.</p>}
+        <Button disabled={!ok} onClick={go}>Оценить</Button>
+      </DialogContent>
+    </Dialog>
   );
 }

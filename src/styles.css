@@ -98,6 +98,38 @@
   --shadow-soft: 0 1px 2px oklch(0.4 0.03 60 / 0.06), 0 4px 16px oklch(0.4 0.03 60 / 0.06);
 }
 
+.dark {
+  --background: oklch(0.2 0.012 70);
+  --foreground: oklch(0.92 0.015 80);
+  --card: oklch(0.25 0.014 70);
+  --card-foreground: oklch(0.92 0.015 80);
+  --popover: oklch(0.25 0.014 70);
+  --popover-foreground: oklch(0.92 0.015 80);
+  --primary: oklch(0.7 0.07 150);
+  --primary-foreground: oklch(0.2 0.02 150);
+  --secondary: oklch(0.32 0.025 130);
+  --secondary-foreground: oklch(0.88 0.03 130);
+  --muted: oklch(0.29 0.012 70);
+  --muted-foreground: oklch(0.7 0.02 70);
+  --accent: oklch(0.34 0.035 70);
+  --accent-foreground: oklch(0.9 0.03 75);
+  --destructive: oklch(0.65 0.1 40);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.33 0.014 70);
+  --input: oklch(0.36 0.014 70);
+  --ring: oklch(0.65 0.05 150);
+  --sidebar: oklch(0.25 0.014 70);
+  --sidebar-foreground: oklch(0.92 0.015 80);
+  --sidebar-primary: oklch(0.7 0.07 150);
+  --sidebar-primary-foreground: oklch(0.2 0.02 150);
+  --sidebar-accent: oklch(0.32 0.025 130);
+  --sidebar-accent-foreground: oklch(0.88 0.03 130);
+  --sidebar-border: oklch(0.33 0.014 70);
+  --sidebar-ring: oklch(0.65 0.05 150);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 16px oklch(0 0 0 / 0.25);
+  color-scheme: dark;
+}
+
 @theme inline {
   --font-sans: "Onest", system-ui, sans-serif;
   --font-display: "Unbounded", "Onest", sans-serif;
@@ -114,3 +146,19 @@
     color: var(--color-foreground);
   }
 }
+
+/* Markdown in assistant answers */
+.md > * + * { margin-top: 0.5rem; }
+.md strong { font-weight: 600; }
+.md em { font-style: italic; }
+.md ul { list-style: disc; padding-left: 1.25rem; }
+.md ol { list-style: decimal; padding-left: 1.25rem; }
+.md li + li { margin-top: 0.15rem; }
+.md h1, .md h2, .md h3, .md h4 { font-family: var(--font-display, inherit); font-weight: 600; font-size: 1rem; }
+.md a { color: var(--primary); text-decoration: underline; }
+.md code { background: var(--muted); border-radius: 0.25rem; padding: 0 0.25rem; font-size: 0.85em; }
+.md pre { background: var(--muted); border-radius: 0.5rem; padding: 0.5rem; overflow-x: auto; }
+.md blockquote { border-left: 3px solid var(--border); padding-left: 0.75rem; color: var(--muted-foreground); }
+.md table { width: 100%; border-collapse: collapse; font-size: 0.8rem; display: block; overflow-x: auto; }
+.md th, .md td { border: 1px solid var(--border); padding: 0.25rem 0.4rem; text-align: left; }
+.md hr { border-color: var(--border); }
