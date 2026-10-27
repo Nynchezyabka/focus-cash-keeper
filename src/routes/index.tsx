@@ -165,7 +165,7 @@ function Today({ s }: { s: State }) {
       )}
 
       <BuyDialog open={dialog === "buy"} onClose={() => setDialog(null)} />
-      <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} />
+      <ExpenseDialog open={dialog === "expense"} onClose={() => setDialog(null)} onSmart={(f) => { setPhoto(f); setDialog("pocket"); }} />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} s={s} />
       <SavingsDialog open={dialog === "savings"} onClose={() => setDialog(null)} s={s} />
       <ReconcileDialog key={recMethod} initialMethod={recMethod} open={dialog === "reconcile"} onClose={() => setDialog(null)} balance={s.balance} />
@@ -228,7 +228,7 @@ function ReserveDialog({ open, onClose, c, cushion }: { open: boolean; onClose: 
         )}
         <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}</span></p>
         <p className="text-xs text-muted-foreground">Подушка (отдельно, из трат «Накопления»): {rub(cushion)}</p>
-        <Button asChild variant="secondary"><Link to="/payments">Открыть План платежей</Link></Button>
+        <Button asChild variant="secondary"><Link to="/payments">Открыть платежи</Link></Button>
       </DialogContent>
     </Dialog>
   );
@@ -261,7 +261,7 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
   );
 }
 
-function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ExpenseDialog({ open, onClose, onSmart }: { open: boolean; onClose: () => void; onSmart: (photo: File | null) => void }) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<Method>("card");
   const [family, setFam] = useState(false);
@@ -290,6 +290,15 @@ function ExpenseDialog({ open, onClose }: { open: boolean; onClose: () => void }
         <DialogHeader>
           <DialogTitle>Новая трата</DialogTitle>
         </DialogHeader>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="rounded-xl" onClick={() => onSmart(null)}>
+            <MicIcon className="h-4 w-4" /> Текст или голос
+          </Button>
+          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 text-sm font-medium">
+            <ImageUp className="h-4 w-4" /> Чек, скриншот
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onSmart(f); }} />
+          </label>
+        </div>
         <Input
           autoFocus
           inputMode="decimal"
