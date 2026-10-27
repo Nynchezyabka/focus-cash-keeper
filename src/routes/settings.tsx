@@ -10,7 +10,7 @@ import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
+import { MIN_DAILY, getState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/settings")({
   head: () => meta("Настройки — Бережный бюджет", "Резервная копия в JSON, свой ключ ИИ для разбора трат. Данные хранятся только на устройстве."),
@@ -23,6 +23,21 @@ function Settings({ s }: { s: State }) {
   const setAi = (p: Partial<AiSettings>) => setState((x) => ({ ...x, ai: { ...x.ai, ...p } }));
   return (
     <div className="space-y-6">
+      <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
+        <h2 className="font-display text-lg">Минимум на жизнь</h2>
+        <p className="text-sm text-muted-foreground">Сколько в день оставлять на жизнь, даже если денег на платежи не хватает. По умолчанию {MIN_DAILY} ₽.</p>
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          placeholder={String(MIN_DAILY)}
+          value={s.minDaily ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            setState((x) => ({ ...x, minDaily: v === "" ? undefined : Math.max(0, Number(v)) }));
+          }}
+        />
+      </section>
       <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Распознавание трат</h2>
         <p className="text-sm text-muted-foreground">Когда вы пишете «такси 450, кофе 380», приложение раскладывает это на отдельные траты.</p>
