@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Бережный бюджет" },
       { name: "description", content: "Спокойный личный бюджет без таблиц и чувства вины." },
       { name: "theme-color", content: "#f4efe6" },
