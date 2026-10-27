@@ -34,7 +34,7 @@ export interface State {
   incomeAck: Record<string, string>; // incomeId -> last handled occurrence (YYYY-MM-DD)
   nextIncomeOverride?: string | undefined; // YYYY-MM-DD
   overspendHandled?: string; // date key
-  minDaily?: number; // protected minimum for life per day
+  minDaily?: number | undefined; // protected minimum for life per day
   ai: AiSettings;
   categories?: Category[];
   advisorAbout?: string;
