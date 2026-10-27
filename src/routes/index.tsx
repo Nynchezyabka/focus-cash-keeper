@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check } from "lucide-react";
+import { ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check, CalendarDays, ChevronRight, CreditCard, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -88,7 +88,7 @@ function Today({ s }: { s: State }) {
           С чего начать: нажмите на «Карта» ниже и впишите, сколько сейчас на карте. Потом укажите, в каких числах
           приходят деньги, в{" "}
           <Link to="/incomes" className="underline">
-            План доходов
+            вкладке «Доходы» раздела «План»
           </Link>
           .
         </div>
