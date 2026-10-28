@@ -16,6 +16,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as FamilyRouteImport } from './routes/family'
 import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as IncomesRouteImport } from './routes/incomes'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -55,6 +56,11 @@ const FeedbackRoute = FeedbackRouteImport.update({
   path: '/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IncomesRoute = IncomesRouteImport.update({
   id: '/incomes',
   path: '/incomes',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/categories': typeof CategoriesRoute
   '/family': typeof FamilyRoute
   '/feedback': typeof FeedbackRoute
+  '/help': typeof HelpRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesRoute
   '/family': typeof FamilyRoute
   '/feedback': typeof FeedbackRoute
+  '/help': typeof HelpRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/categories': typeof CategoriesRoute
   '/family': typeof FamilyRoute
   '/feedback': typeof FeedbackRoute
+  '/help': typeof HelpRoute
   '/incomes': typeof IncomesRoute
   '/payments': typeof PaymentsRoute
   '/settings': typeof SettingsRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/family'
     | '/feedback'
+    | '/help'
     | '/incomes'
     | '/payments'
     | '/settings'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/family'
     | '/feedback'
+    | '/help'
     | '/incomes'
     | '/payments'
     | '/settings'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/family'
     | '/feedback'
+    | '/help'
     | '/incomes'
     | '/payments'
     | '/settings'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   CategoriesRoute: typeof CategoriesRoute
   FamilyRoute: typeof FamilyRoute
   FeedbackRoute: typeof FeedbackRoute
+  HelpRoute: typeof HelpRoute
   IncomesRoute: typeof IncomesRoute
   PaymentsRoute: typeof PaymentsRoute
   SettingsRoute: typeof SettingsRoute
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/incomes': {
       id: '/incomes'
       path: '/incomes'
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriesRoute: CategoriesRoute,
   FamilyRoute: FamilyRoute,
   FeedbackRoute: FeedbackRoute,
+  HelpRoute: HelpRoute,
   IncomesRoute: IncomesRoute,
   PaymentsRoute: PaymentsRoute,
   SettingsRoute: SettingsRoute,

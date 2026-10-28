@@ -69,7 +69,7 @@ function Today({ s }: { s: State }) {
     <div className="space-y-5">
       {pending && <IncomeArrived p={pending} />}
 
-      <section className="pt-2 text-center">
+      <section className="text-center">
         <p className="text-sm text-muted-foreground">Сегодня свободно</p>
         <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
           {rub(Math.max(0, c.freeToday))}
