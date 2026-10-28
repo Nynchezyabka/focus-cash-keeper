@@ -88,6 +88,51 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback: {
+        Row: {
+          app_version: string
+          author: string
+          created_at: string
+          done: boolean
+          id: string
+          kind: string
+          text: string
+        }
+        Insert: {
+          app_version?: string
+          author?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          kind?: string
+          text: string
+        }
+        Update: {
+          app_version?: string
+          author?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          kind?: string
+          text?: string
+        }
+        Relationships: []
+      }
+      feedback_owner: {
+        Row: {
+          id: number
+          key_hash: string
+        }
+        Insert: {
+          id: number
+          key_hash: string
+        }
+        Update: {
+          id?: number
+          key_hash?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -97,6 +142,7 @@ export type Database = {
       _fam_hash: { Args: { t: string }; Returns: string }
       _fam_me: { Args: { p_member: string; p_token: string }; Returns: string }
       _fam_norm: { Args: { t: string }; Returns: string }
+      _fb_owner: { Args: { p_key: string }; Returns: undefined }
       family_create: {
         Args: { p_name: string; p_snapshot: Json }
         Returns: Json
@@ -132,6 +178,25 @@ export type Database = {
       family_rotate: {
         Args: { p_member: string; p_token: string }
         Returns: string
+      }
+      feedback_claim: { Args: { p_key: string }; Returns: boolean }
+      feedback_delete: {
+        Args: { p_id: string; p_key: string }
+        Returns: undefined
+      }
+      feedback_list: { Args: { p_key: string }; Returns: Json }
+      feedback_mark: {
+        Args: { p_done: boolean; p_id: string; p_key: string }
+        Returns: undefined
+      }
+      feedback_send: {
+        Args: {
+          p_author: string
+          p_kind: string
+          p_text: string
+          p_version: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
