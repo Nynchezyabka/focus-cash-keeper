@@ -385,7 +385,7 @@ export function coverFromCushion(amount: number) {
 export interface CalEvent { date: Date; kind: "income" | "payment"; name: string; amount: number; paid?: boolean; method?: Method | undefined; refId: string }
 export interface CalSegment { start: Date; end: Date; days: number; money: number; payments: number; perDay: number; gap: number; events: CalEvent[]; incomes: CalEvent[]; open: boolean }
 /** chain «доход → платежи → доход» for the coming days with how much is free per day on each stretch */
-export function forecast(s: State, horizon = 45, now = new Date()): CalSegment[] {
+export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: number): CalSegment[] {
   const today = startOfDay(now);
   const limit = new Date(+today + horizon * 86400000);
   const ev: CalEvent[] = [];
