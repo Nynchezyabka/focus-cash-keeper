@@ -23,6 +23,10 @@ function Settings({ s }: { s: State }) {
   const setAi = (p: Partial<AiSettings>) => setState((x) => ({ ...x, ai: { ...x.ai, ...p } }));
   return (
     <div className="space-y-6">
+      <Link to="/feedback" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="font-display text-lg">Предложить идею</span><br /><span className="text-sm text-muted-foreground">Идея, неудобство или вопрос — автору</span></span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Минимум на жизнь</h2>
         <p className="text-sm text-muted-foreground">Сколько в день оставлять на жизнь, даже если денег на платежи не хватает. По умолчанию {MIN_DAILY} ₽.</p>

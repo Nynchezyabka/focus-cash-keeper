@@ -11,7 +11,7 @@ describe("budget rules", () => {
   beforeEach(() => replaceState(base()));
 
   it("reconciling the balance changes today's free amount", () => {
-    replaceState({ ...base(), incomes: [{ id: "z", name: "Зарплата", amount: 1, day: 26 }] });
+    replaceState({ ...base(), incomes: [{ id: "z", name: "Зарплата", amount: 40000, day: 26 }] });
     const before = calc(getState(), NOW).freeToday;
     reconcile(10000);
     const after = calc(getState(), NOW).freeToday;
@@ -61,11 +61,34 @@ describe("editing", () => {
 describe("reserve and cushion", () => {
   beforeEach(() => replaceState(base()));
 
-  it("a far one-off payment is reserved in proportion to time passed", () => {
-    // planned 1 Oct, due 31 Dec (91 days); next income 26 Oct (25 days) -> 12 000 * 25/91 ≈ 3297
-    replaceState({ ...base(), balance: 20000, incomes: [{ id: "z", name: "З", amount: 1, day: 26 }],
-      obligations: [{ id: "t", name: "Налоги", amount: 12000, day: 31, category: "home", once: "2026-12-31", from: "2026-10-01" }] });
-    expect(calc(getState(), NOW).reserve).toBe(3297);
+  it("payments after the next income are not taken from today's money", () => {
+    // 28 Oct: 9 954 on card, salary 25 000 on 30 Oct, return 12 000 on 3 Nov, Ozon 8 902 on 26 Nov
+    const now = new Date(2026, 9, 28);
+    replaceState({ ...base(), balance: 9954,
+      incomes: [{ id: "z", name: "Зарплата", amount: 25000, day: 30 }, { id: "a", name: "Аванс", amount: 50000, day: 11 }],
+      obligations: [
+        { id: "k", name: "Кубышка", amount: 12000, day: 3, category: "savings", once: "2026-11-03" },
+        { id: "o", name: "Озон", amount: 8902, day: 26, category: "loan", once: "2026-11-26" },
+      ] });
+    const c = calc(getState(), now);
+    expect(c.reserve).toBe(0);
+    expect(c.shortfall).toBe(0);
+    // not all 9 954 in 2 days: the steady rate that also covers November payments
+    expect(c.dailyNorm).toBeGreaterThan(500);
+    expect(c.dailyNorm).toBeLessThan(4977);
+  });
+
+  it("a big income is not spent in a short stretch: the daily amount stays steady", async () => {
+    const { forecast } = await import("@/lib/budget");
+    // 11 Nov +50 000, 15 Nov +25 000, 27 Nov +50 000, 26 Nov payment 8 902
+    replaceState({ ...base(), balance: 0,
+      incomes: [{ id: "a", name: "Аванс", amount: 50000, day: 11 }, { id: "n", name: "Наличные", amount: 25000, day: 15 }, { id: "z", name: "Зарплата", amount: 50000, day: 27 }],
+      obligations: [{ id: "o", name: "Озон", amount: 8902, day: 26, category: "loan", once: "2026-11-26" }] });
+    const segs = forecast(getState(), 60, new Date(2026, 10, 10));
+    const s11 = segs.find((x) => x.start.getDate() === 11)!;
+    const s15 = segs.find((x) => x.start.getDate() === 15)!;
+    expect(s11.perDay).toBeLessThan(5000); // not 50 000 / 4 days
+    expect(s15.perDay).toBeGreaterThanOrEqual(s11.perDay);
   });
 
   it("taking money from the cushion makes the cushion smaller", async () => {

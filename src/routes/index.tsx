@@ -51,6 +51,14 @@ export const Route = createFileRoute("/")({
 function Today({ s }: { s: State }) {
   const c = calc(s);
   const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve" | "savings" | "buy">(null);
+  // home-screen shortcuts open straight into a window: /?add=expense | income | buy
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("add");
+    if (p === "expense" || p === "income" || p === "buy") {
+      setDialog(p);
+      window.history.replaceState(null, "", "/");
+    }
+  }, []);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
@@ -61,7 +69,7 @@ function Today({ s }: { s: State }) {
     <div className="space-y-5">
       {pending && <IncomeArrived p={pending} />}
 
-      <section className="pt-2 text-center">
+      <section className="text-center">
         <p className="text-sm text-muted-foreground">Сегодня свободно</p>
         <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
           {rub(Math.max(0, c.freeToday))}
@@ -426,7 +434,7 @@ function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: numb
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        На платежи до дохода не хватает {rub(gap)}. Сначала оставила вам минимум на жизнь — {rub(minDaily)} в день, а платежи получили то, что осталось. Что делаем?
+        На платежи до дохода не хватает {rub(gap)}. На жизнь я оставила минимум — {rub(minDaily)} в день, поэтому на платежи пока хватает не всего. Что делаем?
       </p>
       <div className="grid gap-2">
         <Button asChild variant="secondary" className="h-auto whitespace-normal py-2">

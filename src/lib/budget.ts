@@ -225,32 +225,30 @@ export function calc(s: State, now = new Date()) {
   const reserved = s.obligations
     .map((o) => ({ o, due: obligationDue(o, now) }))
     .filter(({ o, due }) => due < next.date && !isPaid(s, o, due));
-  // far one-off payments (e.g. taxes in December) are set aside little by little: by the next income
-  // the reserve holds the share proportional to the time passed since the payment was planned
-  const saving = s.obligations
-    .filter((o) => o.once && !isPaid(s, o, obligationDue(o, now)) && obligationDue(o, now) >= next.date)
-    .map((o) => {
-      const due = obligationDue(o, now);
-      const start = parseKey(o.from ?? s.createdAt.slice(0, 10));
-      const share = Math.min(1, Math.max(0, (+next.date - +start) / Math.max(1, +due - +start)));
-      return { o, due, part: Math.max(0, Math.round(o.amount * share) - paidAmount(s, o, due)) };
-    });
-  const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0) + saving.reduce((a, x) => a + x.part, 0);
+  // only payments due before the next income are set aside from today's money;
+  // later ones are covered by the incomes that come before them (see forecast smoothing below)
+  const saving: { o: Obligation; due: Date; part: number }[] = [];
+  const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0);
   const tk = dayKey(today);
   const todayLife = s.txs.filter((t) => t.kind === "expense" && cat(t.category).group === "life" && dayKey(new Date(t.date)) === tk);
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
   const total = s.balance + (s.cash ?? 0);
-  // life minimum comes first: payments get only what's left after it, and "set aside" never exceeds real money
+  // life minimum comes first; "set aside" never exceeds real money
   const minDaily = s.minDaily ?? MIN_DAILY;
   const pool = Math.max(0, total + spentToday);
   const floor = Math.min(pool, minDaily * days);
   const held = Math.min(reserve, Math.max(0, pool - floor));
-  const shortfall = Math.max(0, reserve - held); // planned payments not covered by money now
-  const dailyNorm = Math.max(0, (pool - held) / days);
+  const shortfall = Math.max(0, reserve - held); // payments before the next income not covered by money now
+  let dailyNorm = Math.max(0, (pool - held) / days);
+  // if later payments need part of today's money (incomes ahead are too small), spend a bit less now
+  if (!s.nextIncomeOverride) {
+    const first = forecast(s, 60, now, pool)[0];
+    if (first && first.perDay < dailyNorm) dailyNorm = Math.max(first.perDay, Math.min(minDaily, pool / days));
+  }
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
-  const afterSpread = days > 1 ? Math.max(0, (rest - Math.min(reserve, Math.max(0, rest - Math.min(rest, minDaily * (days - 1))))) / (days - 1)) : 0;
+  const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm * days - spentToday, rest - held) / (days - 1)) : 0;
   return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, minDaily, todayKey: tk };
 }
 
@@ -385,7 +383,7 @@ export function coverFromCushion(amount: number) {
 export interface CalEvent { date: Date; kind: "income" | "payment"; name: string; amount: number; paid?: boolean; method?: Method | undefined; refId: string }
 export interface CalSegment { start: Date; end: Date; days: number; money: number; payments: number; perDay: number; gap: number; events: CalEvent[]; incomes: CalEvent[]; open: boolean }
 /** chain «доход → платежи → доход» for the coming days with how much is free per day on each stretch */
-export function forecast(s: State, horizon = 45, now = new Date()): CalSegment[] {
+export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: number): CalSegment[] {
   const today = startOfDay(now);
   const limit = new Date(+today + horizon * 86400000);
   const ev: CalEvent[] = [];
@@ -409,22 +407,41 @@ export function forecast(s: State, horizon = 45, now = new Date()): CalSegment[]
     });
   }
   ev.sort((a, b) => +a.date - +b.date || (a.kind === "income" ? -1 : 1));
-  const segs: CalSegment[] = [];
-  let money = s.balance + (s.cash ?? 0);
-  let start = today;
   const incs = ev.filter((e) => e.kind === "income");
   const ends = [...incs.map((e) => e.date), limit];
+  // raw stretches between incomes
+  const raw: { start: Date; end: Date; days: number; payments: number; events: CalEvent[]; incomes: CalEvent[]; inAtEnd: number; open: boolean }[] = [];
+  let start = today;
   for (const end of ends) {
-    if (+end <= +start && segs.length) continue;
+    if (+end <= +start && raw.length) continue;
     const inSeg = ev.filter((e) => e.kind === "payment" && +e.date >= +start && +e.date < +end);
-    const payments = inSeg.filter((e) => !e.paid).reduce((a, e) => a + e.amount, 0);
-    const days = Math.max(1, Math.round((+end - +start) / 86400000));
-    const left = money - payments;
-    segs.push({ start, end, days, money, payments, perDay: Math.max(0, left / days), gap: Math.max(0, -left), events: inSeg, incomes: incs.filter((e) => +e.date === +start), open: end === limit });
+    raw.push({
+      start, end, days: Math.max(1, Math.round((+end - +start) / 86400000)),
+      payments: inSeg.filter((e) => !e.paid).reduce((a, e) => a + e.amount, 0),
+      events: inSeg, incomes: incs.filter((e) => +e.date === +start),
+      inAtEnd: incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0), open: end === limit,
+    });
     if (end === limit) break;
-    // spending the daily amount uses the stretch up; a gap carries into the next one
-    money = Math.min(0, left) + incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0);
     start = end;
+  }
+  // smooth: money from a big income is not "eaten" in a 3-day stretch — the daily amount is the
+  // lowest steady rate that keeps every following payment covered
+  const segs: CalSegment[] = [];
+  let money = (startMoney ?? s.balance + (s.cash ?? 0));
+  for (let i = 0; i < raw.length; i++) {
+    const r = raw[i]!;
+    let cum = money, days = 0, rate = Infinity;
+    for (let k = i; k < raw.length; k++) {
+      // the open tail is cut by the horizon, not by an income — it doesn't limit earlier stretches
+      if (raw[k]!.open && k > i) break;
+      cum -= raw[k]!.payments; days += raw[k]!.days;
+      rate = Math.min(rate, cum / days);
+      cum += raw[k]!.inAtEnd;
+    }
+    const left = money - r.payments;
+    const perDay = Math.max(0, Math.min(rate, left / r.days));
+    segs.push({ start: r.start, end: r.end, days: r.days, money, payments: r.payments, perDay, gap: Math.max(0, -left), events: r.events, incomes: r.incomes, open: r.open });
+    money = left - perDay * r.days + r.inAtEnd;
   }
   return segs;
 }
