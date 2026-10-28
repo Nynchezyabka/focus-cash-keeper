@@ -225,32 +225,30 @@ export function calc(s: State, now = new Date()) {
   const reserved = s.obligations
     .map((o) => ({ o, due: obligationDue(o, now) }))
     .filter(({ o, due }) => due < next.date && !isPaid(s, o, due));
-  // far one-off payments (e.g. taxes in December) are set aside little by little: by the next income
-  // the reserve holds the share proportional to the time passed since the payment was planned
-  const saving = s.obligations
-    .filter((o) => o.once && !isPaid(s, o, obligationDue(o, now)) && obligationDue(o, now) >= next.date)
-    .map((o) => {
-      const due = obligationDue(o, now);
-      const start = parseKey(o.from ?? s.createdAt.slice(0, 10));
-      const share = Math.min(1, Math.max(0, (+next.date - +start) / Math.max(1, +due - +start)));
-      return { o, due, part: Math.max(0, Math.round(o.amount * share) - paidAmount(s, o, due)) };
-    });
-  const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0) + saving.reduce((a, x) => a + x.part, 0);
+  // only payments due before the next income are set aside from today's money;
+  // later ones are covered by the incomes that come before them (see forecast smoothing below)
+  const saving: { o: Obligation; due: Date; part: number }[] = [];
+  const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0);
   const tk = dayKey(today);
   const todayLife = s.txs.filter((t) => t.kind === "expense" && cat(t.category).group === "life" && dayKey(new Date(t.date)) === tk);
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
   const total = s.balance + (s.cash ?? 0);
-  // life minimum comes first: payments get only what's left after it, and "set aside" never exceeds real money
+  // life minimum comes first; "set aside" never exceeds real money
   const minDaily = s.minDaily ?? MIN_DAILY;
   const pool = Math.max(0, total + spentToday);
   const floor = Math.min(pool, minDaily * days);
   const held = Math.min(reserve, Math.max(0, pool - floor));
-  const shortfall = Math.max(0, reserve - held); // planned payments not covered by money now
-  const dailyNorm = Math.max(0, (pool - held) / days);
+  const shortfall = Math.max(0, reserve - held); // payments before the next income not covered by money now
+  let dailyNorm = Math.max(0, (pool - held) / days);
+  // if later payments need part of today's money (incomes ahead are too small), spend a bit less now
+  if (!s.nextIncomeOverride) {
+    const first = forecast(s, 60, now, pool)[0];
+    if (first && first.perDay < dailyNorm) dailyNorm = Math.max(first.perDay, Math.min(minDaily, pool / days));
+  }
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
-  const afterSpread = days > 1 ? Math.max(0, (rest - Math.min(reserve, Math.max(0, rest - Math.min(rest, minDaily * (days - 1))))) / (days - 1)) : 0;
+  const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm, (rest - held) / days) * days - Math.max(0, spentToday - dailyNorm) ) / days : 0;
   return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, minDaily, todayKey: tk };
 }
 
