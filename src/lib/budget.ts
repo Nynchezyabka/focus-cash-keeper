@@ -409,22 +409,39 @@ export function forecast(s: State, horizon = 45, now = new Date()): CalSegment[]
     });
   }
   ev.sort((a, b) => +a.date - +b.date || (a.kind === "income" ? -1 : 1));
-  const segs: CalSegment[] = [];
-  let money = s.balance + (s.cash ?? 0);
-  let start = today;
   const incs = ev.filter((e) => e.kind === "income");
   const ends = [...incs.map((e) => e.date), limit];
+  // raw stretches between incomes
+  const raw: { start: Date; end: Date; days: number; payments: number; events: CalEvent[]; incomes: CalEvent[]; inAtEnd: number; open: boolean }[] = [];
+  let start = today;
   for (const end of ends) {
-    if (+end <= +start && segs.length) continue;
+    if (+end <= +start && raw.length) continue;
     const inSeg = ev.filter((e) => e.kind === "payment" && +e.date >= +start && +e.date < +end);
-    const payments = inSeg.filter((e) => !e.paid).reduce((a, e) => a + e.amount, 0);
-    const days = Math.max(1, Math.round((+end - +start) / 86400000));
-    const left = money - payments;
-    segs.push({ start, end, days, money, payments, perDay: Math.max(0, left / days), gap: Math.max(0, -left), events: inSeg, incomes: incs.filter((e) => +e.date === +start), open: end === limit });
+    raw.push({
+      start, end, days: Math.max(1, Math.round((+end - +start) / 86400000)),
+      payments: inSeg.filter((e) => !e.paid).reduce((a, e) => a + e.amount, 0),
+      events: inSeg, incomes: incs.filter((e) => +e.date === +start),
+      inAtEnd: incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0), open: end === limit,
+    });
     if (end === limit) break;
-    // spending the daily amount uses the stretch up; a gap carries into the next one
-    money = Math.min(0, left) + incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0);
     start = end;
+  }
+  // smooth: money from a big income is not "eaten" in a 3-day stretch — the daily amount is the
+  // lowest steady rate that keeps every following payment covered
+  const segs: CalSegment[] = [];
+  let money = (startMoney ?? s.balance + (s.cash ?? 0));
+  for (let i = 0; i < raw.length; i++) {
+    const r = raw[i]!;
+    let cum = money, days = 0, rate = Infinity;
+    for (let k = i; k < raw.length; k++) {
+      cum -= raw[k]!.payments; days += raw[k]!.days;
+      rate = Math.min(rate, cum / days);
+      cum += raw[k]!.inAtEnd;
+    }
+    const left = money - r.payments;
+    const perDay = Math.max(0, Math.min(rate, left / r.days));
+    segs.push({ start: r.start, end: r.end, days: r.days, money, payments: r.payments, perDay, gap: Math.max(0, -left), events: r.events, incomes: r.incomes, open: r.open });
+    money = left - perDay * r.days + r.inAtEnd;
   }
   return segs;
 }
