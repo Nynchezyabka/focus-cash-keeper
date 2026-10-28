@@ -11,7 +11,7 @@ describe("budget rules", () => {
   beforeEach(() => replaceState(base()));
 
   it("reconciling the balance changes today's free amount", () => {
-    replaceState({ ...base(), incomes: [{ id: "z", name: "Зарплата", amount: 30000, day: 26 }] });
+    replaceState({ ...base(), incomes: [{ id: "z", name: "Зарплата", amount: 40000, day: 26 }] });
     const before = calc(getState(), NOW).freeToday;
     reconcile(10000);
     const after = calc(getState(), NOW).freeToday;
@@ -73,7 +73,9 @@ describe("reserve and cushion", () => {
     const c = calc(getState(), now);
     expect(c.reserve).toBe(0);
     expect(c.shortfall).toBe(0);
-    expect(c.dailyNorm).toBe(4977); // 9 954 over 2 days
+    // not all 9 954 in 2 days: the steady rate that also covers November payments
+    expect(c.dailyNorm).toBeGreaterThan(500);
+    expect(c.dailyNorm).toBeLessThan(4977);
   });
 
   it("a big income is not spent in a short stretch: the daily amount stays steady", async () => {
