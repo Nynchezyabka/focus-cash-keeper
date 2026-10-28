@@ -1,3 +1,4 @@
+import { GUIDE_TEXT } from "@/lib/guide";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
