@@ -51,6 +51,14 @@ export const Route = createFileRoute("/")({
 function Today({ s }: { s: State }) {
   const c = calc(s);
   const [dialog, setDialog] = useState<null | "expense" | "income" | "reconcile" | "pocket" | "reserve" | "savings" | "buy">(null);
+  // home-screen shortcuts open straight into a window: /?add=expense | income | buy
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("add");
+    if (p === "expense" || p === "income" || p === "buy") {
+      setDialog(p);
+      window.history.replaceState(null, "", "/");
+    }
+  }, []);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
