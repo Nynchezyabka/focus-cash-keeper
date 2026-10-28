@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check, CalendarDays, ChevronRight, CreditCard, Banknote } from "lucide-react";
+import { Scale, Lightbulb, ShoppingBag, PiggyBank, Plus, Minus, Wand2, Lock, Loader2, ImageUp, Mic as MicIcon, Check, CalendarDays, ChevronRight, CreditCard, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -142,9 +142,14 @@ function Today({ s }: { s: State }) {
           <Plus /> Доход
         </Button>
       </div>
-      <button onClick={() => setDialog("buy")} className="mx-auto -mt-1 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground active:scale-[0.98]">
-        <ShoppingBag className="h-4 w-4" /> Хочу купить — оценить
-      </button>
+      <div className="-mt-1 flex justify-center gap-2">
+        <button onClick={() => setDialog("buy")} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground active:scale-[0.98]">
+          <Scale className="h-4 w-4" /> Оценить покупку
+        </button>
+        <Link to="/feedback" className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground active:scale-[0.98]">
+          <Lightbulb className="h-4 w-4" /> Идея
+        </Link>
+      </div>
 
       <section className="rounded-2xl bg-card p-1 shadow-soft">
         <div className="grid grid-cols-2">
