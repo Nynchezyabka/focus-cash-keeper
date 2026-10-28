@@ -248,7 +248,7 @@ export function calc(s: State, now = new Date()) {
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
-  const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm, (rest - held) / days) * days - Math.max(0, spentToday - dailyNorm) ) / days : 0;
+  const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm * days - spentToday, rest - held) / (days - 1)) : 0;
   return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, minDaily, todayKey: tk };
 }
 

@@ -426,7 +426,7 @@ function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: numb
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        На платежи до дохода не хватает {rub(gap)}. Сначала оставила вам минимум на жизнь — {rub(minDaily)} в день, а платежи получили то, что осталось. Что делаем?
+        На платежи до дохода не хватает {rub(gap)}. На жизнь я оставила минимум — {rub(minDaily)} в день, поэтому на платежи пока хватает не всего. Что делаем?
       </p>
       <div className="grid gap-2">
         <Button asChild variant="secondary" className="h-auto whitespace-normal py-2">
