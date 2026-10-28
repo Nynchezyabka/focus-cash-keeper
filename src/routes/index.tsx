@@ -131,7 +131,7 @@ function Today({ s }: { s: State }) {
 
       <div className="grid grid-cols-2 gap-3">
         <Button size="lg" className="h-16 rounded-2xl text-base" onClick={() => setDialog("expense")}>
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-spend text-primary-foreground"><Minus /></span> Трата
+          <Minus /> Трата
         </Button>
         <Button
           size="lg"
@@ -139,7 +139,7 @@ function Today({ s }: { s: State }) {
           className="h-16 rounded-2xl text-base"
           onClick={() => setDialog("income")}
         >
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground"><Plus /></span> Доход
+          <Plus /> Доход
         </Button>
       </div>
       <div className="-mt-1 flex justify-center gap-2">
