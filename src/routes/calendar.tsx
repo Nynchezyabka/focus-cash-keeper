@@ -87,14 +87,14 @@ function Row({ e, today }: { e: CalEvent; today: string }) {
   const inc = e.kind === "income";
   return (
     <li className={`flex items-center gap-3 text-sm ${e.paid ? "opacity-50" : ""}`}>
-      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${inc ? "bg-primary/15 text-primary" : "bg-accent text-accent-foreground"}`}>
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${inc ? "bg-primary/15 text-primary" : "bg-spend-soft text-spend"}`}>
         {inc ? <ArrowDownLeft className="h-4 w-4" /> : e.paid ? <Check className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5"><span className="truncate">{e.name}</span>{inc && <MethodBadge m={e.method} />}</span>
         <span className="text-xs text-muted-foreground">{dayKey(e.date) === today ? "сегодня" : dm(e.date)}{e.paid ? " · оплачено" : ""}</span>
       </span>
-      <span className={`shrink-0 tabular-nums ${inc ? "text-primary" : ""}`}>{inc ? "+" : "−"}{rub(e.amount)}</span>
+      <span className={`shrink-0 tabular-nums ${inc ? "text-primary" : "text-spend"}`}>{inc ? "+" : "−"}{rub(e.amount)}</span>
     </li>
   );
 }
@@ -176,7 +176,7 @@ function Grid({ s, horizon }: { s: State; horizon: number }) {
                 {first && <span className="text-[9px] leading-none opacity-70">{d.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "")}</span>}
                 <span className="mt-1 flex h-1.5 gap-0.5">
                   {hasInc && <span className={`h-1.5 w-1.5 rounded-full ${k === sel ? "bg-primary-foreground" : "bg-primary"}`} />}
-                  {hasPay && <span className={`h-1.5 w-1.5 rounded-full ${k === sel ? "bg-primary-foreground" : "bg-accent-foreground"}`} />}
+                  {hasPay && <span className={`h-1.5 w-1.5 rounded-full ${k === sel ? "bg-primary-foreground" : "bg-spend"}`} />}
                 </span>
               </button>
             );
@@ -184,7 +184,7 @@ function Grid({ s, horizon }: { s: State; horizon: number }) {
         </div>
         <div className="mt-2 flex justify-center gap-4 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> доход</span>
-          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-accent-foreground" /> платёж</span>
+          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-spend" /> платёж</span>
         </div>
       </div>
       <section className="rounded-2xl bg-card p-4 shadow-soft">
