@@ -282,7 +282,10 @@ function ExpenseDialog({ open, onClose, onSmart }: { open: boolean; onClose: () 
   const [cur, setCur] = useState("RUB");
   const [rate, setRate] = useState("");
   useEffect(() => { if (cur === "RUB") return; const c = cachedRate(cur); setRate(c ? String(Math.round(c * 10000) / 10000) : ""); void loadRates().then((x) => { const r = x?.rates[cur]; if (r) setRate(String(Math.round(r * 10000) / 10000)); }); }, [cur]);
-  const save = (category: string) => {
+  const [category, setCategory] = useState("");
+  const [note, setNote] = useState("");
+  const save = () => {
+    if (!category) { toast("Выберите категорию"); return; }
     const raw = Number(amount.replace(/\s/g, "").replace(",", "."));
     if (!raw) {
       toast("Сначала впишите сумму");
@@ -291,10 +294,11 @@ function ExpenseDialog({ open, onClose, onSmart }: { open: boolean; onClose: () 
     const r = cur === "RUB" ? 1 : Number(rate.replace(",", "."));
     if (!r) { toast("Впишите курс"); return; }
     const a = Math.round(toRub(raw, r));
-    const t = addTx({ kind: "expense", amount: a, category, method, ...(family ? { family: true } : {}), ...(cur !== "RUB" ? { orig: { amount: raw, currency: cur, rate: r }, note: `${cat(category).name} · ${raw} ${currency(cur).sign}` } : {}) });
+    const label = note.trim() || cat(category).name;
+    const t = addTx({ kind: "expense", amount: a, category, method, ...(note.trim() ? { note: note.trim() } : {}), ...(family ? { family: true } : {}), ...(cur !== "RUB" ? { orig: { amount: raw, currency: cur, rate: r }, note: `${label} · ${raw} ${currency(cur).sign}` } : {}) });
     setFam(false);
-    addedToast(t, `${cat(category).name}: ${rub(a)}`);
-    setAmount("");
+    addedToast(t, `${label}: ${rub(a)}`);
+    setAmount(""); setNote(""); setCategory("");
     onClose();
   };
   return (
@@ -329,8 +333,9 @@ function ExpenseDialog({ open, onClose, onSmart }: { open: boolean; onClose: () 
         {cur !== "RUB" && Number(rate.replace(",", ".")) > 0 && Number(amount.replace(",", ".")) > 0 && <p className="text-center text-xs text-muted-foreground">≈ {rub(toRub(Number(amount.replace(",", ".")), Number(rate.replace(",", "."))))} по курсу ЦБ. Можно поправить на курс банка.</p>}
         <MethodToggle value={method} onChange={setMethod} />
         {fam && <FamilyToggle value={family} onChange={setFam} />}
-        <CategoryPicker onPick={save} />
-        <p className="text-center text-xs text-muted-foreground">Нажмите на категорию — трата сохранится</p>
+        <Input placeholder="Описание, если хочется (например, такси)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <CategoryPicker value={category} onPick={setCategory} />
+        <Button className="h-12 rounded-2xl" disabled={!category || !amount.trim()} onClick={save}>Внести трату</Button>
       </DialogContent>
     </Dialog>
   );

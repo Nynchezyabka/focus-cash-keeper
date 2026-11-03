@@ -18,7 +18,7 @@ export interface Tx {
 }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
-export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string }
+export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; mode?: "auto" | "always" }
 
@@ -324,8 +324,30 @@ export function borrow(amount: number, from: string, returnOn: string, method: M
     ? { id: uid(), name: `Вернуть: ${from}`, amount: monthly, day: parseKey(returnOn).getDate(), category: "loan", method, from: dayKey(new Date()) }
     : { id: uid(), name: `Вернуть: ${from}`, amount, day: parseKey(returnOn).getDate(), category: "loan", once: returnOn, method, from: dayKey(new Date()) };
   const t = addTx({ kind: "adjust", amount, category: "adjust", note: `Взяла: ${from}`, method });
+  if (t) ob.loanTx = t.id;
   setState((s) => ({ ...s, obligations: [...s.obligations, ob] }));
   return { t, ob };
+}
+/** the money received for a debt (linked by id; older debts are found by their name) */
+export function loanTxOf(o: Obligation, s: State = getState()) {
+  if (o.category !== "loan") return undefined;
+  if (o.loanTx) return s.txs.find((t) => t.id === o.loanTx);
+  const who = o.name.replace(/^Вернуть:\s*/, "");
+  return s.txs.find((t) => t.kind === "adjust" && t.note === `Взяла: ${who}`);
+}
+/** editing a debt keeps the wallets right: changed card/cash moves the money, a changed one-off sum fixes the difference */
+export function syncLoanMoney(old: Obligation, next: Obligation) {
+  const t = loanTxOf(old);
+  if (!t) return null;
+  const patch: Partial<Tx> = {};
+  if ((next.method ?? "card") !== (t.method ?? "card")) patch.method = next.method ?? "card";
+  if (next.once && old.once && next.amount !== old.amount) patch.amount = t.amount + (next.amount - old.amount);
+  const who = next.name.replace(/^Вернуть:\s*/, "");
+  if (next.name !== old.name && next.name.startsWith("Вернуть:")) patch.note = `Взяла: ${who}`;
+  if (!Object.keys(patch).length) return null;
+  const before = { ...t };
+  updateTx(t.id, patch);
+  return before;
 }
 /** remember words of saved expenses so the next list is sorted on the device, without AI */
 export function learnKeys(items: { note: string; category: string }[]) {
