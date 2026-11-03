@@ -8,7 +8,7 @@ import { CategoryPicker, DateDialog, MethodBadge, MethodToggle } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unpay, restoreTx, borrow, removeTx, moveObligation, obligationDue, payObligation, rub, setState, uid, type Method, type Obligation, type State } from "@/lib/budget";
+import { calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unpay, restoreTx, borrow, removeTx, moveObligation, obligationDue, payObligation, rub, setState, syncLoanMoney, updateTx, uid, type Method, type Obligation, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("План платежей — Бережный бюджет", "Регулярные и разовые платежи, долги к возврату. Эти деньги откладываются заранее."),
