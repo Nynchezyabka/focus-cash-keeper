@@ -1,5 +1,5 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Users, Sun, CalendarDays, PieChart, Settings, MessageCircleHeart, HelpCircle, icons } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { ArrowLeft, Users, Sun, CalendarDays, PieChart, Settings, MessageCircleHeart, HelpCircle, icons } from "lucide-react";
 import type { ReactNode } from "react";
 import { useBudget, type State } from "@/lib/budget";
 import { useFamily } from "@/lib/family";
@@ -22,11 +22,21 @@ export function Shell({ title, children }: { title?: string; children: (s: State
   const s = useBudget();
   const fam = useFamily();
   const path = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
   const nav = fam ? [...NAV.slice(0, 3), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(3)] : NAV;
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
       <div className="flex items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        {title ? <h1 className="font-display text-2xl text-foreground">{title}</h1> : <span className="font-display text-lg text-foreground">Бережный бюджет</span>}
+        {title ? (
+          <div className="flex min-w-0 items-center gap-1">
+            {!NAV.some((n) => n.to === path) && !PLAN_PATHS.includes(path) && path !== "/family" && (
+              <button type="button" aria-label="Назад" onClick={() => (window.history.length > 1 ? window.history.back() : void navigate({ to: "/" }))} className="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            )}
+            <h1 className="truncate font-display text-2xl text-foreground">{title}</h1>
+          </div>
+        ) : <span className="font-display text-lg text-foreground">Бережный бюджет</span>}
         <div className="flex shrink-0">
           <Link to="/help" aria-label="Как пользоваться" className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
             <HelpCircle className="h-5 w-5" />
