@@ -17,6 +17,6 @@
 - Money is split into card (`balance`) and `cash`; every tx carries `method`, and `calc` uses their sum — keeps card/cash consistent everywhere.
 - Category colors are derived from their group's shade family (`GROUP_SHADES`), not picked by the user — fewer decisions for the user.
 - One `CategoryPicker` (src/components/Pickers.tsx) is used on every screen that chooses a category — the same chooser everywhere.
-- Offline/updates: hand-written network-first `public/sw.js` registered by `src/lib/pwa.ts`, disabled in editor previews — fresh version whenever online.
+- Offline/updates: hand-written cache-first-with-background-refresh `public/sw.js` registered by `src/lib/pwa.ts`, disabled in editor previews — opens instantly on weak networks, update check (`?_v=`) bypasses cache.
 - AI economy mode: local keyword parse first, AI only for unknown words; saved items teach keywords via `learnKeys` — saves the user's AI requests.
 - App version lives in APP_VERSION (src/lib/pwa.ts); bump it and prepend a CHANGELOG entry (src/lib/whatsnew.ts) with every user-visible change — drives the «Что нового» popup after updates.
