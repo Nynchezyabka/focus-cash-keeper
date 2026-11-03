@@ -142,14 +142,6 @@ function Today({ s }: { s: State }) {
           <Plus /> Доход
         </Button>
       </div>
-      <div className="-mt-1 flex justify-center gap-2">
-        <button onClick={() => setDialog("buy")} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground active:scale-[0.98]">
-          <Scale className="h-4 w-4" /> Оценить покупку
-        </button>
-        <Link to="/feedback" className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground active:scale-[0.98]">
-          <Lightbulb className="h-4 w-4" /> Идея
-        </Link>
-      </div>
 
       <section className="rounded-2xl bg-card p-1 shadow-soft">
         <div className="grid grid-cols-2">
@@ -307,29 +299,34 @@ function ExpenseDialog({ open, onClose, onSmart }: { open: boolean; onClose: () 
         <DialogHeader>
           <DialogTitle>Новая трата</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="rounded-xl" onClick={() => onSmart(null)}>
-            <MicIcon className="h-4 w-4" /> Текст или голос
-          </Button>
-          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 text-sm font-medium">
-            <ImageUp className="h-4 w-4" /> Чек, скриншот
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onSmart(f); }} />
-          </label>
+        <div className="relative">
+          <Input
+            autoFocus
+            inputMode="decimal"
+            placeholder="Сумма"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="h-14 px-24 text-center text-2xl"
+          />
+          <div className="absolute inset-y-0 left-1 flex items-center">
+            <div className="relative flex h-10 min-w-10 items-center justify-center rounded-lg px-2 text-lg text-muted-foreground">
+              {currency(cur).sign}
+              <select aria-label="Валюта" value={cur} onChange={(e) => setCur(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
+                {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.sign} {c.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="absolute inset-y-0 right-1 flex items-center gap-0.5">
+            <button type="button" aria-label="Текст или голос" onClick={() => onSmart(null)} className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground active:scale-95">
+              <MicIcon className="h-5 w-5" />
+            </button>
+            <label aria-label="Чек или скриншот" className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-muted-foreground active:scale-95">
+              <ImageUp className="h-5 w-5" />
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onSmart(f); }} />
+            </label>
+          </div>
         </div>
-        <Input
-          autoFocus
-          inputMode="decimal"
-          placeholder="Сумма, ₽"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="h-14 text-center text-2xl"
-        />
-        <div className="flex gap-2">
-          <select aria-label="Валюта" value={cur} onChange={(e) => setCur(e.target.value)} className="h-10 rounded-md border border-input bg-background px-2 text-sm">
-            {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.sign} {c.name}</option>)}
-          </select>
-          {cur !== "RUB" && <Input inputMode="decimal" aria-label="Курс" placeholder="Курс, ₽ за 1" value={rate} onChange={(e) => setRate(e.target.value)} />}
-        </div>
+        {cur !== "RUB" && <Input inputMode="decimal" aria-label="Курс" placeholder="Курс, ₽ за 1" value={rate} onChange={(e) => setRate(e.target.value)} />}
         {cur !== "RUB" && Number(rate.replace(",", ".")) > 0 && Number(amount.replace(",", ".")) > 0 && <p className="text-center text-xs text-muted-foreground">≈ {rub(toRub(Number(amount.replace(",", ".")), Number(rate.replace(",", "."))))} по курсу ЦБ. Можно поправить на курс банка.</p>}
         <MethodToggle value={method} onChange={setMethod} />
         {fam && <FamilyToggle value={family} onChange={setFam} />}
