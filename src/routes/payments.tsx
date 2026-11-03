@@ -8,7 +8,7 @@ import { CategoryPicker, DateDialog, MethodBadge, MethodToggle } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unpay, restoreTx, borrow, removeTx, moveObligation, obligationDue, payObligation, rub, setState, uid, type Method, type Obligation, type State } from "@/lib/budget";
+import { calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unpay, restoreTx, borrow, removeTx, moveObligation, obligationDue, payObligation, rub, setState, syncLoanMoney, updateTx, uid, type Method, type Obligation, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("План платежей — Бережный бюджет", "Регулярные и разовые платежи, долги к возврату. Эти деньги откладываются заранее."),
@@ -123,9 +123,13 @@ function Editor({ o, onClose }: { o: Obligation; onClose: () => void }) {
           <Button className="flex-1" disabled={!valid} onClick={() => {
             const item: Obligation = {
               id: o.id || uid(), name: name.trim(), amount: a, category, method, from: o.from ?? new Date().toISOString().slice(0, 10),
-              day: once ? Number(date.slice(8, 10)) : d, ...(once ? { once: date } : {}), ...(!once && o.nextOn ? { nextOn: o.nextOn } : {}),
+              day: once ? Number(date.slice(8, 10)) : d, ...(once ? { once: date } : {}), ...(!once && o.nextOn ? { nextOn: o.nextOn } : {}), ...(o.loanTx ? { loanTx: o.loanTx } : {}),
             };
             setState((x) => ({ ...x, obligations: isNew ? [...x.obligations, item] : x.obligations.map((y) => (y.id === o.id ? item : y)) }));
+            if (!isNew) {
+              const before = syncLoanMoney(o, item);
+              if (before) undoable("Карта и наличные поправлены под долг", () => { updateTx(before.id, before); setState((x) => ({ ...x, obligations: x.obligations.map((y) => (y.id === o.id ? o : y)) })); });
+            }
             onClose();
           }}>Сохранить</Button>
         </div>
