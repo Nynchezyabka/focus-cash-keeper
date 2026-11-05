@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, CalendarClock, HandCoins, RotateCcw, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2 } from "lucide-react";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { PlanTabs } from "@/components/PlanTabs";
 import { addedToast, undoable } from "@/components/Undo";
