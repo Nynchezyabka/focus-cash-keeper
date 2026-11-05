@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, CalendarClock, HandCoins, RotateCcw, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2 } from "lucide-react";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { PlanTabs } from "@/components/PlanTabs";
 import { addedToast, undoable } from "@/components/Undo";
@@ -35,7 +35,8 @@ function Payments({ s }: { s: State }) {
           const k = cat(o.category);
           return (
             <li key={o.id} className={`rounded-2xl bg-card p-4 shadow-soft ${paid ? "opacity-60" : ""}`}>
-              <button className="flex w-full items-center gap-3 text-left" onClick={() => setEdit(o)}>
+              <div className="flex items-center gap-3">
+              <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => setEdit(o)}>
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: catColor(k) }}><CatIcon name={k.icon} className="h-5 w-5" /></span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2"><span className="truncate text-sm">{o.name}</span><MethodBadge m={o.method} /></span>
@@ -44,24 +45,23 @@ function Payments({ s }: { s: State }) {
                   </span>
                 </span>
                 <span className="text-sm tabular-nums">{rub(o.amount)}</span>
-                <Pencil className="h-4 w-4 text-muted-foreground" />
               </button>
+              <button
+                type="button"
+                aria-label={paid ? "Отменить оплату" : "Отметить оплаченным"}
+                onClick={() => {
+                  if (paid) { const l = unpay(o); undoable(`«${o.name}» снова ждёт оплаты`, () => l.forEach(restoreTx)); }
+                  else { const rest = o.amount - done; addedToast(done > 0 ? payPart(o, rest) : payObligation(o), `${o.name} оплачено`); }
+                }}
+                className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 active:scale-95 ${paid ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
+              >
+                {paid && <Check className="h-4 w-4" />}
+              </button>
+              </div>
               {!paid && done > 0 && (
                 <div className="mt-3 space-y-1">
                   <p className="text-xs text-muted-foreground">Внесено {rub(done)} из {rub(o.amount)}, осталось {rub(o.amount - done)}</p>
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (done / o.amount) * 100)}%` }} /></div>
-                </div>
-              )}
-              {!paid && (
-                <div className="mt-3 flex items-center justify-end gap-1 border-t border-border pt-3">
-                  <Button size="sm" variant="ghost" className="px-2" onClick={() => setMoving(o)}><CalendarClock /> Перенести</Button>
-                  <Button size="sm" variant="ghost" className="px-2" onClick={() => setPart(o)}>Часть</Button>
-                  <Button size="sm" variant="secondary" onClick={() => { const rest = o.amount - done; addedToast(done > 0 ? payPart(o, rest) : payObligation(o), `${o.name} оплачено`); }}><Check /> Оплачено</Button>
-                </div>
-              )}
-              {paid && (
-                <div className="mt-3 flex justify-end border-t border-border pt-3">
-                  <Button size="sm" variant="ghost" onClick={() => { const list = unpay(o); undoable(`«${o.name}» снова ждёт оплаты`, () => list.forEach(restoreTx)); }}><RotateCcw /> Отменить оплату</Button>
                 </div>
               )}
             </li>
@@ -80,12 +80,12 @@ function Payments({ s }: { s: State }) {
         if (wasPaid && confirm("Это новый платёж на новую дату? Отметить его неоплаченным?")) unpay(moving);
       }} />
       {part && <PartDialog o={part} left={part.amount - paidAmount(s, part, obligationDue(part))} onClose={() => setPart(null)} />}
-      {edit && <Editor o={edit} onClose={() => setEdit(null)} />}
+      {edit && <Editor o={edit} onClose={() => setEdit(null)} onMove={() => { setMoving(edit); setEdit(null); }} onPart={isPaid(s, edit, obligationDue(edit)) ? undefined : () => { setPart(edit); setEdit(null); }} />}
     </div>
   );
 }
 
-function Editor({ o, onClose }: { o: Obligation; onClose: () => void }) {
+function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => void; onMove?: (() => void) | undefined; onPart?: (() => void) | undefined }) {
   const isNew = !o.id;
   const [name, setName] = useState(o.name);
   const [amount, setAmount] = useState(o.amount ? String(o.amount) : "");
@@ -112,6 +112,12 @@ function Editor({ o, onClose }: { o: Obligation; onClose: () => void }) {
           : <Input inputMode="numeric" placeholder="Какого числа (1–31)" value={day} onChange={(e) => setDay(e.target.value.replace(/\D/g, "").slice(0, 2))} />}
         <MethodToggle value={method} onChange={setMethod} />
         <CategoryPicker value={category} onPick={setCategory} groups={["must", "safe", "life"]} />
+        {!isNew && (onMove || onPart) && (
+          <div className="grid grid-cols-2 gap-2">
+            {onMove && <Button variant="outline" onClick={onMove}><CalendarClock /> Перенести</Button>}
+            {onPart && <Button variant="outline" onClick={onPart}>Оплатить часть</Button>}
+          </div>
+        )}
         <div className="flex gap-2">
           {!isNew && (
             <Button variant="outline" size="icon" aria-label="Удалить" onClick={() => {
