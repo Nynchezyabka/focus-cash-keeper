@@ -85,7 +85,7 @@ function Payments({ s }: { s: State }) {
   );
 }
 
-function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => void; onMove?: () => void; onPart?: () => void }) {
+function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => void; onMove?: (() => void) | undefined; onPart?: (() => void) | undefined }) {
   const isNew = !o.id;
   const [name, setName] = useState(o.name);
   const [amount, setAmount] = useState(o.amount ? String(o.amount) : "");
