@@ -223,7 +223,7 @@ function ReserveDialog({ open, onClose, c, cushion }: { open: boolean; onClose: 
         )}
         {c.saving.length > 0 && (
           <div>
-            <p className="mb-1 text-xs text-muted-foreground">Дальние платежи — копится понемногу</p>
+            <p className="mb-1 text-xs text-muted-foreground">Откладываю понемногу на платежи позже</p>
             <ul className="divide-y divide-border rounded-xl bg-secondary text-sm">
               {c.saving.map(({ o, due, part }) => (
                 <li key={o.id} className="flex justify-between gap-2 px-3 py-2"><span className="truncate">{o.name} · {dm(due)}</span><span className="tabular-nums">{rub(part)} из {rub(o.amount)}</span></li>
@@ -232,7 +232,7 @@ function ReserveDialog({ open, onClose, c, cushion }: { open: boolean; onClose: 
           </div>
         )}
         <p className="flex justify-between border-t border-border pt-2 text-sm"><span>Всего отложено</span><span className="tabular-nums">{c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}</span></p>
-        <p className="text-xs text-muted-foreground">Подушка (отдельно, из трат «Накопления»): {rub(cushion)}</p>
+        <p className="text-xs text-muted-foreground">Накопления лежат отдельно: {rub(cushion)}</p>
         <Button asChild variant="secondary"><Link to="/payments">Открыть платежи</Link></Button>
       </DialogContent>
     </Dialog>
@@ -249,7 +249,7 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
   return (
     <div className="rounded-2xl bg-secondary p-4 text-secondary-foreground">
       <p className="text-sm">
-        Пришёл ли доход «{p.income.name}» ({rub(p.income.amount)})?
+        «{p.income.name}» ({rub(p.income.amount)}) уже пришёл?
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <Button size="sm" onClick={() => addedToast(confirmIncome(getState(), p.income), "Доход учтён")}>
@@ -406,7 +406,7 @@ function ReconcileDialog({ open, onClose, balance, initialMethod }: { open: bool
           <DialogTitle>{method === "cash" ? "Сколько наличных сейчас?" : "Сколько на карте сейчас?"}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Не нужно вспоминать каждую покупку. Посмотрите, сколько есть сейчас, — и начнём с этой точки.
+          Старые траты вспоминать не нужно. Впишите, сколько есть сейчас, — дальше посчитаю от этой суммы.
         </p>
         <MethodToggle value={method} onChange={setMethod} />
         <Input
@@ -441,7 +441,7 @@ function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: numb
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        На платежи до дохода не хватает {rub(gap)}. На жизнь я оставила минимум — {rub(minDaily)} в день, поэтому на платежи пока хватает не всего. Что делаем?
+        До дохода на платежи не хватает {rub(gap)}: сначала я оставила на жизнь {rub(minDaily)} в день. Как поступим?
       </p>
       <div className="grid gap-2">
         <Button asChild variant="secondary" className="h-auto whitespace-normal py-2">
@@ -470,7 +470,7 @@ function BorrowCard({ gap }: { gap: number }) {
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        Потрачено на {rub(gap)} больше, чем было. Откуда взялись деньги и когда вернуть? Запишу возврат в план платежей.
+        Потрачено на {rub(gap)} больше, чем было. Если это кредитка или заём — запишите, когда вернуть, и я добавлю это в платежи.
       </p>
       <Input
         placeholder="Откуда: кредитка, заняла у мамы"
@@ -555,7 +555,7 @@ function PocketDialog({
           <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
             {busy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Читаю скриншот… Переводы между счетами и поступления
+                <Loader2 className="h-4 w-4 animate-spin" /> Читаю скриншот… Переводы между своими счетами
                 пропускаю.
               </>
             ) : (

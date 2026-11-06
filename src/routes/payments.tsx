@@ -134,7 +134,7 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
             setState((x) => ({ ...x, obligations: isNew ? [...x.obligations, item] : x.obligations.map((y) => (y.id === o.id ? item : y)) }));
             if (!isNew) {
               const before = syncLoanMoney(o, item);
-              if (before) undoable("Карта и наличные поправлены под долг", () => { updateTx(before.id, before); setState((x) => ({ ...x, obligations: x.obligations.map((y) => (y.id === o.id ? o : y)) })); });
+              if (before) undoable("Остаток на карте и наличными пересчитан", () => { updateTx(before.id, before); setState((x) => ({ ...x, obligations: x.obligations.map((y) => (y.id === o.id ? o : y)) })); });
             }
             onClose();
           }}>Сохранить</Button>
@@ -152,7 +152,7 @@ function PartDialog({ o, left, onClose }: { o: Obligation; left: number; onClose
     <Dialog open onOpenChange={(x) => !x && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>Внести часть: «{o.name}»</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">Осталось {rub(left)}. Остаток так и будет отложен до даты платежа.</p>
+        <p className="text-sm text-muted-foreground">Осталось {rub(left)}. Он остаётся отложенным до дня оплаты.</p>
         <Input autoFocus inputMode="decimal" placeholder="Сколько внесли, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-14 text-center text-2xl" />
         <MethodToggle value={method} onChange={setMethod} />
         <Button disabled={!(a > 0)} onClick={() => { addedToast(payPart(o, Math.min(a, left), method), `${o.name}: внесено ${rub(Math.min(a, left))}`); onClose(); }}>Внести</Button>
