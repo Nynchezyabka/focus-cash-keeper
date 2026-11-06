@@ -182,7 +182,7 @@ function Chat({ s }: { s: State }) {
         {msgs.map((m, i) => (
           m.role === "user"
             ? <div key={i} className="ml-8 whitespace-pre-wrap rounded-2xl bg-primary p-3 text-sm text-primary-foreground">{m.content}</div>
-            : <div key={i} className="md mr-4 rounded-2xl bg-card p-3 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{ a: (p) => <a {...p} target="_blank" rel="noreferrer" /> }}>{m.content}</ReactMarkdown></div>
+            : <div key={i} className="md mr-4 rounded-2xl bg-card p-3 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} unwrapDisallowed={false} components={{ a: (p) => <a {...p} target="_blank" rel="noreferrer" /> }}>{m.content}</ReactMarkdown></div>
         ))}
         {busy && <div className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground">Думаю…</div>}
         {err && <p className="rounded-2xl bg-accent p-3 text-sm text-accent-foreground">{err}</p>}

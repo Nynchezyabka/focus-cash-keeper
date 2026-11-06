@@ -95,7 +95,8 @@ function load(): State {
 export function getState() { return load(); }
 export function setState(fn: (s: State) => State) {
   state = fn(load());
-  localStorage.setItem(KEY, JSON.stringify(state));
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch { if (typeof window !== "undefined") window.dispatchEvent(new Event("budget-save-failed")); }
   listeners.forEach((l) => l());
 }
 export function replaceState(s: State) { setState(() => ({ ...initial(), ...s })); }
