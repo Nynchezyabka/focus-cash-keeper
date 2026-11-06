@@ -113,7 +113,7 @@ export const CHANGELOG: { version: string; date: string; items: string[] }[] = [
     version: "1.10.0",
     date: "27 октября 2026",
     items: [
-      "На главном видно, сколько можно тратить в день начиная с завтра.",
+      "На главном видно, сколько можно тратить в день начиная с завтрашнего дня.",
       "Оплаченный платёж можно вернуть: «Отменить оплату» на карточке.",
       "«Взять из накоплений» в любой момент — деньги придут на карту, а возврат можно запланировать.",
       "В Плане платежей: «Взяла в долг или кредит» — деньги сразу на карте, возврат в плане.",
@@ -167,7 +167,9 @@ export const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
     version: "1.5.0",
     date: "22 октября 2026",
-    items: ["Записанную операцию можно изменить: нажмите на неё и поправьте сумму, название, категорию, карту/наличные или дату."],
+    items: [
+      "Записанную операцию можно изменить: нажмите на неё и поправьте сумму, название, категорию, карту/наличные или дату.",
+    ],
   },
   {
     version: "1.4.0",
@@ -188,7 +190,10 @@ export function unseenChanges(current: string) {
   const seen = localStorage.getItem(KEY);
   if (!seen) {
     // brand-new user: nothing to announce; existing user from before this feature: show latest
-    if (!localStorage.getItem("berezhny-budget-v1")) { localStorage.setItem(KEY, current); return null; }
+    if (!localStorage.getItem("berezhny-budget-v1")) {
+      localStorage.setItem(KEY, current);
+      return null;
+    }
     return CHANGELOG.slice(0, 1);
   }
   if (seen === current) return null;
