@@ -27,6 +27,11 @@ function Payments({ s }: { s: State }) {
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">Что и когда нужно оплатить: каждый месяц или один раз. Эти деньги заранее откладываются и не входят в «Сегодня свободно».</p>
       <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> До дохода отложено {rub(c.reserve)}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button className="h-12 rounded-2xl" onClick={() => setEdit({ id: "", name: "", amount: 0, day: 0, category: "home" })}><Plus /> Платёж</Button>
+        <Button variant="secondary" className="h-12 rounded-2xl" onClick={() => setLoan(true)}><HandCoins /> Взяла в долг</Button>
+      </div>
+      {loan && <LoanDialog onClose={() => setLoan(false)} />}
       <ul className="space-y-2">
         {list.map(({ o, due }) => {
           const paid = isPaid(s, o, due);
@@ -68,10 +73,7 @@ function Payments({ s }: { s: State }) {
           );
         })}
       </ul>
-      {list.length === 0 && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">Например: аренда 5-го, интернет 12-го, рассрочка 20-го. Или разовый: «Подарок маме, 3 ноября».</p>}
-      <Button variant="secondary" className="h-12 w-full rounded-2xl" onClick={() => setLoan(true)}><HandCoins /> Взяла в долг или кредит</Button>
-      {loan && <LoanDialog onClose={() => setLoan(false)} />}
-      <Button className="h-12 w-full rounded-2xl" onClick={() => setEdit({ id: "", name: "", amount: 0, day: 0, category: "home" })}><Plus /> Добавить платёж</Button>
+      {list.length === 0 && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">Например: аренда 5-го, интернет 12-го, рассрочка 20-го. И разовые: подарок к празднику, страховка, налог.</p>}
 
       <DateDialog open={!!moving} title={`Новая дата: «${moving?.name ?? ""}»`} initial={moving ? dayKey(obligationDue(moving)) : ""} onClose={() => setMoving(null)} onSave={(d) => {
         if (!moving) return;
@@ -84,6 +86,16 @@ function Payments({ s }: { s: State }) {
     </div>
   );
 }
+
+const PRESETS = [
+  { name: "Аренда", category: "home", once: false },
+  { name: "ЖКУ", category: "home", once: false },
+  { name: "Кредит", category: "loan", once: false },
+  { name: "Связь", category: "phone", once: false },
+  { name: "Подарок к празднику", category: "fun", once: true },
+  { name: "Налог", category: "home", once: true },
+  { name: "Страховка", category: "unexpected", once: true },
+];
 
 function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => void; onMove?: (() => void) | undefined; onPart?: (() => void) | undefined }) {
   const isNew = !o.id;
@@ -101,6 +113,14 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
       <DialogContent className="max-h-[90vh] max-w-sm overflow-y-auto">
         <DialogHeader><DialogTitle>{isNew ? "Новый платёж" : "Изменить платёж"}</DialogTitle></DialogHeader>
         <Input autoFocus placeholder="Название (аренда, рассрочка)" value={name} onChange={(e) => setName(e.target.value)} />
+        {isNew && !name && (
+          <div className="flex flex-wrap gap-1.5">
+            {PRESETS.map((p) => (
+              <button key={p.name} type="button" className="rounded-full bg-secondary px-3 py-1 text-xs text-secondary-foreground"
+                onClick={() => { setName(p.name); setCategory(p.category); setOnce(p.once); }}>{p.name}</button>
+            ))}
+          </div>
+        )}
         <Input inputMode="decimal" placeholder="Сумма, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-sm">
           {[false, true].map((v) => (
