@@ -156,13 +156,18 @@ function Chat({ s }: { s: State }) {
   return (
     <div className="space-y-4">
       <details className="rounded-2xl bg-card p-4 text-sm">
-        <summary className="cursor-pointer text-muted-foreground">О себе — чтобы советы подходили именно вам</summary>
+        <summary className="cursor-pointer text-muted-foreground">Мои правила для Помощника</summary>
         <Textarea className="mt-3" rows={3} value={about} onChange={(e) => setAbout(e.target.value)}
-          placeholder="Например: скоро декрет. Кофе и такси — мой отдых, не предлагать их урезать." />
+          placeholder="Например: скоро декрет. Муж платит за квартиру. Кофе и такси — мой отдых, не предлагать их урезать." />
+        <p className="mt-1 text-xs text-muted-foreground">Помощник учитывает это в каждом ответе. Свой разговор он не запоминает — постоянное пишите сюда.</p>
         <p className="mt-3 text-muted-foreground">Кредиты и долги — чтобы спрашивать, когда лучше вернуть</p>
         <Textarea className="mt-1" rows={3} value={loans} onChange={(e) => setLoans(e.target.value)}
           placeholder="Например: кредитка Т-Банк, долг 40 000 ₽, беспроцентный период до 15 декабря, потом 30% годовых, минимальный платёж 2 000 ₽ 5-го числа. Маме должна 10 000 ₽ без срока." />
         <Button size="sm" className="mt-2" onClick={() => { setState((x) => ({ ...x, advisorAbout: about, advisorLoans: loans })); toast("Сохранено"); }}>Сохранить</Button>
+      </details>
+      <details className="rounded-2xl bg-card p-4 text-sm">
+        <summary className="cursor-pointer text-muted-foreground">Что Помощник видит сейчас</summary>
+        <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">{context(s)}</pre>
       </details>
 
       {msgs.length === 0 && (
@@ -205,7 +210,7 @@ function Chat({ s }: { s: State }) {
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(text); } }} />
         <div className="flex flex-col gap-1">
           <Button size="icon" aria-label="Отправить" disabled={busy || (!text.trim() && !img)} onClick={() => send(text)}><Send /></Button>
-          {msgs.length > 0 && <Button size="icon" variant="ghost" aria-label="Очистить разговор" onClick={() => setMsgs([])}><Trash2 /></Button>}
+          {msgs.length > 0 && <Button size="icon" variant="ghost" aria-label="Новый разговор" title="Новый разговор" onClick={() => setMsgs([])}><Trash2 /></Button>}
         </div>
       </div>
       </div>
