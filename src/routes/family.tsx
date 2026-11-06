@@ -25,8 +25,16 @@ const ago = (iso?: string) => {
 function Family() {
   const f = useFamily();
   const { join } = Route.useSearch();
-  useEffect(() => { void syncFamily(); }, []);
-  return f ? <Joined f={f} /> : <Setup initialCode={join ?? ""} />;
+  const [hashCode, setHashCode] = useState<string | null>(null);
+  useEffect(() => {
+    void syncFamily();
+    const m = window.location.hash.match(/join=([^&]+)/);
+    setHashCode(m ? decodeURIComponent(m[1]) : join ?? "");
+    // Убираем код из адресной строки и истории
+    if (m || join) window.history.replaceState(null, "", "/family");
+  }, []);
+  if (f) return <Joined f={f} />;
+  return hashCode === null ? null : <Setup initialCode={hashCode} />;
 }
 
 function Setup({ initialCode }: { initialCode: string }) {
@@ -76,7 +84,7 @@ function Joined({ f }: { f: FamilyLocal }) {
   const members = f.members ?? [];
   const t = familyTotals(members);
   const offline = typeof navigator !== "undefined" && !navigator.onLine;
-  const link = typeof window !== "undefined" ? `${window.location.origin}/family?join=${encodeURIComponent(f.code)}` : "";
+  const link = typeof window !== "undefined" ? `${window.location.origin}/family#join=${encodeURIComponent(f.code)}` : "";
   const [showCode, setShowCode] = useState(members.length < 2);
   const act = async (k: "leave" | "rotate" | "delete") => {
     const { api } = await import("@/lib/family-api");
