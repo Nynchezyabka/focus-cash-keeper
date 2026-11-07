@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 export type Group = "must" | "safe" | "life";
-export type TxKind = "expense" | "income" | "adjust" | "cushion" | "savings";
+export type TxKind = "expense" | "income" | "adjust" | "cushion" | "savings" | "goal";
 
 export interface Tx {
   id: string;
@@ -15,10 +15,13 @@ export interface Tx {
   method?: Method; // where the money moved; default card
   orig?: { amount: number; currency: string; rate: number }; // spent in another currency; amount is in rubles
   family?: boolean; // transfer inside the family: moves money, not counted in family totals
+  goal?: string; // savings goal this money belongs to (kind "goal" = move inside savings, nothing else changes)
 }
+/** a savings goal is only a label on part of the savings: no separate account */
+export interface Goal { id: string; name: string; target: number; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean; settled?: "spent" | "kept" }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
-export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string }
+export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; mode?: "auto" | "always" }
 
@@ -38,6 +41,9 @@ export interface State {
   ai: AiSettings;
   categories?: Category[];
   advisorAbout?: string;
+  goals?: Goal[];
+  advisorNoFamily?: boolean; // do not send family numbers to the AI
+  lastBackup?: string; // ISO of the last export
   advisorLoans?: string;
   createdAt: string;
 }
@@ -181,7 +187,7 @@ export function isPaid(s: State, o: Obligation, due: Date) {
 /** part of a payment or debt paid now; the rest stays reserved */
 export function payPart(o: Obligation, amount: number, method: Method = o.method ?? "card") {
   const due = obligationDue(o);
-  return addTx({ kind: "expense", amount, category: o.category, note: `${o.name} (часть)`, obligationId: o.id, period: periodOf(due), method });
+  return addTx({ kind: "expense", amount, category: o.category, note: `${o.name} (часть)`, obligationId: o.id, period: periodOf(due), method, ...(o.goal && o.category === "savings" ? { goal: o.goal } : {}) });
 }
 /** planned income came early / was entered by hand: mark this month's occurrence handled */
 export function markIncomeArrived(s: State, inc: Income) {
@@ -194,7 +200,7 @@ export function toggleIncomeSkip(id: string, period: string) {
 }
 export function payObligation(o: Obligation, method: Method = o.method ?? "card") {
   const due = obligationDue(o);
-  const t = addTx({ kind: "expense", amount: o.amount, category: o.category, note: o.name, obligationId: o.id, period: periodOf(due), method });
+  const t = addTx({ kind: "expense", amount: o.amount, category: o.category, note: o.name, obligationId: o.id, period: periodOf(due), method, ...(o.goal && o.category === "savings" ? { goal: o.goal } : {}) });
   if (o.nextOn) setState((s) => ({ ...s, obligations: s.obligations.map((x) => (x.id === o.id ? { ...x, nextOn: undefined } : x)) }));
   return t;
 }
@@ -265,7 +271,7 @@ export function addTx(t: Omit<Tx, "id" | "date"> & { date?: string }) {
   return tx;
 }
 function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
-  if (t.kind === "savings") return {};
+  if (t.kind === "savings" || t.kind === "goal") return {};
   const d = delta(t) * sign;
   return t.method === "cash" ? { cash: (s.cash ?? 0) + d } : { balance: s.balance + d };
 }
@@ -380,8 +386,8 @@ export function setCushion(card: number, cash?: number) {
   return out;
 }
 /** take money out of savings at any time; optionally plan to put it back */
-export function takeFromCushion(amount: number, to: Method = "card", returnOn?: string) {
-  const t = addTx({ kind: "cushion", amount, category: "cushion", note: "Из накоплений", method: to });
+export function takeFromCushion(amount: number, to: Method = "card", returnOn?: string, goal?: string) {
+  const t = addTx({ kind: "cushion", amount, category: "cushion", note: "Из накоплений", method: to, ...(goal ? { goal } : {}) });
   let ob: Obligation | undefined;
   if (returnOn) {
     ob = { id: uid(), name: "Вернуть в накопления", amount, day: parseKey(returnOn).getDate(), category: "savings", once: returnOn, method: to, from: dayKey(new Date()) };
