@@ -29,7 +29,7 @@ function Family() {
   useEffect(() => {
     void syncFamily();
     const m = window.location.hash.match(/join=([^&]+)/);
-    setHashCode(m ? decodeURIComponent(m[1]) : join ?? "");
+    setHashCode(m ? decodeURIComponent(m[1] ?? "") : join ?? "");
     // Убираем код из адресной строки и истории
     if (m || join) window.history.replaceState(null, "", "/family");
   }, []);

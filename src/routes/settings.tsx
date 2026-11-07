@@ -109,7 +109,7 @@ function Settings({ s }: { s: State }) {
             if (!data || typeof data !== "object" || !Array.isArray(data.txs)) throw new Error();
             if (!data.txs.every((t) => t && typeof t === "object" && typeof t.amount === "number" && Number.isFinite(t.amount))) throw new Error();
             const d = data as unknown as Record<string, unknown>;
-            if (!num(d.balance) || !num(d.cash) || !arr(d.incomes) || !arr(d.obligations) || !arr(d.categories)) throw new Error();
+            if (!num(d["balance"]) || !num(d["cash"]) || !arr(d["incomes"]) || !arr(d["obligations"]) || !arr(d["categories"])) throw new Error();
             const prev = getState();
             try { localStorage.setItem("budget-backup-before-import", JSON.stringify(prev)); } catch { /* нет места — отмена всё равно есть */ }
             replaceState({ ...data, ai: prev.ai });
