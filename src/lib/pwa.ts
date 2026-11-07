@@ -1,5 +1,5 @@
 // Обновления приложения: сервис-воркер «сначала сеть», ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.23.0";
+export const APP_VERSION = "1.24.0";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -15,7 +15,13 @@ async function unregister() {
 }
 
 export function initPwa() {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  if (typeof window === "undefined") return;
+  // Просим браузер не стирать данные сам (Safari чистит неустановленные сайты)
+  navigator.storage?.persist?.().catch(() => {});
+  window.addEventListener("budget-save-failed", () => {
+    import("sonner").then(({ toast }) => toast("Не удалось сохранить: на устройстве мало места. Сделайте резервную копию в Настройках."));
+  });
+  if (!("serviceWorker" in navigator)) return;
   if (refused()) { unregister().catch(() => {}); return; }
   navigator.serviceWorker.register("/sw.js").then((reg) => {
     const check = () => reg.update().catch(() => {});
