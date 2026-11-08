@@ -1,3 +1,4 @@
+import { activeGoals } from "@/lib/goals";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2 } from "lucide-react";
@@ -8,7 +9,7 @@ import { CategoryPicker, DateDialog, MethodBadge, MethodToggle } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unpay, restoreTx, borrow, removeTx, moveObligation, obligationDue, payObligation, rub, setState, syncLoanMoney, updateTx, uid, type Method, type Obligation, type State } from "@/lib/budget";
+import { getState, calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unpay, restoreTx, borrow, removeTx, moveObligation, obligationDue, payObligation, rub, setState, syncLoanMoney, updateTx, uid, type Method, type Obligation, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("План платежей — Бережный бюджет", "Регулярные и разовые платежи, долги к возврату. Эти деньги откладываются заранее."),
@@ -106,6 +107,8 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
   const [date, setDate] = useState(o.once ?? "");
   const [category, setCategory] = useState(o.category);
   const [method, setMethod] = useState<Method>(o.method ?? "card");
+  const [goal, setGoal] = useState(o.goal ?? "");
+  const goals = activeGoals(getState());
   const a = Number(amount.replace(/\s/g, "").replace(",", ".")), d = Number(day);
   const valid = name.trim() && a > 0 && (once ? !!date : d >= 1 && d <= 31);
   return (
@@ -132,6 +135,12 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
           : <Input inputMode="numeric" placeholder="Какого числа (1–31)" value={day} onChange={(e) => setDay(e.target.value.replace(/\D/g, "").slice(0, 2))} />}
         <MethodToggle value={method} onChange={setMethod} />
         <CategoryPicker value={category} onPick={setCategory} groups={["must", "safe", "life"]} />
+        {category === "savings" && goals.length > 0 && (
+          <select value={goal} onChange={(e) => setGoal(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+            <option value="">Без цели</option>
+            {goals.map((g) => <option key={g.id} value={g.id}>На цель «{g.name}»</option>)}
+          </select>
+        )}
         {!isNew && (onMove || onPart) && (
           <div className="grid grid-cols-2 gap-2">
             {onMove && <Button variant="outline" onClick={onMove}><CalendarClock /> Перенести</Button>}
@@ -150,6 +159,7 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
             const item: Obligation = {
               id: o.id || uid(), name: name.trim(), amount: a, category, method, from: o.from ?? new Date().toISOString().slice(0, 10),
               day: once ? Number(date.slice(8, 10)) : d, ...(once ? { once: date } : {}), ...(!once && o.nextOn ? { nextOn: o.nextOn } : {}), ...(o.loanTx ? { loanTx: o.loanTx } : {}),
+              ...(category === "savings" && goal ? { goal } : {}),
             };
             setState((x) => ({ ...x, obligations: isNew ? [...x.obligations, item] : x.obligations.map((y) => (y.id === o.id ? item : y)) }));
             if (!isNew) {

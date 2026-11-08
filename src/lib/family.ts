@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { calc, cat, dayKey, getState, subscribe, type State } from "@/lib/budget";
+import { calc, cat, dayKey, getState, setState, subscribe, type State } from "@/lib/budget";
+import { mergeGoals, setRemoteGoals, sharedGoals, type SharedGoal } from "@/lib/goals";
 
 /** What leaves the phone. Built from a whitelist: no AI key, assistant chat or «О себе». */
 export interface Snapshot {
@@ -84,10 +85,15 @@ export async function syncFamily() {
     const s = getState();
     if (f.dirty || !f.lastPush) {
       await api.push(f.memberId, f.token, f.name, f.shareTxs, snapshotOf(s), f.shareTxs ? sharedTxs(s) : null);
+      await api.pushGoals(f.memberId, f.token, sharedGoals(s)).catch(() => {}); // older database: goals simply not shared
       patchFamily({ dirty: false, lastPush: new Date().toISOString() });
     }
     const members = await api.pull(f.memberId, f.token);
-    patchFamily({ members: members as Member[], lastPull: new Date().toISOString() });
+    const list = (members as (Member & { goals?: SharedGoal[] | null })[]).map(({ goals, ...m }) => ({ m, goals: goals ?? [] }));
+    setRemoteGoals(list.map(({ m, goals }) => ({ name: m.name, me: m.me, goals })));
+    const merged = mergeGoals(getState(), list.filter((x) => !x.m.me).map((x) => x.goals));
+    if (merged) setState((x) => ({ ...x, goals: merged }));
+    patchFamily({ members: list.map((x) => x.m), lastPull: new Date().toISOString() });
   } catch (e) {
     if (String(e).includes("not-member")) patchFamily({ members: [] });
   } finally { busy = false; }

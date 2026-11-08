@@ -11,6 +11,8 @@ import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MIN_DAILY, getState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
+import { Switch } from "@/components/ui/switch";
+import { getFamily } from "@/lib/family";
 
 export const Route = createFileRoute("/settings")({
   head: () => meta("Настройки — Бережный бюджет", "Резервная копия в JSON, свой ключ ИИ для разбора трат. Данные хранятся только на устройстве."),
@@ -57,7 +59,13 @@ function Settings({ s }: { s: State }) {
             </div>
           );
         })()}
-        <p className="text-xs text-muted-foreground">Ключ хранится только в этом браузере и уходит напрямую в сервис ИИ.</p>
+        <p className="text-xs text-muted-foreground">Ключ хранится только в этом браузере и уходит напрямую в сервис ИИ. Совет: в кабинете сервиса поставьте месячный лимит трат (например, 2–5 $) — тогда даже при утечке ключа много не потратят.</p>
+        {getFamily() && (
+          <label className="flex items-center justify-between gap-2 text-sm">
+            <span>Не показывать Помощнику цифры семьи</span>
+            <Switch checked={!!s.advisorNoFamily} onCheckedChange={(v) => setState((x) => ({ ...x, advisorNoFamily: v }))} />
+          </label>
+        )}
         {detectService(s.ai.apiKey) && (
           <div className="space-y-2">
             <p className="text-sm">Когда звать ИИ</p>
@@ -91,8 +99,10 @@ function Settings({ s }: { s: State }) {
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Резервная копия</h2>
         <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Всё хранится только на этом устройстве. Ключ ИИ в копию не попадает.</p>
+        <p className="text-xs text-muted-foreground">{s.lastBackup ? `Последняя копия: ${new Date(s.lastBackup).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}.` : "Копию ещё не делали."} Раз в месяц приложение напомнит.</p>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" onClick={() => {
+            setState((x) => ({ ...x, lastBackup: new Date().toISOString() }));
             const data = { ...getState(), ai: { ...getState().ai, apiKey: "" } };
             const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
             const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${new Date().toISOString().slice(0, 10)}.json`;

@@ -30,6 +30,7 @@ function Incomes({ s }: { s: State }) {
 
   return (
     <div className="space-y-5">
+      <Button className="h-12 w-full rounded-2xl" onClick={() => setDraft(empty)}><Plus /> Добавить выплату в план</Button>
       <p className="text-sm text-muted-foreground">
         Это план: какого числа обычно приходят деньги. По нему приложение понимает, на сколько дней делить остаток. Когда деньги пришли — нажмите «Пришли» у выплаты. Подработку, подарок и другие нерегулярные деньги вносите кнопкой «Доход» на главном.
       </p>
@@ -80,7 +81,6 @@ function Incomes({ s }: { s: State }) {
       )}
       {list.length === 0 && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">Добавьте каждую выплату отдельно: например, «Аванс» 10-го на карту, «Аванс наличными» 10-го, «Зарплата» 25-го.</p>}
 
-      <Button className="h-12 w-full rounded-2xl" onClick={() => setDraft(empty)}><Plus /> Добавить выплату в план</Button>
 
       <DateDialog open={!!moving} title={`Когда придёт «${moving?.name ?? ""}»?`} initial={moving ? dayKey(incomeUpcoming(s, moving) ?? new Date()) : ""} onClose={() => setMoving(null)} onSave={(d) => moving && moveIncome(moving.id, d)} />
       <IncomeEditor draft={draft} onClose={() => setDraft(null)} />

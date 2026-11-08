@@ -26,6 +26,7 @@ export const api = {
   create: (name: string, snapshot: Snap) => rpc<{ code: string; memberId: string; token: string }>("family_create", { p_name: name, p_snapshot: snapshot }),
   join: (code: string, name: string, snapshot: Snap) => rpc<{ code: string; memberId: string; token: string } | { error: "bad-code" | "full" }>("family_join", { p_code: code, p_name: name, p_snapshot: snapshot }),
   push: (m: string, t: string, name: string, share: boolean, snapshot: Snap, txs: unknown) => rpc<void>("family_push", { p_member: m, p_token: t, p_name: name, p_share: share, p_snapshot: snapshot, p_txs: txs }),
+  pushGoals: (m: string, t: string, goals: unknown) => rpc<void>("family_goals_push", { p_member: m, p_token: t, p_goals: goals }),
   pull: (m: string, t: string) => rpc<unknown[]>("family_pull", { p_member: m, p_token: t }),
   leave: (m: string, t: string) => rpc<void>("family_leave", { p_member: m, p_token: t }),
   rotate: (m: string, t: string) => rpc<string>("family_rotate", { p_member: m, p_token: t }),
