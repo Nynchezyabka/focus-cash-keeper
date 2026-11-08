@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getState, rub } from "@/lib/budget";
+import { getState, rub, useBudget } from "@/lib/budget";
+import { contributions, dropFamilyGoals, goalSaved } from "@/lib/goals";
 import { familyConfigured } from "@/lib/family-api";
 import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, type FamilyLocal } from "@/lib/family";
 
@@ -92,6 +93,7 @@ function Joined({ f }: { f: FamilyLocal }) {
       if (k === "rotate") { const code = await api.rotate(f.memberId, f.token); patchFamily({ code }); toast("Новый код готов, старый больше не работает"); return; }
       if (k === "leave") await api.leave(f.memberId, f.token); else await api.remove(f.memberId, f.token);
       setFamily(null);
+      dropFamilyGoals();
       toast(k === "leave" ? "Вы вышли из семьи. Ваш бюджет остался на телефоне" : "Семья и облачные данные удалены");
     } catch { toast("Нет связи. Попробуйте, когда появится интернет"); }
   };
@@ -113,6 +115,7 @@ function Joined({ f }: { f: FamilyLocal }) {
         <Row label="Траты за месяц" value={t.monthSpent} hint="без переводов внутри семьи" />
         <Row label="Доходы за месяц" value={t.monthIncome} />
       </section>
+      <SharedGoals myName={f.name} />
       <section className="space-y-2">
         {members.map((m) => (
           <div key={m.id} className="rounded-2xl bg-card p-4 shadow-soft">
@@ -174,5 +177,27 @@ function CloudCheck() {
       }}><Wifi /> Проверить связь с облаком</Button>
       {r && <p className="text-xs text-muted-foreground">{r}</p>}
     </div>
+  );
+}
+
+function SharedGoals({ myName }: { myName: string }) {
+  const s = useBudget();
+  const list = (s?.goals ?? []).filter((g) => g.family && !g.deleted);
+  if (!s || !list.length) return null;
+  return (
+    <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
+      <h2 className="font-display text-lg">Общие цели</h2>
+      {list.map((g) => {
+        const parts = contributions(g.id, goalSaved(s, g.id), myName);
+        const total = parts.reduce((a, p) => a + p.saved, 0);
+        return (
+          <div key={g.id} className="border-t border-border pt-2 first:border-0 first:pt-0">
+            <p className="flex justify-between text-sm"><span>{g.name}{g.done ? " · куплено" : ""}</span><span className="tabular-nums">{rub(total)} из {rub(g.target)}</span></p>
+            <p className="text-xs text-muted-foreground">{parts.map((p) => `${p.name}${p.me ? " (вы)" : ""}: ${rub(p.saved)}`).join(" · ")}{g.date ? ` · к ${new Date(g.date).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}` : ""}</p>
+          </div>
+        );
+      })}
+      <p className="text-xs text-muted-foreground">Цели и вклад каждого. Остальные накопления друг друга не видны.</p>
+    </section>
   );
 }
