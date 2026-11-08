@@ -1,5 +1,5 @@
 // Обновления приложения: сервис-воркер «сначала сеть», ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.24.0";
+export const APP_VERSION = "1.25.0";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -21,6 +21,7 @@ export function initPwa() {
   window.addEventListener("budget-save-failed", () => {
     import("sonner").then(({ toast }) => toast("Не удалось сохранить: на устройстве мало места. Сделайте резервную копию в Настройках."));
   });
+  remindBackup();
   if (!("serviceWorker" in navigator)) return;
   if (refused()) { unregister().catch(() => {}); return; }
   navigator.serviceWorker.register("/sw.js").then((reg) => {
@@ -56,4 +57,16 @@ export async function hardReload() {
     const u = new URL(window.location.href); u.searchParams.set("v", String(Date.now()));
     window.location.replace(u.toString());
   }
+}
+
+/** раз в месяц мягко напоминаем сделать копию (не чаще раза в неделю) */
+function remindBackup() {
+  import("@/lib/budget").then(({ getState }) => {
+    const s = getState(), day = 86400000, now = Date.now();
+    const last = +new Date(s.lastBackup ?? s.createdAt);
+    const shown = Number(localStorage.getItem("berezhny-backup-hint") ?? 0);
+    if (now - last < 30 * day || now - shown < 7 * day || !s.txs.length) return;
+    localStorage.setItem("berezhny-backup-hint", String(now));
+    import("sonner").then(({ toast }) => toast("Давно не было резервной копии. Её можно сделать в Настройках — одна кнопка «Экспорт».", { duration: 8000 }));
+  }).catch(() => {});
 }
