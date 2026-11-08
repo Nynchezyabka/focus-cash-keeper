@@ -35,6 +35,7 @@ export type Database = {
       family_members: {
         Row: {
           family_id: string
+          goals: Json | null
           id: string
           name: string
           share_txs: boolean
@@ -45,6 +46,7 @@ export type Database = {
         }
         Insert: {
           family_id: string
+          goals?: Json | null
           id?: string
           name?: string
           share_txs?: boolean
@@ -55,6 +57,7 @@ export type Database = {
         }
         Update: {
           family_id?: string
+          goals?: Json | null
           id?: string
           name?: string
           share_txs?: boolean
@@ -149,6 +152,10 @@ export type Database = {
       }
       family_delete: {
         Args: { p_member: string; p_token: string }
+        Returns: undefined
+      }
+      family_goals_push: {
+        Args: { p_goals: Json; p_member: string; p_token: string }
         Returns: undefined
       }
       family_join: {
