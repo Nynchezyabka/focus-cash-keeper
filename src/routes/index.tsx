@@ -1,3 +1,5 @@
+import { GoalsSection } from "@/components/Goals";
+import { activeGoals, goalSaved, unassigned } from "@/lib/goals";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -918,6 +920,7 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
   const [to, setTo] = useState<Method>("card");
   const [back, setBack] = useState(false);
   const [date, setDate] = useState("");
+  const [takeGoal, setTakeGoal] = useState("");
   const num = (v: string) => Number(v.replace(/\s/g, "").replace(",", "."));
   const close = () => {
     setCard("");
@@ -936,6 +939,7 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
         <p className="text-sm text-muted-foreground">
           Сейчас {rub(s.cushion)}: на карте {rub(cardNow)}, наличными {rub(cashNow)}. В «Сегодня свободно» не входят.
         </p>
+        <GoalsSection s={s} />
         <div className="space-y-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
           <p className="font-medium">Просто указать сумму</p>
           <p className="text-xs">Сколько накоплено на самом деле. Остаток на карте и наличные не меняются.</p>
@@ -972,6 +976,12 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
           </p>
           <Input inputMode="decimal" placeholder="Сколько, ₽" value={take} onChange={(e) => setTake(e.target.value)} />
           <MethodToggle value={to} onChange={setTo} />
+          {activeGoals(s).length > 0 && (
+            <select value={takeGoal} onChange={(e) => setTakeGoal(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+              <option value="">Без цели ({rub(unassigned(s))})</option>
+              {activeGoals(s).map((g) => <option key={g.id} value={g.id}>Из цели «{g.name}» ({rub(goalSaved(s, g.id))})</option>)}
+            </select>
+          )}
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={back} onChange={(e) => setBack(e.target.checked)} /> Хочу вернуть до даты
             (появится в Плане платежей)
@@ -983,7 +993,7 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
             disabled={!(num(take) > 0) || (back && !date)}
             onClick={() => {
               const a = Math.min(num(take), s.cushion > 0 ? s.cushion : num(take));
-              const { t, ob } = takeFromCushion(a, to, back ? date : undefined);
+              const { t, ob } = takeFromCushion(a, to, back ? date : undefined, takeGoal || undefined);
               undoable(`Из накоплений: ${rub(a)}`, () => {
                 removeTx(t.id);
                 if (ob) setState((x) => ({ ...x, obligations: x.obligations.filter((o) => o.id !== ob.id) }));
@@ -995,8 +1005,7 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          <b>Отложил(а) с карты</b> — запишите трату в категории «Накопления» и выберите карту или наличные: деньги
-          перейдут в накопления.
+          <b>Отложили с карты</b> — запишите трату в категории «Накопления» или нажмите «Отложить» у цели.
         </p>
       </DialogContent>
     </Dialog>
