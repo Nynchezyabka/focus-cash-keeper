@@ -1,3 +1,4 @@
+import { activeGoals, familyCollected, goalSaved, unassigned } from "@/lib/goals";
 import { GUIDE_TEXT } from "@/lib/guide";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -89,10 +90,15 @@ function context(s: State) {
       .join("; ") || "нет";
   const f = getFamily();
   let fam = "семейный доступ не подключён";
-  if (f?.members?.length) {
+  if (f?.members?.length && s.advisorNoFamily) fam = "пользователь попросил не передавать цифры семьи";
+  else if (f?.members?.length) {
     const ft = familyTotals(f.members);
     fam = `участников ${f.members.length}; свободно сегодня вместе ${rub(ft.today)}; на картах и наличными вместе ${rub(ft.total)}; отложено на платежи вместе ${rub(ft.reserve)}; накопления вместе ${rub(ft.cushion)}; до ближайшего дохода через ${ft.nearestDays} дн. вместе можно ${rub(ft.untilIncome)}. Бюджеты раздельные: деньги партнёра — не твои, предлагай их только как тему для разговора, не как источник.`;
   }
+  const goalsText = activeGoals(s).map((g) => {
+    const mine = goalSaved(s, g.id);
+    return `«${g.name}» нужно ${rub(g.target)}${g.date ? ` к ${g.date}` : ""}, ${g.family && !s.advisorNoFamily ? `мой вклад ${rub(mine)}, всего собрано вместе ${rub(familyCollected(g.id, mine))} (семейная)` : `собрано ${rub(mine)}`}`;
+  }).join("; ") + `; без цели ${rub(unassigned(s))}`;
   return `ФАКТЫ БЮДЖЕТА (единственный источник цифр):
 Сегодня ${d(new Date())}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
 Накопления (в «всего» НЕ входят): ${rub(s.cushion)}, из них наличными ${rub(s.cushionCash ?? 0)}.
@@ -106,6 +112,7 @@ function context(s: State) {
 Траты за 30 дней: ${spent}.
 Операции в валюте и семейные переводы за 30 дней: ${recent}.
 Семья: ${fam}
+Цели накоплений (часть накоплений, не отдельные деньги): ${goalsText}.
 О пользователе и мои правила: ${s.advisorAbout?.trim() || "не указано"}.
 Кредиты и долги (условия со слов пользователя): ${s.advisorLoans?.trim() || "не указаны"}.
 Минимум на жизнь: ${rub(c.minDaily)} в день.
