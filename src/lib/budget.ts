@@ -18,7 +18,7 @@ export interface Tx {
   goal?: string; // savings goal this money belongs to (kind "goal" = move inside savings, nothing else changes)
 }
 /** a savings goal is only a label on part of the savings: no separate account */
-export interface Goal { id: string; name: string; target: number; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean; settled?: "spent" | "kept" }
+export interface Goal { id: string; name: string; target: number; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean | undefined; settled?: "spent" | "kept" }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }

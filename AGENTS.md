@@ -20,3 +20,5 @@
 - Offline/updates: hand-written cache-first-with-background-refresh `public/sw.js` registered by `src/lib/pwa.ts`, disabled in editor previews — opens instantly on weak networks, update check (`?_v=`) bypasses cache.
 - AI economy mode: local keyword parse first, AI only for unknown words; saved items teach keywords via `learnKeys` — saves the user's AI requests.
 - App version lives in APP_VERSION (src/lib/pwa.ts); bump it and prepend a CHANGELOG entry (src/lib/whatsnew.ts) with every user-visible change — drives the «Что нового» popup after updates.
+- Savings goals (src/lib/goals.ts) are labels on part of `cushion`: a goal's money is derived from txs tagged `goal` (kind "goal" = move inside savings), never stored — undo and export work as for any tx.
+- Family goals sync via the separate RPC `family_goals_push` (supabase/family-goals.sql) and only my own contribution leaves the phone; a missing RPC on an old database is ignored.
