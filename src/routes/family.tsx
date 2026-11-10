@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Copy, LogOut, RefreshCw, Trash2, Users, Wifi } from "lucide-react";
+import { Copy, UserMinus, LogOut, RefreshCw, Trash2, Users, Wifi } from "lucide-react";
 import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { getState, rub, useBudget } from "@/lib/budget";
 import { contributions, dropFamilyGoals, goalSaved } from "@/lib/goals";
 import { familyConfigured } from "@/lib/family-api";
-import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, type FamilyLocal } from "@/lib/family";
+import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, REMOVED, type FamilyLocal } from "@/lib/family";
 
 export const Route = createFileRoute("/family")({
   validateSearch: (s: Record<string, unknown>) => ({ join: typeof s["join"] === "string" ? (s["join"] as string) : undefined }),
@@ -34,8 +34,21 @@ function Family() {
     // Убираем код из адресной строки и истории
     if (m || join) window.history.replaceState(null, "", "/family");
   }, []);
+  const [removed, setRemoved] = useState(false);
+  useEffect(() => { setRemoved(!f && localStorage.getItem(REMOVED) === "1"); if (f) localStorage.removeItem(REMOVED); }, [f]);
   if (f) return <Joined f={f} />;
-  return hashCode === null ? null : <Setup initialCode={hashCode} />;
+  if (hashCode === null) return null;
+  return (
+    <>
+      {removed && (
+        <div className="mb-4 flex items-start justify-between gap-2 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
+          <span>Вас убрали из семьи. Ваш бюджет остался на телефоне, вклады в семейные цели вернулись в накопления «Без цели».</span>
+          <button className="text-xs underline" onClick={() => { localStorage.removeItem(REMOVED); setRemoved(false); }}>Понятно</button>
+        </div>
+      )}
+      <Setup initialCode={hashCode} />
+    </>
+  );
 }
 
 function Setup({ initialCode }: { initialCode: string }) {
@@ -119,7 +132,13 @@ function Joined({ f }: { f: FamilyLocal }) {
       <section className="space-y-2">
         {members.map((m) => (
           <div key={m.id} className="rounded-2xl bg-card p-4 shadow-soft">
-            <p className="flex justify-between text-sm"><span>{m.name || "Без имени"}{m.me ? " (вы)" : ""}</span><span className="text-xs text-muted-foreground">{ago(m.updatedAt)}</span></p>
+            <p className="flex justify-between text-sm"><span>{m.name || "Без имени"}{m.me ? " (вы)" : ""}</span><span className="flex items-center gap-2 text-xs text-muted-foreground">{ago(m.updatedAt)}{!m.me && (
+              <button aria-label="Убрать из семьи" className="p-1 hover:text-foreground" onClick={async () => {
+                if (!confirm(`Убрать ${m.name || "участника"} из семьи? Его бюджет останется у него на телефоне.`)) return;
+                try { const { api } = await import("@/lib/family-api"); await api.kick(f.memberId, f.token, m.id); toast("Участник убран из семьи"); void syncFamily(); }
+                catch { toast("Не получилось. Проверьте интернет"); }
+              }}><UserMinus className="h-3.5 w-3.5" /></button>
+            )}</span></p>
             {m.snapshot ? <p className="mt-1 text-xs text-muted-foreground">Сегодня {rub(m.snapshot.freeToday)} · на счетах {rub(m.snapshot.total)} · платежи {rub(m.snapshot.reserve)} · накопления {rub(m.snapshot.cushion)}</p> : <p className="mt-1 text-xs text-muted-foreground">Данных пока нет</p>}
             {!m.me && m.txs && m.txs.length > 0 && (
               <ul className="mt-2 space-y-1 border-t border-border pt-2 text-xs">

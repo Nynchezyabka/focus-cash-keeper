@@ -69,7 +69,8 @@ export function buyGoal(id: string, price: number, method: Method, spendOwn = tr
   const extra = Math.max(0, price - (g.family ? collected : mine));
   const txs: Tx[] = [];
   if (fromSavings > 0) txs.push(addTx({ kind: "savings", amount: -fromSavings, category: "savings", note: `Куплено: ${g.name}`, method: "card", goal: id }));
-  if (extra > 0) txs.push(addTx({ kind: "adjust", amount: -extra, category: "adjust", note: `Куплено: ${g.name} (доплата)`, method, goal: id }));
+  // the missing part is a normal purchase: it shows in month spending and analytics (but not in «today», it was planned)
+  if (extra > 0) txs.push(addTx({ kind: "expense", amount: extra, category: "shop", note: `${g.name} (доплата)`, method, goal: id }));
   patch(id, { done: { at: dayKey(new Date()), price, ...(by ? { by } : {}) }, ...(g.family ? { settled: spendOwn ? "spent" : "kept" } : {}) });
   return () => { txs.forEach((t) => removeTx(t.id)); setState((x) => ({ ...x, goals: (x.goals ?? []).map((y) => (y.id === id ? g : y)) })); };
 }
@@ -83,6 +84,15 @@ export function settleGoal(id: string, spend: boolean) {
   setState((x) => ({ ...x, goals: (x.goals ?? []).map((y) => (y.id === id ? { ...y, settled: spend ? "spent" : "kept" } : y)) }));
   return () => { if (t) removeTx(t.id); setState((x) => ({ ...x, goals: (x.goals ?? []).map((y) => (y.id === id ? g : y)) })); };
 }
+
+/** savings were set lower than the goals hold: take the difference out of the chosen goals */
+export function cutGoals(cuts: Record<string, number>): Tx[] {
+  const s = getState();
+  return Object.entries(cuts).filter(([, a]) => a > 0).map(([id, a]) =>
+    addTx({ kind: "goal", amount: -Math.min(a, goalSaved(s, id)), category: "savings", note: `Убрано с цели «${s.goals?.find((g) => g.id === id)?.name ?? ""}»`, goal: id }));
+}
+/** how much the goals hold above a new savings total */
+export const overGoals = (s: State, total: number) => Math.max(0, s.cushion - unassigned(s) - total);
 
 // ---------- family goals ----------
 /** what leaves the phone about family goals: the goal itself and only my own contribution */

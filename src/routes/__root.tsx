@@ -78,6 +78,22 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
+// Only the app itself, the database, CBR rates and the chosen AI service. No foreign scripts or external images.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co https://www.cbr-xml-daily.ru https://api.openai.com https://openrouter.ai https://api.anthropic.com https://generativelanguage.googleapis.com https://api.groq.com https://api.x.ai https://api.deepseek.com",
+  "media-src 'self' blob:",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -86,6 +102,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Бережный бюджет" },
       { name: "description", content: "Спокойный личный бюджет без таблиц и чувства вины." },
       { name: "theme-color", content: "#f4efe6" },
+      ...(import.meta.env.PROD ? [{ httpEquiv: "Content-Security-Policy", content: CSP }] : []),
     ],
     links: [
       {
@@ -95,9 +112,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/icon-512.png" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Onest:wght@400;500&family=Unbounded:wght@400;500&display=swap" },
     ],
   }),
   shellComponent: RootShell,
