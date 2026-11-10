@@ -1,6 +1,10 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@fontsource/onest/400.css";
+@import "@fontsource/onest/500.css";
+@import "@fontsource/unbounded/400.css";
+@import "@fontsource/unbounded/500.css";
 
 @custom-variant dark (&:is(.dark *));
 
