@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { calc, cat, dayKey, getState, setState, subscribe, type State } from "@/lib/budget";
-import { mergeGoals, setRemoteGoals, sharedGoals, type SharedGoal } from "@/lib/goals";
+import { dropFamilyGoals, mergeGoals, setRemoteGoals, sharedGoals, type SharedGoal } from "@/lib/goals";
 
 /** What leaves the phone. Built from a whitelist: no AI key, assistant chat or «О себе». */
 export interface Snapshot {
@@ -58,6 +58,7 @@ export function familyTotals(members: (Pick<Member, "snapshot">)[], now = new Da
 // ---------- local family settings + sync ----------
 export interface FamilyLocal { memberId: string; token: string; code: string; name: string; shareTxs: boolean; dirty: boolean; lastPush?: string; lastPull?: string; members?: Member[] }
 const KEY = "berezhny-family";
+export const REMOVED = "berezhny-family-removed";
 let cur: FamilyLocal | null | undefined;
 const ls = new Set<() => void>();
 export function getFamily(): FamilyLocal | null {
@@ -95,7 +96,12 @@ export async function syncFamily() {
     if (merged) setState((x) => ({ ...x, goals: merged }));
     patchFamily({ members: list.map((x) => x.m), lastPull: new Date().toISOString() });
   } catch (e) {
-    if (String(e).includes("not-member")) patchFamily({ members: [] });
+    if (String(e).includes("not-member")) {
+      // removed from the family by another member: budget stays, family goals go back to «Без цели»
+      setFamily(null);
+      dropFamilyGoals();
+      try { localStorage.setItem(REMOVED, "1"); } catch { /* ignore */ }
+    }
   } finally { busy = false; }
 }
 

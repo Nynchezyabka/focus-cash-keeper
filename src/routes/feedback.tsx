@@ -41,7 +41,7 @@ function SendForm() {
           <button key={k} onClick={() => setKind(k)} className={`rounded-lg py-2 ${kind === k ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{KIND_LABEL[k]}</button>
         ))}
       </div>
-      <Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="Что было бы удобнее?" />
+      <Textarea rows={4} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Что было бы удобнее?" />
       <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Ваше имя (необязательно)" />
       <Button className="w-full" disabled={busy || !text.trim()} onClick={async () => {
         setBusy(true);
@@ -50,7 +50,7 @@ function SendForm() {
           await feedbackApi.send(kind, text.trim(), author.trim(), APP_VERSION);
           setText("");
           toast.success("Спасибо! Отправлено");
-        } catch { toast.error("Не отправилось. Проверьте интернет и попробуйте ещё раз"); }
+        } catch (e) { toast.error(String(e).includes("too-many") ? "Сейчас пришло много отзывов. Попробуйте чуть позже" : String(e).includes("too-long") ? "Слишком длинно — до 2000 знаков" : "Не отправилось. Проверьте интернет и попробуйте ещё раз"); }
         setBusy(false);
       }}>Отправить</Button>
     </section>
@@ -64,10 +64,14 @@ function OwnerLogin({ onOk }: { onOk: (k: string) => void }) {
   return (
     <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
       <h2 className="font-display text-lg">Вход для автора</h2>
-      <p className="text-xs text-muted-foreground">Первый введённый ключ становится вашим. Придумайте от 8 символов и сохраните — без него отзывы не открыть.</p>
+      <p className="text-xs text-muted-foreground">Ключ автора задаётся один раз в базе (см. README). После 5 неверных попыток вход закрывается на 15 минут.</p>
       <Input type="password" value={k} onChange={(e) => setK(e.target.value)} placeholder="Ключ автора" />
       <Button className="w-full" disabled={k.length < 8} onClick={async () => {
-        try { (await feedbackApi.claim(k)) ? onOk(k) : toast.error("Ключ не подходит"); }
+        try {
+          const r = await feedbackApi.login(k);
+          if (r === "ok") onOk(k);
+          else toast.error(r === "locked" ? "Слишком много неверных попыток. Попробуйте через 15 минут" : r === "no-owner" ? "Ключ автора ещё не задан в базе" : "Ключ не подходит");
+        }
         catch { toast.error("База не подготовлена для отзывов или нет интернета"); }
       }}>Открыть отзывы</Button>
     </section>

@@ -29,8 +29,8 @@ export const setOwnerKey = (k: string | null) => (k ? localStorage.setItem(KEY, 
 export const feedbackApi = {
   send: (kind: FbKind, text: string, author: string, version: string) =>
     rpc<void>("feedback_send", { p_kind: kind, p_text: text, p_author: author, p_version: version }),
-  claim: (key: string) => rpc<boolean>("feedback_claim", { p_key: key }),
-  list: (key: string) => rpc<FbItem[]>("feedback_list", { p_key: key }),
+  login: (key: string) => rpc<"ok" | "bad" | "locked" | "no-owner">("feedback_login", { p_key: key }),
+  list: async (key: string) => { const r = await rpc<FbItem[] | null>("feedback_list", { p_key: key }); if (!r) throw new Error("not-owner"); return r; },
   mark: (key: string, id: string, done: boolean) => rpc<void>("feedback_mark", { p_key: key, p_id: id, p_done: done }),
   remove: (key: string, id: string) => rpc<void>("feedback_delete", { p_key: key, p_id: id }),
 };

@@ -29,6 +29,7 @@ export const api = {
   pushGoals: (m: string, t: string, goals: unknown) => rpc<void>("family_goals_push", { p_member: m, p_token: t, p_goals: goals }),
   pull: (m: string, t: string) => rpc<unknown[]>("family_pull", { p_member: m, p_token: t }),
   leave: (m: string, t: string) => rpc<void>("family_leave", { p_member: m, p_token: t }),
+  kick: (m: string, t: string, target: string) => rpc<void>("family_kick", { p_member: m, p_token: t, p_target: target }),
   rotate: (m: string, t: string) => rpc<string>("family_rotate", { p_member: m, p_token: t }),
   remove: (m: string, t: string) => rpc<void>("family_delete", { p_member: m, p_token: t }),
 };
