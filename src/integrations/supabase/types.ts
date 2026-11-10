@@ -121,6 +121,24 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_guard: {
+        Row: {
+          fails: number
+          id: number
+          locked_until: string | null
+        }
+        Insert: {
+          fails?: number
+          id: number
+          locked_until?: string | null
+        }
+        Update: {
+          fails?: number
+          id?: number
+          locked_until?: string | null
+        }
+        Relationships: []
+      }
       feedback_owner: {
         Row: {
           id: number
@@ -145,7 +163,11 @@ export type Database = {
       _fam_hash: { Args: { t: string }; Returns: string }
       _fam_me: { Args: { p_member: string; p_token: string }; Returns: string }
       _fam_norm: { Args: { t: string }; Returns: string }
-      _fb_owner: { Args: { p_key: string }; Returns: undefined }
+      _fam_size: {
+        Args: { p_name: string; p_snapshot: Json }
+        Returns: undefined
+      }
+      _fb_check: { Args: { p_key: string }; Returns: string }
       family_create: {
         Args: { p_name: string; p_snapshot: Json }
         Returns: Json
@@ -161,6 +183,10 @@ export type Database = {
       family_join: {
         Args: { p_code: string; p_name: string; p_snapshot: Json }
         Returns: Json
+      }
+      family_kick: {
+        Args: { p_member: string; p_target: string; p_token: string }
+        Returns: undefined
       }
       family_leave: {
         Args: { p_member: string; p_token: string }
@@ -192,6 +218,7 @@ export type Database = {
         Returns: undefined
       }
       feedback_list: { Args: { p_key: string }; Returns: Json }
+      feedback_login: { Args: { p_key: string }; Returns: string }
       feedback_mark: {
         Args: { p_done: boolean; p_id: string; p_key: string }
         Returns: undefined
@@ -205,6 +232,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      feedback_set_owner: { Args: { p_key: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

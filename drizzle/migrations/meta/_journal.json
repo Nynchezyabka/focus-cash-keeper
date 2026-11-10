@@ -29,6 +29,13 @@
       "when": 1794124778317,
       "tag": "0003_family_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794286067539,
+      "tag": "0004_security_hardening",
+      "breakpoints": true
     }
   ]
 }
