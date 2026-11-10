@@ -1,5 +1,5 @@
 import { GoalsSection } from "@/components/Goals";
-import { activeGoals, goalSaved, unassigned } from "@/lib/goals";
+import { activeGoals, cutGoals, goalSaved, overGoals, unassigned } from "@/lib/goals";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -921,6 +921,7 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
   const [back, setBack] = useState(false);
   const [date, setDate] = useState("");
   const [takeGoal, setTakeGoal] = useState("");
+  const [cut, setCut] = useState<Record<string, string> | null>(null);
   const num = (v: string) => Number(v.replace(/\s/g, "").replace(",", "."));
   const close = () => {
     setCard("");
@@ -928,6 +929,7 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
     setTake("");
     setBack(false);
     setDate("");
+    setCut(null);
     onClose();
   };
   return (
@@ -961,13 +963,42 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
             className="w-full"
             disabled={!card.trim() && !cash.trim()}
             onClick={() => {
-              const list = setCushion(card.trim() ? num(card) : cardNow, cash.trim() ? num(cash) : cashNow);
+              const nc = card.trim() ? num(card) : cardNow, nh = cash.trim() ? num(cash) : cashNow;
+              const over = overGoals(s, nc + nh);
+              if (over > 0 && !cut) {
+                const gs = activeGoals(s).filter((g) => goalSaved(s, g.id) > 0);
+                const held = gs.reduce((a, g) => a + goalSaved(s, g.id), 0);
+                setCut(Object.fromEntries(gs.map((g) => [g.id, String(Math.round((goalSaved(s, g.id) / held) * over))])));
+                return;
+              }
+              const cuts = cut ? Object.fromEntries(Object.entries(cut).map(([k, v]) => [k, num(v) || 0])) : {};
+              const gt = cutGoals(cuts);
+              const list = [...gt, ...setCushion(nc, nh)];
               if (list.length) undoable("Накопления обновлены", () => list.forEach((t) => removeTx(t.id)));
               close();
             }}
           >
-            Сохранить
+            {cut ? "Убрать и сохранить" : "Сохранить"}
           </Button>
+          {cut && (() => {
+            const over = overGoals(s, (card.trim() ? num(card) : cardNow) + (cash.trim() ? num(cash) : cashNow));
+            const sum = Object.values(cut).reduce((a, v) => a + (num(v) || 0), 0);
+            return (
+              <div className="space-y-2 rounded-lg bg-background p-2">
+                <p className="text-xs">На целях лежит больше, чем накоплено. Из каких целей убрать {rub(over)}?</p>
+                {Object.keys(cut).map((id) => {
+                  const g = s.goals?.find((x) => x.id === id);
+                  return (
+                    <label key={id} className="flex items-center gap-2 text-xs">
+                      <span className="flex-1 truncate">{g?.name} ({rub(goalSaved(s, id))})</span>
+                      <Input className="h-8 w-24" inputMode="decimal" value={cut[id]} onChange={(e) => setCut({ ...cut, [id]: e.target.value })} />
+                    </label>
+                  );
+                })}
+                {sum < over && <p className="text-xs text-muted-foreground">Осталось распределить {rub(over - sum)}.</p>}
+              </div>
+            );
+          })()}
         </div>
         <div className="space-y-2 rounded-xl bg-muted p-3 text-sm">
           <p className="font-medium">Взять из накоплений</p>
@@ -990,9 +1021,9 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
           <Button
             variant="secondary"
             className="w-full"
-            disabled={!(num(take) > 0) || (back && !date)}
+            disabled={!(num(take) > 0) || (back && !date) || (!!takeGoal && num(take) > goalSaved(s, takeGoal))}
             onClick={() => {
-              const a = Math.min(num(take), s.cushion > 0 ? s.cushion : num(take));
+              const a = Math.min(num(take), s.cushion > 0 ? s.cushion : num(take), takeGoal ? goalSaved(s, takeGoal) : Infinity);
               const { t, ob } = takeFromCushion(a, to, back ? date : undefined, takeGoal || undefined);
               undoable(`Из накоплений: ${rub(a)}`, () => {
                 removeTx(t.id);
