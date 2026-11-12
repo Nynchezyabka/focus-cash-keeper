@@ -18,6 +18,7 @@ import {
   CreditCard,
   Banknote,
 } from "lucide-react";
+import { TransferButton } from "@/components/Transfer";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -191,6 +192,7 @@ function Today({ s }: { s: State }) {
             }}
           />
         </div>
+        <TransferButton card={s.balance} cash={s.cash ?? 0} />
         <div className="mx-3 border-t border-border" />
         <div className="grid grid-cols-2">
           <Stat

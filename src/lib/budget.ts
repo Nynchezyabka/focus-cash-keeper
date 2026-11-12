@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 export type Group = "must" | "safe" | "life";
-export type TxKind = "expense" | "income" | "adjust" | "cushion" | "savings" | "goal";
+export type TxKind = "expense" | "income" | "adjust" | "cushion" | "savings" | "goal" | "transfer"; // transfer = card ↔ cash, total unchanged
 
 export interface Tx {
   id: string;
@@ -272,6 +272,10 @@ export function addTx(t: Omit<Tx, "id" | "date"> & { date?: string }) {
 }
 function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
   if (t.kind === "savings" || t.kind === "goal") return {};
+  if (t.kind === "transfer") {
+    const d = t.amount * sign, fromCash = t.method === "cash";
+    return { balance: s.balance + (fromCash ? d : -d), cash: (s.cash ?? 0) + (fromCash ? -d : d) };
+  }
   const d = delta(t) * sign;
   return t.method === "cash" ? { cash: (s.cash ?? 0) + d } : { balance: s.balance + d };
 }
@@ -318,6 +322,14 @@ export function updateTx(id: string, patch: Partial<Omit<Tx, "id">>) {
   if (!old) return;
   removeTx(id);
   restoreTx({ ...old, ...patch, id });
+}
+/** Move money between card and cash: total and «Сегодня свободно» stay the same. `from` = source wallet. */
+export function transfer(amount: number, from: Method) {
+  const st = getState();
+  const have = from === "cash" ? st.cash ?? 0 : st.balance;
+  const a = Math.round(amount);
+  if (!(a > 0) || a > have) return null;
+  return addTx({ kind: "transfer", amount: a, category: "adjust", note: from === "cash" ? "Наличные → на карту" : "Снятие наличных", method: from });
 }
 export function reconcile(actual: number, method: Method = "card") {
   const st = getState();

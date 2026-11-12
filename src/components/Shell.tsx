@@ -26,7 +26,7 @@ export function Shell({ title, children }: { title?: string; children: (s: State
   const nav = fam ? [...NAV.slice(0, 3), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(3)] : NAV;
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
-      <div className="flex items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="relative flex items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         {title ? (
           <div className="flex min-w-0 items-center gap-1">
             {!NAV.some((n) => n.to === path) && !PLAN_PATHS.includes(path) && path !== "/family" && (
@@ -41,7 +41,8 @@ export function Shell({ title, children }: { title?: string; children: (s: State
           </div>
         ) : <div className="flex items-center gap-1"><Link to="/help" aria-label="Справка" className="grid -ml-2 h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
               <HelpCircle className="h-5 w-5" />
-            </Link><span className="font-display text-lg text-foreground">Бережный бюджет</span></div>}
+            </Link></div>}
+        {!title && <span className="pointer-events-none absolute inset-x-0 text-center font-display text-lg text-foreground">Бережный бюджет</span>}
         <div className="flex shrink-0">
           <Link to="/settings" aria-label="Настройки" className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
             <Settings className="h-5 w-5" />

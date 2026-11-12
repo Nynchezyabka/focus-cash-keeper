@@ -1,6 +1,6 @@
 import { currency } from "@/lib/fx";
 import { useState } from "react";
-import { Trash2, Scale, ArrowDownLeft, PiggyBank } from "lucide-react";
+import { Trash2, Scale, ArrowLeftRight, ArrowDownLeft, PiggyBank } from "lucide-react";
 import { cat, catColor, rub, updateTx, type Method, type Tx } from "@/lib/budget";
 import { CatIcon } from "./Shell";
 import { deleteWithUndo } from "./Undo";
@@ -17,8 +17,8 @@ export function TxList({ txs }: { txs: Tx[] }) {
       <ul className="divide-y divide-border rounded-2xl bg-card shadow-soft">
         {txs.map((t) => {
           const c = cat(t.category);
-          const Icon = t.kind === "adjust" ? Scale : t.kind === "income" ? ArrowDownLeft : t.kind === "cushion" || t.kind === "savings" ? PiggyBank : null;
-          const sign = t.kind === "expense" ? "−" : t.amount >= 0 ? "+" : "−";
+          const Icon = t.kind === "transfer" ? ArrowLeftRight : t.kind === "adjust" ? Scale : t.kind === "income" ? ArrowDownLeft : t.kind === "cushion" || t.kind === "savings" ? PiggyBank : null;
+          const sign = t.kind === "transfer" ? "" : t.kind === "expense" ? "−" : t.amount >= 0 ? "+" : "−";
           return (
             <li key={t.id} className="flex items-center gap-3 px-4 py-3">
               <button onClick={() => setEdit(t)} aria-label="Изменить" className="flex min-w-0 flex-1 items-center gap-3 text-left">
