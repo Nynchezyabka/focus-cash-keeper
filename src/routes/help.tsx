@@ -10,9 +10,9 @@ const ICONS: [string, LucideIcon][] = [
 const iconFor = (t: string) => ICONS.find(([k]) => t.startsWith(k))?.[1];
 
 export const Route = createFileRoute("/help")({
-  head: () => meta("Как пользоваться — Бережный бюджет", "Коротко о том, как устроен Бережный бюджет и с чего начать."),
+  head: () => meta("Справка — Бережный бюджет", "Коротко о том, как устроен Бережный бюджет и с чего начать."),
   component: () => (
-    <Shell title="Как пользоваться">
+    <Shell title="Справка">
       {() => (
         <div className="space-y-4">
           {GUIDE.map((g) => (

@@ -147,10 +147,10 @@ function Today({ s }: { s: State }) {
               onClick={() => {
                 const t = coverFromCushion(c.overspend);
                 setState((x) => ({ ...x, overspendHandled: c.todayKey }));
-                addedToast(t, "Взяли из подушки");
+                addedToast(t, "Взяли из накоплений");
               }}
             >
-              Взять из подушки {s.cushion > 0 ? `(есть ${rub(s.cushion)})` : "(пока пуста)"}
+              Взять из накоплений {s.cushion > 0 ? `(есть ${rub(s.cushion)})` : "(пока пуста)"}
             </Button>
           </div>
         </div>
@@ -662,7 +662,7 @@ function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: numb
           <Button
             variant="secondary"
             className="h-auto whitespace-normal py-2"
-            onClick={() => addedToast(coverFromCushion(Math.min(gap, cushion)), "Взяли из подушки")}
+            onClick={() => addedToast(coverFromCushion(Math.min(gap, cushion)), "Взяли из накоплений")}
           >
             Взять из накоплений ({rub(Math.min(gap, cushion))})
           </Button>

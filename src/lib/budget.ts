@@ -405,7 +405,7 @@ export function unpay(o: Obligation) {
 export function coverFromCushion(amount: number) {
   const a = Math.min(amount, getState().cushion);
   if (a <= 0) return null;
-  return addTx({ kind: "cushion", amount: a, category: "cushion", note: "Из подушки" });
+  return addTx({ kind: "cushion", amount: a, category: "cushion", note: "Из накоплений" });
 }
 
 // ---------- calendar forecast ----------
