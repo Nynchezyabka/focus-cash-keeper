@@ -19,7 +19,7 @@ export function CatIcon({ name, className }: { name: string; className?: string 
   return <I className={className} />;
 }
 
-export function Shell({ title, children }: { title?: string; children: (s: State) => ReactNode }) {
+export function Shell({ title, wide, children }: { title?: string; wide?: boolean; children: (s: State) => ReactNode }) {
   const s = useBudget();
   const fam = useFamily();
   const path = useRouterState({ select: (r) => r.location.pathname });
@@ -46,7 +46,7 @@ export function Shell({ title, children }: { title?: string; children: (s: State
           <Link to="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><Settings className="h-5 w-5" />Настройки</Link>
         </div>
       </aside>
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col lg:max-w-2xl lg:px-6">
+    <div className={`mx-auto flex min-h-screen w-full max-w-md flex-col lg:px-6 ${wide ? "lg:max-w-5xl" : "lg:max-w-2xl"}`}>
       <div className="relative flex items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         {title ? (
           <div className="flex min-w-0 items-center gap-1">
@@ -63,7 +63,7 @@ export function Shell({ title, children }: { title?: string; children: (s: State
               <HelpCircle className="h-5 w-5" />
             </Link></div>}
         {title && <h1 className="pointer-events-none absolute inset-x-0 truncate px-24 text-center font-display text-xl sm:text-2xl text-foreground">{title}</h1>}
-        {!title && <span className="pointer-events-none absolute inset-x-0 text-center font-display text-lg text-foreground">Бережный бюджет</span>}
+        {!title && <span className="pointer-events-none absolute inset-x-0 text-center font-display text-lg text-foreground lg:hidden">Бережный бюджет</span>}
         <div className="flex shrink-0">
           <Link to="/settings" aria-label="Настройки" className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
             <Settings className="h-5 w-5" />

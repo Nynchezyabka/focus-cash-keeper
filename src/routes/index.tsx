@@ -65,7 +65,7 @@ export const Route = createFileRoute("/")({
       "Бережный бюджет — сколько можно потратить сегодня",
       "Спокойный бюджет без таблиц и чувства вины: одна цифра на день, сверка баланса в один клик.",
     ),
-  component: () => <Shell>{(s) => <Today s={s} />}</Shell>,
+  component: () => <Shell wide>{(s) => <Today s={s} />}</Shell>,
 });
 
 function Today({ s }: { s: State }) {
@@ -88,6 +88,7 @@ function Today({ s }: { s: State }) {
   const empty = s.txs.length === 0 && s.balance === 0;
 
   return (
+    <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
     <div className="space-y-5">
       <section className="text-center">
         <p className="text-sm text-muted-foreground">Сегодня свободно</p>
@@ -217,6 +218,8 @@ function Today({ s }: { s: State }) {
       {c.total < 0 && <BorrowCard gap={-c.total} />}
       {c.total >= 0 && c.shortfall > 0 && <ShortfallCard gap={c.shortfall} payGap={c.payGap} minDaily={c.minDaily} cushion={s.cushion} />}
 
+    </div>
+    <div className="space-y-5">
       <WeekSummary s={s} />
       {s.txs.length > 0 && (
         <section>
@@ -229,6 +232,7 @@ function Today({ s }: { s: State }) {
           <TxList txs={s.txs.slice(0, 4)} />
         </section>
       )}
+    </div>
 
       <BuyDialog open={dialog === "buy"} onClose={() => setDialog(null)} />
       <ExpenseDialog
