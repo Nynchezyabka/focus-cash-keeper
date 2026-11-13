@@ -1,5 +1,5 @@
-// Обновления приложения: сервис-воркер «сначала сеть», ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.43.0";
+// Обновления приложения: автоматическая проверка при запуске, ручная проверка и перезагрузка начисто.
+export const APP_VERSION = "1.43.1";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -24,8 +24,17 @@ export function initPwa() {
   remindBackup();
   if (!("serviceWorker" in navigator)) return;
   if (refused()) { unregister().catch(() => {}); return; }
-  navigator.serviceWorker.register("/sw.js").then((reg) => {
-    const check = () => reg.update().catch(() => {});
+  // Новый воркер взял управление — один раз перезагружаемся на свежую версию
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloaded) return;
+    reloaded = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker.register("/sw.js?v=" + APP_VERSION, { updateViaCache: "none" }).then((reg) => {
+    const check = () => { reg.update().catch(() => {}); void checkForUpdates(); };
+    check();
     setInterval(check, 30 * 60 * 1000);
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
   }).catch(() => {});
@@ -43,7 +52,15 @@ export async function checkForUpdates(): Promise<"current" | "updating" | "offli
     const html = await res.text();
     const fresh = [...html.matchAll(/assets\/[^"']+\.js/g)].map((m) => m[0]).sort().join();
     const now = [...document.querySelectorAll("script[src]")].map((s) => (s as HTMLScriptElement).src.match(/assets\/[^"']+\.js/)?.[0]).filter(Boolean).sort().join();
-    if (fresh && now && fresh !== now) { setTimeout(() => window.location.reload(), 800); return "updating"; }
+    if (fresh && now && fresh !== now) {
+      // свежая страница в кэш, чтобы перезагрузка не достала старую
+      if ("caches" in window) { const n = await caches.keys(); await Promise.allSettled(n.filter((k) => k.startsWith("bb-runtime-")).map((k) => caches.delete(k))); }
+      if (sessionStorage.getItem("bb-upd") === fresh) return "current"; // защита от петли
+      sessionStorage.setItem("bb-upd", fresh);
+      import("sonner").then(({ toast }) => toast("Загружаю новую версию…"));
+      setTimeout(() => window.location.reload(), 800);
+      return "updating";
+    }
     return "current";
   } catch { return "offline"; }
 }

@@ -22,7 +22,7 @@
 - Advisor facts have a readable presentation mode separate from the AI prompt; hide internal IDs only in the UI so action references remain intact.
 - Debt fee terms live on one-off obligations; debt-fee.ts derives non-compounding calendar-day fees from explicit tiers, daily caps, grace days and linked principal repayments without changing wallet or reserved amounts, so undo and offline use stay deterministic.
 - One `CategoryPicker` (src/components/Pickers.tsx) is used on every screen that chooses a category — the same chooser everywhere.
-- Offline/updates: hand-written cache-first-with-background-refresh `public/sw.js` registered by `src/lib/pwa.ts`, disabled in editor previews — opens instantly on weak networks, update check (`?_v=`) bypasses cache.
+- Offline/updates: hand-written `public/sw.js` (pages network-first with 2.5s timeout, hashed /assets cache-first, cache named by `?v=APP_VERSION`) registered by `src/lib/pwa.ts`, which auto-checks on launch/focus and reloads once; disabled in editor previews — new versions arrive automatically and old ones never resurface, still offline.
 - AI economy mode: local keyword parse first, AI only for unknown words; saved items teach keywords via `learnKeys` — saves the user's AI requests.
 - App version lives in APP_VERSION (src/lib/pwa.ts); bump it and prepend a CHANGELOG entry (src/lib/whatsnew.ts) with every user-visible change — drives the «Что нового» popup after updates.
 - Savings goals (src/lib/goals.ts) are labels on part of `cushion`: a goal's money is derived from txs tagged `goal` (kind "goal" = move inside savings), never stored — undo and export work as for any tx.
