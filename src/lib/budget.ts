@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { customColor } from "./colors";
 
 export type Group = "must" | "safe" | "life";
 export type TxKind = "expense" | "income" | "adjust" | "cushion" | "savings" | "goal" | "transfer"; // transfer = card ↔ cash, total unchanged
@@ -18,12 +19,12 @@ export interface Tx {
   goal?: string; // savings goal this money belongs to (kind "goal" = move inside savings, nothing else changes)
 }
 /** a savings goal is only a label on part of the savings: no separate account */
-export interface Goal { id: string; name: string; target: number; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean | undefined; settled?: "spent" | "kept" }
+export interface Goal { id: string; name: string; target: number; color?: string | undefined; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean | undefined; settled?: "spent" | "kept" }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
-export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; mode?: "auto" | "always" }
+export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; mode?: "auto" | "always" }
 
 export interface State {
   version: 1;
@@ -70,15 +71,19 @@ const FALLBACK: Category = { id: "other", name: "Другое", group: "life", i
 export const cat = (id: string) => cats().find((c) => c.id === id) ?? FALLBACK;
 /** Each group has its own family of shades; categories get a shade by their position inside the group. */
 export const GROUP_SHADES: Record<Group, string[]> = {
-  must: ["#f2b544", "#e89a3c", "#f6cc7a", "#dd8a33", "#f9dca0", "#d07a2c"],
-  safe: ["#6fa0cc", "#4f86b8", "#93bde0", "#3d6f9c", "#b3d1ea"],
-  life: ["#7fb89a", "#5e9e78", "#a2cfb5", "#4a8562", "#c1e2cf", "#3d7254"],
+  must: Array.from({ length: 6 }, (_, i) => `var(--group-must-${i})`),
+  safe: Array.from({ length: 5 }, (_, i) => `var(--group-safe-${i})`),
+  life: Array.from({ length: 6 }, (_, i) => `var(--group-life-${i})`),
 };
-export const groupColor = (g: Group) => GROUP_SHADES[g][0]!;
+export const groupColor = (g: Group) => GROUP_SHADES[g][0] ?? "var(--primary)";
 export const catColor = (c: Category) => {
+  const chosen = customColor(c.color);
+  if (chosen) return chosen;
   const shades = GROUP_SHADES[c.group];
-  const i = Math.max(0, cats().filter((x) => x.group === c.group).findIndex((x) => x.id === c.id));
-  return shades[i % shades.length]!;
+  const defaults = DEFAULT_CATEGORIES.filter((x) => x.group === c.group);
+  const index = defaults.findIndex((x) => x.id === c.id);
+  const hash = Array.from(c.id).reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  return shades[(index >= 0 ? index : hash) % shades.length] ?? "var(--primary)";
 };
 export function saveCategories(list: Category[]) { setState((s) => ({ ...s, categories: list })); }
 

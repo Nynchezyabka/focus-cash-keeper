@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { calc, cat, dayKey, getState, setState, subscribe, type State } from "@/lib/budget";
+import { calc, cats, catColor, dayKey, getState, setState, subscribe, type State } from "@/lib/budget";
+import { customColor } from "@/lib/colors";
 import { dropFamilyGoals, mergeGoals, setRemoteGoals, sharedGoals, type SharedGoal } from "@/lib/goals";
 
 /** What leaves the phone. Built from a whitelist: no AI key, assistant chat or «О себе». */
@@ -14,7 +15,7 @@ export interface Snapshot {
   monthSpent: number; // without transfers inside the family
   monthIncome: number;
 }
-export interface SharedTx { date: string; kind: string; amount: number; note: string; category: string }
+export interface SharedTx { date: string; kind: string; amount: number; note: string; category: string; color?: string }
 export interface Member { id: string; name: string; snapshot: Snapshot | null; txs: SharedTx[] | null; updatedAt: string; me: boolean }
 
 export function snapshotOf(s: State, now = new Date()): Snapshot {
@@ -30,7 +31,10 @@ export function snapshotOf(s: State, now = new Date()): Snapshot {
 }
 export function sharedTxs(s: State): SharedTx[] {
   return s.txs.filter((t) => !t.family && (t.kind === "expense" || t.kind === "income")).slice(0, 100)
-    .map((t) => ({ date: t.date, kind: t.kind, amount: t.amount, note: t.note ?? "", category: t.kind === "income" ? "Доход" : cat(t.category).name }));
+    .map((t) => {
+      const c = cats(s).find((c) => c.id === t.category);
+      return { date: t.date, kind: t.kind, amount: t.amount, note: t.note ?? "", category: t.kind === "income" ? "Доход" : c?.name ?? "Другое", ...(c && t.kind !== "income" ? { color: c.color && customColor(c.color) ? c.color : catColor(c) } : {}) };
+    });
 }
 
 const parse = (k: string) => { const [y = 2000, m = 1, d = 1] = k.split("-").map(Number); return new Date(y, m - 1, d); };

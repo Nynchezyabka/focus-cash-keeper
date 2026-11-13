@@ -5,6 +5,7 @@ import { CatIcon, Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ColorPicker } from "@/components/ColorPicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { catColor, cats, DEFAULT_CATEGORIES, GROUP_SHADES, GROUPS, saveCategories, uid, type Category, type Group, type State } from "@/lib/budget";
 
@@ -30,7 +31,6 @@ function Categories({ s }: { s: State }) {
   };
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">Нажмите на категорию, чтобы поменять название, иконку или группу. Цвет зависит от группы.</p>
       {(Object.keys(GROUPS) as Group[]).map((g) => (
         <section key={g} className="space-y-2">
           <h2 className="flex items-center gap-2 font-display text-lg"><span className="h-3 w-3 rounded-full" style={{ background: GROUP_SHADES[g][0] }} />{GROUPS[g]}</h2>
@@ -66,13 +66,13 @@ function Categories({ s }: { s: State }) {
 function setStateCats(prev: Category[] | undefined) { saveCategories(prev ?? DEFAULT_CATEGORIES); }
 
 function Editor({ c, isNew, onSave, onClose, onDelete }: { c: Category; isNew: boolean; onSave: (c: Category) => void; onClose: () => void; onDelete: () => void }) {
-  const [v, setV] = useState<Category>({ ...c, color: undefined });
+  const [v, setV] = useState<Category>({ ...c });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-sm overflow-y-auto">
         <DialogHeader><DialogTitle>{isNew ? "Новая категория" : "Категория"}</DialogTitle></DialogHeader>
         <div className="flex items-center gap-3">
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-foreground" style={{ background: GROUP_SHADES[v.group][0] }}><CatIcon name={v.icon} className="h-6 w-6" /></span>
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-palette-ink" style={{ background: catColor(v) }}><CatIcon name={v.icon} className="h-6 w-6" /></span>
           <Input autoFocus placeholder="Название" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
         </div>
         <div className="flex gap-1 rounded-xl bg-muted p-1 text-xs">
@@ -80,7 +80,7 @@ function Editor({ c, isNew, onSave, onClose, onDelete }: { c: Category; isNew: b
             <button key={g} onClick={() => setV({ ...v, group: g })} className={`flex-1 rounded-lg py-2 ${v.group === g ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{GROUPS[g]}</button>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">Цвет подбирается сам — у каждой группы свой оттенок.</p>
+        <ColorPicker value={v.color} onChange={(color) => setV({ ...v, color })} />
         <p className="text-xs text-muted-foreground">Иконка</p>
         <div className="grid grid-cols-7 gap-1">
           {ICONS.map((i) => (

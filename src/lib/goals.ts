@@ -96,10 +96,10 @@ export const overGoals = (s: State, total: number) => Math.max(0, s.cushion - un
 
 // ---------- family goals ----------
 /** what leaves the phone about family goals: the goal itself and only my own contribution */
-export interface SharedGoal { id: string; name: string; target: number; date?: string | undefined; updatedAt: string; deleted?: boolean; done?: Goal["done"]; saved: number }
+export interface SharedGoal { id: string; name: string; target: number; color?: string | undefined; date?: string | undefined; updatedAt: string; deleted?: boolean; done?: Goal["done"]; saved: number }
 export function sharedGoals(s: State): SharedGoal[] {
   return (s.goals ?? []).filter((g) => g.family).map((g) => ({
-    id: g.id, name: g.name, target: g.target, date: g.date, updatedAt: g.updatedAt ?? s.createdAt,
+    id: g.id, name: g.name, target: g.target, color: g.color, date: g.date, updatedAt: g.updatedAt ?? s.createdAt,
     ...(g.deleted ? { deleted: true } : {}), ...(g.done ? { done: g.done } : {}), saved: g.deleted ? 0 : goalSaved(s, g.id),
   }));
 }
@@ -121,10 +121,10 @@ export function mergeGoals(s: State, others: SharedGoal[][]): Goal[] | null {
     const mine = list[i];
     if (!mine) {
       if (r.deleted) continue;
-      list.push({ id: r.id, name: r.name, target: r.target, date: r.date, done: r.done, family: true, updatedAt: r.updatedAt });
+      list.push({ id: r.id, name: r.name, target: r.target, color: r.color, date: r.date, done: r.done, family: true, updatedAt: r.updatedAt });
       changed = true;
     } else if (mine.family && (mine.updatedAt ?? "") < r.updatedAt) {
-      list[i] = { ...mine, name: r.name, target: r.target, date: r.date, done: r.done, deleted: r.deleted, updatedAt: r.updatedAt };
+      list[i] = { ...mine, name: r.name, target: r.target, color: r.color, date: r.date, done: r.done, deleted: r.deleted, updatedAt: r.updatedAt };
       changed = true;
     }
   }

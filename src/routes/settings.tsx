@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { MIN_DAILY, getState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
 import { Switch } from "@/components/ui/switch";
 import { getFamily } from "@/lib/family";
+import { AiModels } from "@/components/AiModels";
 
 export const Route = createFileRoute("/settings")({
   head: () => meta("Настройки — Бережный бюджет", "Резервная копия в JSON, свой ключ ИИ для разбора трат. Данные хранятся только на устройстве."),
@@ -45,7 +46,11 @@ function Settings({ s }: { s: State }) {
       <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Распознавание трат</h2>
         <p className="text-sm text-muted-foreground">Когда вы пишете «такси 450, кофе 380», приложение раскладывает это на отдельные траты.</p>
-        <Input type="password" autoComplete="off" placeholder="Вставьте ваш API-ключ (необязательно)" value={s.ai.apiKey} onChange={(e) => setAi({ apiKey: e.target.value })} />
+        <Input type="password" autoComplete="off" placeholder="Вставьте ваш API-ключ (необязательно)" value={s.ai.apiKey} onChange={(e) => {
+          const apiKey = e.target.value;
+          const changed = detectService(apiKey)?.name !== detectService(s.ai.apiKey)?.name;
+          setAi({ apiKey, ...(changed ? { model: "", advisorModel: "" } : {}) });
+        }} />
         {(() => {
           const svc = detectService(s.ai.apiKey);
           if (svc) return <p className="text-sm text-primary">✓ Ключ {svc.name} — будет понимать любые формулировки.</p>;
@@ -77,6 +82,7 @@ function Settings({ s }: { s: State }) {
               : "Каждый список отправляется в ИИ. Точнее для сложных фраз, но тратит больше запросов."}</p>
           </div>
         )}
+        <AiModels ai={s.ai} onChange={setAi} />
         {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
 

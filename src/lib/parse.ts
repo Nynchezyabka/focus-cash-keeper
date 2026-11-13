@@ -44,6 +44,22 @@ export function parseLocal(input: string): Parsed[] {
 const PROMPT = () => `Разбери текст пользователя на отдельные траты. Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON вида {"items":[{"note":"кофе с круассаном","amount":380,"category":"cafe","currency":"RUB"}]}. currency — код ISO (RUB, USD, EUR, KZT, TRY, CNY, AMD, GEL…), amount — в этой валюте.`;
 
 type Svc = { name: string; url: string; model: string; kind: "openai" | "anthropic" | "google" };
+export const MODEL_OPTIONS: Record<string, { models: string[]; keysUrl: string }> = {
+  OpenAI: { models: ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1"], keysUrl: "https://platform.openai.com/api-keys" },
+  Anthropic: { models: ["claude-haiku-4-5", "claude-sonnet-4-5"], keysUrl: "https://console.anthropic.com/settings/keys" },
+  OpenRouter: { models: ["openai/gpt-4o-mini", "google/gemini-2.5-flash", "anthropic/claude-sonnet-4.5"], keysUrl: "https://openrouter.ai/settings/keys" },
+  DeepSeek: { models: ["deepseek-chat", "deepseek-reasoner"], keysUrl: "https://platform.deepseek.com/api_keys" },
+  Groq: { models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"], keysUrl: "https://console.groq.com/keys" },
+  "Google Gemini": { models: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"], keysUrl: "https://aistudio.google.com/apikey" },
+  "xAI Grok": { models: ["grok-3-mini", "grok-3", "grok-4"], keysUrl: "https://console.x.ai" },
+};
+export function selectedModel(ai: AiSettings, purpose: "parse" | "advisor" = "parse") {
+  return (purpose === "advisor" ? ai.advisorModel?.trim() || ai.model.trim() : ai.model.trim()) || detectService(ai.apiKey)?.model || "";
+}
+export async function checkAiModel(ai: AiSettings, purpose: "parse" | "advisor") {
+  const reply = await aiChat("Ответь одним словом: OK.", [{ role: "user", content: "Проверка подключения" }], { ...ai, advisorModel: selectedModel(ai, purpose) });
+  if (!reply.trim()) throw new Error("Модель ответила без текста. Попробуйте другую модель.");
+}
 export function detectService(key: string): Svc | null {
   const k = key.trim();
   if (!k) return null;
@@ -77,23 +93,23 @@ const IMG_PROMPT = () => `На картинке скриншот чека, за�
 export async function parseImage(file: File, ai: AiSettings): Promise<Parsed[]> {
   const svc = detectService(ai.apiKey);
   if (!svc) throw new Error("Для скриншотов нужен ключ ИИ — добавьте его в Настройках.");
-  if (svc.name === "Groq") throw new Error(`${svc.name} не умеет читать картинки. Подойдёт ключ OpenAI, Gemini, DeepSeek, OpenRouter или Anthropic.`);
+  if (svc.name === "Groq" || svc.name === "DeepSeek") throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
   const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
   const b64 = dataUrl.split(",")[1] ?? "";
   let text = "";
   if (svc.kind === "anthropic") {
     const r = await fetch(svc.url, {
-      method: "POST",
+      method: "POST", signal: AbortSignal.timeout(30000),
       headers: { "content-type": "application/json", "x-api-key": ai.apiKey.trim(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: svc.model, max_tokens: 3000, messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: file.type || "image/png", data: b64 } }, { type: "text", text: IMG_PROMPT() }] }] }),
+      body: JSON.stringify({ model: selectedModel(ai), max_tokens: 3000, messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: file.type || "image/png", data: b64 } }, { type: "text", text: IMG_PROMPT() }] }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     text = (await r.json()).content?.[0]?.text ?? "";
   } else {
     const r = await fetch(svc.url, {
-      method: "POST",
+      method: "POST", signal: AbortSignal.timeout(30000),
       headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-      body: JSON.stringify({ model: svc.model, max_tokens: 3000, messages: [{ role: "user", content: [{ type: "text", text: IMG_PROMPT() }, { type: "image_url", image_url: { url: dataUrl } }] }] }),
+      body: JSON.stringify({ model: selectedModel(ai), max_tokens: 3000, messages: [{ role: "user", content: [{ type: "text", text: IMG_PROMPT() }, { type: "image_url", image_url: { url: dataUrl } }] }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     text = (await r.json()).choices?.[0]?.message?.content ?? "";
@@ -116,23 +132,23 @@ export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> 
   let text = "";
   if (svc.kind === "anthropic") {
     const r = await fetch(svc.url, {
-      method: "POST",
+      method: "POST", signal: AbortSignal.timeout(30000),
       headers: {
         "content-type": "application/json",
         "x-api-key": ai.apiKey.trim(),
         "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true",
       },
-      body: JSON.stringify({ model: svc.model, max_tokens: 800, system: PROMPT(), messages: [{ role: "user", content: input }] }),
+      body: JSON.stringify({ model: selectedModel(ai), max_tokens: 800, system: PROMPT(), messages: [{ role: "user", content: input }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     const j = await r.json();
     text = j.content?.[0]?.text ?? "";
   } else {
     const r = await fetch(svc.url, {
-      method: "POST",
+      method: "POST", signal: AbortSignal.timeout(30000),
       headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-      body: JSON.stringify({ model: svc.model, messages: [{ role: "system", content: PROMPT() }, { role: "user", content: input }] }),
+      body: JSON.stringify({ model: selectedModel(ai), messages: [{ role: "system", content: PROMPT() }, { role: "user", content: input }] }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     const j = await r.json();
@@ -146,23 +162,23 @@ export type ChatMsg = { role: "user" | "assistant"; content: string };
 export async function aiChat(system: string, messages: ChatMsg[], ai: AiSettings, image?: { dataUrl: string; type: string }): Promise<string> {
   const svc = detectService(ai.apiKey);
   if (!svc) throw new Error("Для помощника нужен ключ ИИ — добавьте его в Настройках.");
-  if (image && svc.name === "Groq") throw new Error("Groq не умеет читать картинки. Подойдёт ключ OpenAI, Gemini, DeepSeek, OpenRouter или Anthropic.");
+  if (image && (svc.name === "Groq" || svc.name === "DeepSeek")) throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
   // the screenshot is attached only to the latest user message
   const last = messages.length - 1;
   const b64 = image?.dataUrl.split(",")[1] ?? "";
   if (svc.kind === "anthropic") {
     const r = await fetch(svc.url, {
-      method: "POST",
+      method: "POST", signal: AbortSignal.timeout(30000),
       headers: { "content-type": "application/json", "x-api-key": ai.apiKey.trim(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: svc.model, max_tokens: 1500, temperature: 0.3, system, messages: messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "image", source: { type: "base64", media_type: image.type || "image/png", data: b64 } }, { type: "text", text: m.content }] } : m)) }),
+      body: JSON.stringify({ model: selectedModel(ai, "advisor"), max_tokens: 1500, temperature: 0.3, system, messages: messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "image", source: { type: "base64", media_type: image.type || "image/png", data: b64 } }, { type: "text", text: m.content }] } : m)) }),
     });
     if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
     return (await r.json()).content?.[0]?.text ?? "";
   }
   const r = await fetch(svc.url, {
-    method: "POST",
+    method: "POST", signal: AbortSignal.timeout(30000),
     headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-    body: JSON.stringify({ model: svc.model, temperature: 0.3, messages: [{ role: "system", content: system }, ...messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "text", text: m.content }, { type: "image_url", image_url: { url: image.dataUrl } }] } : m))] }),
+    body: JSON.stringify({ model: selectedModel(ai, "advisor"), temperature: 0.3, messages: [{ role: "system", content: system }, ...messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "text", text: m.content }, { type: "image_url", image_url: { url: image.dataUrl } }] } : m))] }),
   });
   if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
   return (await r.json()).choices?.[0]?.message?.content ?? "";

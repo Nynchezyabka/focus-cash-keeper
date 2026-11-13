@@ -7,6 +7,7 @@ import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getState, rub, useBudget } from "@/lib/budget";
+import { goalColor, sharedColor } from "@/lib/colors";
 import { contributions, dropFamilyGoals, goalSaved } from "@/lib/goals";
 import { familyConfigured } from "@/lib/family-api";
 import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, REMOVED, type FamilyLocal } from "@/lib/family";
@@ -143,7 +144,7 @@ function Joined({ f }: { f: FamilyLocal }) {
             {!m.me && m.txs && m.txs.length > 0 && (
               <ul className="mt-2 space-y-1 border-t border-border pt-2 text-xs">
                 {m.txs.slice(0, 15).map((x, i) => (
-                  <li key={i} className="flex justify-between gap-2"><span className="truncate">{x.note || x.category} <span className="text-muted-foreground">· {new Date(x.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</span></span><span className="tabular-nums">{x.kind === "income" ? "+" : "−"}{rub(x.amount)}</span></li>
+                  <li key={i} className="flex justify-between gap-2"><span className="min-w-0 truncate"><span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: sharedColor(x.color) }} />{x.note || x.category} <span className="text-muted-foreground">· {new Date(x.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</span></span><span className="shrink-0 tabular-nums">{x.kind === "income" ? "+" : "−"}{rub(x.amount)}</span></li>
                 ))}
               </ul>
             )}
@@ -211,7 +212,7 @@ function SharedGoals({ myName }: { myName: string }) {
         const total = parts.reduce((a, p) => a + p.saved, 0);
         return (
           <div key={g.id} className="border-t border-border pt-2 first:border-0 first:pt-0">
-            <p className="flex justify-between text-sm"><span>{g.name}{g.done ? " · куплено" : ""}</span><span className="tabular-nums">{rub(total)} из {rub(g.target)}</span></p>
+            <p className="flex justify-between gap-2 text-sm"><span className="min-w-0 break-words"><span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: goalColor(g) }} />{g.name}{g.done ? " · куплено" : ""}</span><span className="shrink-0 tabular-nums">{rub(total)} из {rub(g.target)}</span></p>
             <p className="text-xs text-muted-foreground">{parts.map((p) => `${p.name}${p.me ? " (вы)" : ""}: ${rub(p.saved)}`).join(" · ")}{g.date ? ` · к ${new Date(g.date).toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}` : ""}</p>
           </div>
         );

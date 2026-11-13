@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
+import { ColorPicker } from "./ColorPicker";
+import { goalColor } from "@/lib/colors";
 import { Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { rub, type Goal, type Method, type State } from "@/lib/budget";
 import { activeGoals, archivedGoals, buyGoal, contributions, deleteGoal, familyCollected, goalSaved, perMonth, putToGoal, saveGoal, settleGoal, unassigned } from "@/lib/goals";
@@ -40,10 +42,10 @@ export function GoalsSection({ s }: { s: State }) {
         const got = g.family ? familyCollected(g.id, mine) : mine;
         const pm = perMonth(s, g);
         return (
-          <div key={g.id} className="rounded-xl bg-muted p-3 text-sm">
+          <div key={g.id} className="rounded-xl bg-muted p-3 text-sm" style={{ "--goal-color": goalColor(g) } as CSSProperties}>
             <button className="w-full text-left" onClick={() => setOpen(open === g.id ? null : g.id)}>
               <p className="flex justify-between gap-2"><span className="truncate">{g.name}{g.family ? " · семейная" : ""}</span><span className="tabular-nums">{rub(got)} из {rub(g.target)}</span></p>
-              <Progress value={Math.min(100, (got / Math.max(1, g.target)) * 100)} className="mt-2 h-1.5" />
+              <Progress value={Math.min(100, (got / Math.max(1, g.target)) * 100)} className="goal-progress mt-2 h-1.5" />
               {g.date && <p className="mt-1 text-xs text-muted-foreground">К {monthName(g.date)}{pm ? ` — по ${rub(pm)} в месяц` : " — успеваете"}</p>}
               {g.family && <p className="mt-1 text-xs text-muted-foreground">{contributions(g.id, mine, fam?.name ?? "").map((p) => `${p.me ? "вы" : p.name}: ${rub(p.saved)}`).join(" · ")}</p>}
             </button>
@@ -122,11 +124,13 @@ function GoalEditor({ g, onClose }: { g: Partial<Goal>; onClose: () => void }) {
   const [target, setTarget] = useState(g.target ? String(g.target) : "");
   const [date, setDate] = useState(g.date ?? "");
   const [family, setFam] = useState(!!g.family);
+  const [color, setColor] = useState(g.color);
   const canFamily = !!getFamily() && !g.id;
   return (
     <div className="space-y-2 rounded-xl bg-muted p-3 text-sm">
       <Input autoFocus placeholder="На что копим" value={name} onChange={(e) => setName(e.target.value)} />
       <Input inputMode="decimal" placeholder="Нужная сумма, ₽" value={target} onChange={(e) => setTarget(e.target.value)} />
+      <ColorPicker value={color} onChange={setColor} automatic="По умолчанию" />
       <label className="block text-xs text-muted-foreground">К какому месяцу (необязательно)
         <Input type="month" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1" />
       </label>
@@ -134,7 +138,7 @@ function GoalEditor({ g, onClose }: { g: Partial<Goal>; onClose: () => void }) {
       <div className="flex gap-2">
         <Button size="sm" variant="ghost" onClick={onClose}>Отмена</Button>
         <Button size="sm" className="flex-1" disabled={!name.trim() || !(num(target) > 0)} onClick={() => {
-          saveGoal({ ...g, name: name.trim(), target: num(target), date: date || undefined, family: g.id ? g.family : family } as Goal);
+          saveGoal({ ...g, name: name.trim(), target: num(target), color, date: date || undefined, family: g.id ? g.family : family } as Goal);
           onClose();
         }}>Сохранить</Button>
       </div>
