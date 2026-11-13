@@ -47,6 +47,17 @@ function amountIn(q: string) {
   if (!m) return 0;
   return num(m[1] ?? "") * (m[2] ? 1000 : 1);
 }
+const WD = ["воскрес", "понедельн", "вторник", "сред", "четверг", "пятниц", "суббот"];
+/** «в субботу», «завтра», «послезавтра» → the nearest such date (today counts). */
+export function spendDay(t: string, now = new Date()): Date | null {
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const add = (n: number) => new Date(+base + n * 86400000);
+  if (/послезавтра/.test(t)) return add(2);
+  if (/завтра/.test(t)) return add(1);
+  const i = WD.findIndex((w) => t.includes(w));
+  if (i < 0) return null;
+  return add((i - base.getDay() + 7) % 7);
+}
 /** Recognise a question the app can calculate itself; returns a ready block for the model. */
 export function precompute(s: State, q: string, now = new Date()): string | null {
   const t = q.toLowerCase();
@@ -74,6 +85,12 @@ export function precompute(s: State, q: string, now = new Date()): string | null
     }
   }
   const n = amountIn(t);
+  const day = spendDay(t, now);
+  if (day && /(потрат|трат|купл|куплю|отдам)/.test(t) && n > 0) {
+    const e = evaluatePurchase(s, n, now);
+    if (+day >= +e.nextDate) return `Трата ${rub(n)} ${d(day)} придётся уже после ближайшего дохода (${d(e.nextDate)}) — она пойдёт из следующего периода, текущее «свободно» не меняется.`;
+    return `Если потратить ${d(day)}: ` + purchaseText(e);
+  }
   if (/(купить|покупк|потянуть|могу ли|можно ли)/.test(t) && n > 0) return purchaseText(evaluatePurchase(s, n, now));
   if (/(зарплат|доход|выплат)/.test(t) && /(меньше|больше|урежут|снизит|вырастет)/.test(t) && n > 0) {
     const ch: Change = { kind: "income", delta: /больше|вырастет/.test(t) ? n : -n };
@@ -91,7 +108,7 @@ export function unverifiedSums(answer: string, sources: string[]): number[] {
   const out: number[] = [];
   for (const m of answer.matchAll(/(\d[\d\s\u00a0]*(?:[.,]\d+)?)\s*(?:₽|руб)/g)) {
     const v = Math.round(num(m[1] ?? ""));
-    if (v < 100) continue;
+    if (v < 1) continue;
     if (![...known].some((k) => Math.abs(k - v) <= Math.max(1, v * 0.005))) out.push(v);
   }
   return [...new Set(out)];

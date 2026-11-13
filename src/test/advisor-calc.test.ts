@@ -55,3 +55,13 @@ describe("advisor math", () => {
     expect(getState().obligations[0]?.schedule?.[0]?.date).toBe("2999-01-01");
   });
 });
+
+import { spendDay as _sd } from "@/lib/advisor-calc";
+describe("spendDay", () => {
+  it("finds next Saturday from Friday 13 Nov 2026", () => {
+    expect(_sd("потрачу 3000 в субботу", new Date(2026, 10, 13))?.getDate()).toBe(14);
+  });
+  it("tomorrow is +1 day", () => {
+    expect(_sd("завтра", new Date(2026, 10, 13))?.getDate()).toBe(14);
+  });
+});
