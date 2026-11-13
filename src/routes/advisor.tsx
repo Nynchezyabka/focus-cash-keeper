@@ -49,7 +49,7 @@ const d = (x: Date) => x.toLocaleDateString("ru-RU", { day: "numeric", month: "l
 
 const KIND: Record<string, string> = { expense: "трата", income: "доход", adjust: "сверка", cushion: "из накоплений", savings: "накопления", goal: "цель", transfer: "перевод карта↔наличные, не трата" };
 /** Facts of the budget the advisor must rely on — it never invents numbers. */
-function context(s: State) {
+function context(s: State, readable = false) {
   const c = calc(s);
   const since = Date.now() - 30 * 86400000;
   const by: Record<string, number> = {};
@@ -71,9 +71,9 @@ function context(s: State) {
             : paid > 0
               ? `внесено ${rub(paid)} из ${rub(o.amount)}, осталось ${rub(o.amount - paid)}`
               : "ещё не оплачено";
-        return `${o.name} [id=${o.id}] ${rub(o.amount)} — ${d(due)}${o.once ? " (разово)" : " (ежемесячно)"} — ${st}`;
+        return `${o.name}${readable ? "" : ` [id=${o.id}]`} ${rub(o.amount)} — ${d(due)}${o.once ? " (разово)" : " (ежемесячно)"} — ${st}`;
       })
-      .join("; ") || "нет";
+      .join(readable ? "\n" : "; ") || "нет";
   const resv =
     [
       ...c.reserved.map((r) => `${r.o.name} ${rub(r.o.amount - paidAmount(s, r.o, r.due))}`),
@@ -84,9 +84,9 @@ function context(s: State) {
     s.incomes
       .map((i) => {
         const u = incomeUpcoming(s, i);
-        return `${i.name} [id=${i.id}] ${rub(i.amount)}${i.method === "cash" ? " наличными" : ""}${i.skip === month ? " — В ЭТОМ МЕСЯЦЕ ОТКЛЮЧЕНА, не рассчитывай на неё" : ""}${u ? ` — ${d(u)}` : ""}`;
+        return `${i.name}${readable ? "" : ` [id=${i.id}]`} ${rub(i.amount)}${i.method === "cash" ? " наличными" : ""}${i.skip === month ? (readable ? " — отключён в этом месяце" : " — В ЭТОМ МЕСЯЦЕ ОТКЛЮЧЕНА, не рассчитывай на неё") : ""}${u ? ` — ${d(u)}` : ""}`;
       })
-      .join("; ") || "нет";
+      .join(readable ? "\n" : "; ") || "нет";
   const recent =
     s.txs
       .filter((t) => +new Date(t.date) >= since)
@@ -95,18 +95,33 @@ function context(s: State) {
         (t) =>
           `${d(new Date(t.date))} ${KIND[t.kind] ?? t.kind}: ${t.note || cat(t.category).name} ${rub(Math.abs(t.amount))}${t.method === "cash" ? " (наличные)" : ""}${t.orig ? ` (= ${t.orig.amount} ${t.orig.currency} по курсу ${t.orig.rate})` : ""}${t.family ? " — перевод внутри семьи, не трата" : ""}`,
       )
-      .join("; ") || "нет";
+      .join(readable ? "\n" : "; ") || "нет";
   const f = getFamily();
   let fam = "семейный доступ не подключён";
   if (f?.members?.length && s.advisorNoFamily) fam = "пользователь попросил не передавать цифры семьи";
   else if (f?.members?.length) {
     const ft = familyTotals(f.members);
-    fam = `участников ${f.members.length}; свободно сегодня вместе ${rub(ft.today)}; на картах и наличными вместе ${rub(ft.total)}; отложено на платежи вместе ${rub(ft.reserve)}; накопления вместе ${rub(ft.cushion)}; до ближайшего дохода через ${ft.nearestDays} дн. вместе можно ${rub(ft.untilIncome)}. Бюджеты раздельные: деньги партнёра — не твои, предлагай их только как тему для разговора, не как источник.`;
+    fam = `участников ${f.members.length}; свободно сегодня вместе ${rub(ft.today)}; на картах и наличными вместе ${rub(ft.total)}; отложено на платежи вместе ${rub(ft.reserve)}; накопления вместе ${rub(ft.cushion)}; до ближайшего дохода через ${ft.nearestDays} дн. вместе можно ${rub(ft.untilIncome)}. ${readable ? "Бюджеты участников остаются раздельными." : "Бюджеты раздельные: деньги партнёра — не твои, предлагай их только как тему для разговора, не как источник."}`;
   }
   const goalsText = activeGoals(s).map((g) => {
     const mine = goalSaved(s, g.id);
     return `«${g.name}» нужно ${rub(g.target)}${g.date ? ` к ${g.date}` : ""}, ${g.family && !s.advisorNoFamily ? `мой вклад ${rub(mine)}, всего собрано вместе ${rub(familyCollected(g.id, mine))} (семейная)` : `собрано ${rub(mine)}`}`;
-  }).join("; ") + `; без цели ${rub(unassigned(s))}`;
+  }).join(readable ? "\n" : "; ") + `${readable ? "\n" : "; "}без цели ${rub(unassigned(s))}`;
+  if (readable) return [
+    `Деньги сейчас: На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.\nНакопления ${rub(s.cushion)}, из них наличными ${rub(s.cushionCash ?? 0)} — не входят в общий остаток.`,
+    `До ближайшего дохода: ${d(c.next.date)}, через ${c.days} дн.\nСвободно сегодня ${rub(Math.max(0, c.freeToday))}. Дневной ориентир ${rub(c.dailyNorm)}, с завтрашнего дня ${rub(c.afterSpread)} в день.\nСвободно до дохода ${rub(freeUntilIncome(c))}. Минимум на жизнь ${rub(c.minDaily)} в день.`,
+    `Отложено на платежи: ${rub(c.held)} из необходимых ${rub(c.reserve)}.${c.shortfall > 0 ? `\nНа платежи не хватает ${rub(c.payGap)}${c.shortfall !== c.payGap ? `; вместе с минимумом на жизнь — ${rub(c.shortfall)}` : ""}.` : ""}\n${resv}`,
+    `Платежи: ${obl}`,
+    `Плановые доходы: ${inc}`,
+    `Траты за 30 дней: ${spent}`,
+    `Последние операции: ${recent}`,
+    `Семья: ${fam}`,
+    `Цели накоплений: ${goalsText}`,
+    `О вас и ваши правила: ${s.advisorAbout?.trim() || "не указано"}`,
+    `Кредиты и долги: ${s.advisorLoans?.trim() || "не указаны"}\n${s.obligations.filter((o) => o.debtFee).map((o) => { const r = debtFeeAt(s, o, dayKey(new Date())); const due = o.once ? debtFeeAt(s, o, o.once) : null; return `${o.name}: ${r ? `плата на сегодня ${rub(r.fee)}, в день ${rub(r.daily)}` : "расчёт недоступен"}${due ? `; к ${d(obligationDue(o))} плата ${rub(due.fee)}, вместе с долгом ${rub(due.total)}` : ""}`; }).join("\n")}`,
+    `Подтверждённые предпочтения: ${s.advisorMemory?.join("\n") || "пока нет"}`,
+    `Прогноз на 60 дней: ${forecastText(s)}`,
+  ].join("\n\n");
   return `ТЕКУЩИЕ ФАКТЫ (собраны на устройстве ${new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}; единственный источник цифр, цифры из прошлых сообщений устарели):
 Сегодня ${d(new Date())}, ${new Date().toLocaleDateString("ru-RU", { weekday: "long", year: "numeric" })}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
 Накопления (в «всего» НЕ входят): ${rub(s.cushion)}, из них наличными ${rub(s.cushionCash ?? 0)}.
@@ -320,7 +335,15 @@ function Chat({ s }: { s: State }) {
       <Dialog open={panel === "facts"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Что Помощник видит сейчас</DialogTitle></DialogHeader>
-          <pre className="whitespace-pre-wrap text-xs text-muted-foreground">{context(s)}</pre>
+          <div className="min-w-0 space-y-5 text-sm leading-relaxed">
+            {context(s, true).split("\n\n").map((section, i) => {
+              const colon = section.indexOf(": ");
+              return <section key={i} className="min-w-0 border-t border-border pt-4 first:border-0 first:pt-0">
+                <h3 className="mb-2 font-medium text-foreground">{section.slice(0, colon)}</h3>
+                <p className="whitespace-pre-line break-words text-muted-foreground [overflow-wrap:anywhere]">{section.slice(colon + 2)}</p>
+              </section>;
+            })}
+          </div>
         </DialogContent>
       </Dialog>
 
