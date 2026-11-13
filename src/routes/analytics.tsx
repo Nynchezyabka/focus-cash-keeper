@@ -56,6 +56,15 @@ function Analytics({ s }: { s: State }) {
   let off = 0;
   return (
     <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+    {mode === "exp" && <div className="hidden gap-3 lg:col-span-2 lg:grid lg:grid-cols-3">
+      {ORDER.map((g) => (
+        <button key={g} type="button" onClick={() => setPicked(picked === `g:${g}` ? null : `g:${g}`)} className={`rounded-2xl bg-card p-4 text-left shadow-soft ${picked === `g:${g}` ? "ring-2 ring-primary" : ""}`}>
+          <span className="flex items-center gap-2 text-sm text-muted-foreground"><span className="h-3 w-3 rounded-full" style={{ background: groupColor(g) }} />{GROUPS[g]}</span>
+          <span className="mt-1 block font-display text-2xl">{rub(groups[g])}</span>
+          <span className="text-xs text-muted-foreground">{total ? Math.round((groups[g] / total) * 100) : 0}% трат</span>
+        </button>
+      ))}
+    </div>}
     <div className="space-y-5">
       <div className="relative mx-auto h-56 w-56">
         <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">

@@ -13,6 +13,7 @@ export function WeekSummary({ s }: { s: State }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (window.matchMedia("(min-width: 1024px)").matches) setOpen(true); }, []);
   const signature = JSON.stringify([w.groups, w.income, w.count, w.upcoming.map((e) => [e.refId, e.amount])]);
   useEffect(() => { setNote(""); setError(""); }, [signature]);
   if (!w.count && !w.upcoming.length) return null;

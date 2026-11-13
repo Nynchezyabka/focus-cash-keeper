@@ -191,7 +191,7 @@ ${GUIDE_TEXT}
 type Msg = ChatMsg & { calc?: string; unverified?: number[]; done?: number[]; remember?: string; opener?: boolean };
 
 function Advisor() {
-  return <Shell title="Помощник">{(s) => <Chat s={s} />}</Shell>;
+  return <Shell title="Помощник" wide>{(s) => <Chat s={s} />}</Shell>;
 }
 
 function Chat({ s }: { s: State }) {
@@ -307,11 +307,12 @@ function Chat({ s }: { s: State }) {
     );
 
   return (
-    <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col lg:h-[calc(100dvh-7rem)]">
-      <div className="mb-3 flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("rules")}><Settings2 /> Мои правила</Button>
-        <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("facts")}><Eye /> Что помощник видит</Button>
-        <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("memory")}><Brain /> Что я помню{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}</Button>
+    <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col lg:relative lg:mx-auto lg:h-[calc(100dvh-7rem)] lg:max-w-4xl lg:pl-60">
+      <div className="mb-3 flex flex-wrap gap-2 lg:absolute lg:left-0 lg:top-0 lg:w-52 lg:flex-col lg:items-stretch">
+        <p className="hidden px-1 text-xs text-muted-foreground lg:block">{nameOf(s.advisorName)} учитывает ваши правила, память и цифры приложения. Характер — над полем ввода.</p>
+        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("rules")}><Settings2 /> Мои правила</Button>
+        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("facts")}><Eye /> Что помощник видит</Button>
+        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("memory")}><Brain /> Что я помню{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}</Button>
       </div>
       <Dialog open={panel === "memory"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">

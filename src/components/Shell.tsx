@@ -2,7 +2,8 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, Users, Sun, CalendarDays, PieChart, Settings, MessageCircleHeart, HelpCircle, icons } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { openerDue, trackOpen } from "@/lib/advisor-memory";
-import { useBudget, type State } from "@/lib/budget";
+import { rub, useBudget, type State } from "@/lib/budget";
+import { APP_VERSION } from "@/lib/pwa";
 import { useFamily } from "@/lib/family";
 
 const PLAN_PATHS = ["/calendar", "/payments", "/incomes"];
@@ -26,6 +27,27 @@ export function Shell({ title, wide, children }: { title?: string; wide?: boolea
   const navigate = useNavigate();
   const [dot, setDot] = useState(false);
   useEffect(() => { trackOpen(); }, []);
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const upd = () => setOnline(navigator.onLine);
+    upd();
+    window.addEventListener("online", upd); window.addEventListener("offline", upd);
+    return () => { window.removeEventListener("online", upd); window.removeEventListener("offline", upd); };
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || document.querySelector('[role="dialog"]')) return;
+      if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
+      const k = e.key.toLowerCase();
+      if (k !== "n" && k !== "т") return;
+      e.preventDefault();
+      if (window.location.pathname === "/") window.dispatchEvent(new Event("quick-expense"));
+      else { sessionStorage.setItem("quick-expense", "1"); void navigate({ to: "/" }); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate]);
   useEffect(() => { setDot(!!s && path !== "/advisor" && !!openerDue(s)); }, [s, path]);
   const nav = fam ? [...NAV.slice(0, 3), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(3)] : NAV;
   return (
@@ -42,12 +64,19 @@ export function Shell({ title, wide, children }: { title?: string; wide?: boolea
           );
         })}
         <div className="mt-auto space-y-1">
+          {s && <div className="mb-3 space-y-1 rounded-2xl bg-secondary/60 px-3 py-3 text-xs text-muted-foreground">
+            <p className="flex justify-between gap-2"><span>Карта</span><span className="text-foreground">{rub(s.balance)}</span></p>
+            <p className="flex justify-between gap-2"><span>Наличные</span><span className="text-foreground">{rub(s.cash ?? 0)}</span></p>
+            {s.demo && <p className="text-primary">Вы смотрите пример</p>}
+            {!online && <p>Нет сети — всё работает на устройстве</p>}
+            <p>Версия {APP_VERSION} · клавиша N — трата</p>
+          </div>}
           <Link to="/help" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><HelpCircle className="h-5 w-5" />Справка</Link>
           <Link to="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><Settings className="h-5 w-5" />Настройки</Link>
         </div>
       </aside>
     <div className={`mx-auto flex min-h-screen w-full max-w-md flex-col lg:px-6 ${wide ? "lg:max-w-5xl" : "lg:max-w-2xl"}`}>
-      <div className="relative flex items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="relative flex min-h-11 items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         {title ? (
           <div className="flex min-w-0 items-center gap-1">
             {!NAV.some((n) => n.to === path) && !PLAN_PATHS.includes(path) && path !== "/family" && (

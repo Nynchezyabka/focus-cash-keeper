@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2 } from "lucide-react";
 import { Shell, CatIcon, meta } from "@/components/Shell";
+import { MonthStrip } from "@/components/MonthStrip";
 import { PlanTabs } from "@/components/PlanTabs";
 import { addedToast, undoable } from "@/components/Undo";
 import { CategoryPicker, DateDialog, MethodBadge, MethodToggle } from "@/components/Pickers";
@@ -16,7 +17,7 @@ import { getState, calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unp
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("План платежей — Бережный бюджет", "Регулярные и разовые платежи, долги к возврату. Эти деньги откладываются заранее."),
-  component: () => <Shell title="План" wide>{(s) => <><PlanTabs /><Payments s={s} /></>}</Shell>,
+  component: () => <Shell title="План" wide>{(s) => <><PlanTabs /><MonthStrip s={s} /><Payments s={s} /></>}</Shell>,
 });
 
 function Payments({ s }: { s: State }) {

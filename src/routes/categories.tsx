@@ -32,14 +32,14 @@ function Categories({ s }: { s: State }) {
     setEdit(null);
   };
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 lg:grid lg:grid-cols-3 lg:items-start lg:gap-6 lg:space-y-0">
       {(Object.keys(GROUPS) as Group[]).map((g) => (
         <section key={g} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex min-w-0 items-center gap-2 font-display text-lg"><span className="h-3 w-3 shrink-0 rounded-full" style={{ background: groupColor(g, s) }} />{GROUPS[g]}</h2>
             <Button variant="ghost" size="icon" aria-label={`Цвет: ${GROUPS[g]}`} title={`Цвет: ${GROUPS[g]}`} onClick={() => setColorGroup(g)}><Palette className="h-5 w-5" /></Button>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-3">
             {list.filter((c) => c.group === g).map((c) => (
               <button key={c.id} onClick={() => setEdit(c)} className="flex flex-col items-center gap-2 rounded-2xl bg-card p-3 text-xs shadow-soft active:scale-95">
                 <span className="grid h-10 w-10 place-items-center rounded-full text-foreground" style={{ background: catColor(c) }}><CatIcon name={c.icon} className="h-5 w-5" /></span>
@@ -53,7 +53,7 @@ function Categories({ s }: { s: State }) {
           </div>
         </section>
       ))}
-      <Button variant="ghost" className="w-full" onClick={() => {
+      <Button variant="ghost" className="w-full lg:col-span-3" onClick={() => {
         const prev = s.categories;
         saveCategories(DEFAULT_CATEGORIES);
         undoable("Категории сброшены", () => setStateCats(prev));

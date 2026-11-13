@@ -82,15 +82,11 @@ function Today({ s }: { s: State }) {
     }
   }, []);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (e.metaKey || e.ctrlKey || e.altKey || dialog) return;
-      if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
-      if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "т") { e.preventDefault(); setDialog("expense"); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [dialog]);
+    const open = () => setDialog("expense");
+    if (sessionStorage.getItem("quick-expense")) { sessionStorage.removeItem("quick-expense"); open(); }
+    window.addEventListener("quick-expense", open);
+    return () => window.removeEventListener("quick-expense", open);
+  }, []);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
