@@ -37,11 +37,11 @@ export function Shell({ title, children }: { title?: string; children: (s: State
             {path !== "/help" && <Link to="/help" aria-label="Справка" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
               <HelpCircle className="h-5 w-5" />
             </Link>}
-            <h1 className="truncate font-display text-2xl text-foreground">{title}</h1>
           </div>
         ) : <div className="flex items-center gap-1"><Link to="/help" aria-label="Справка" className="grid -ml-2 h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
               <HelpCircle className="h-5 w-5" />
             </Link></div>}
+        {title && <h1 className="pointer-events-none absolute inset-x-0 truncate px-28 text-center font-display text-2xl text-foreground">{title}</h1>}
         {!title && <span className="pointer-events-none absolute inset-x-0 text-center font-display text-lg text-foreground">Бережный бюджет</span>}
         <div className="flex shrink-0">
           <Link to="/settings" aria-label="Настройки" className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground" activeProps={{ className: "bg-secondary text-primary" }}>
