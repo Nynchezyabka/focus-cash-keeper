@@ -8,7 +8,7 @@ import { calc, dayKey, forecast, rub, type CalEvent, type State } from "@/lib/bu
 
 export const Route = createFileRoute("/calendar")({
   head: () => meta("План на 45 дней — Бережный бюджет", "Когда приходят деньги, когда уходят платежи и сколько будет свободно в день — на 30, 45 или 60 дней вперёд."),
-  component: () => <Shell title="План">{(s) => <><PlanTabs /><Calendar s={s} /></>}</Shell>,
+  component: () => <Shell title="План" wide>{(s) => <><PlanTabs /><Calendar s={s} /></>}</Shell>,
 });
 
 const H_KEY = "berezhny-plan-horizon";
@@ -41,7 +41,7 @@ function Calendar({ s }: { s: State }) {
           <button aria-label="Календарём" onClick={() => pickV("grid")} className={`grid h-9 w-9 place-items-center rounded-full ${view === "grid" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}><CalendarDays className="h-4 w-4" /></button>
         </div>
       </div>
-      {view === "grid" ? <Grid s={s} horizon={horizon} /> : <Segments s={s} horizon={horizon} />}
+      {view === "grid" ? <Grid s={s} horizon={horizon} /> : <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0"><Segments s={s} horizon={horizon} /></div>}
     </div>
   );
 }
@@ -157,7 +157,7 @@ function Grid({ s, horizon }: { s: State; horizon: number }) {
   const selEv = byDay.get(sel) ?? [];
   const pd = perDayOf(selDate);
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-4 lg:space-y-0">
       <div className="rounded-2xl bg-card p-3 shadow-soft">
         <div className="grid grid-cols-7 gap-1 pb-1 text-center text-[11px] text-muted-foreground">{WD.map((w) => <span key={w}>{w}</span>)}</div>
         <div className="grid grid-cols-7 gap-1">
@@ -185,7 +185,7 @@ function Grid({ s, horizon }: { s: State; horizon: number }) {
           <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-spend" /> платёж</span>
         </div>
       </div>
-      <section className="rounded-2xl bg-card p-4 shadow-soft">
+      <section className="rounded-2xl bg-card p-4 shadow-soft lg:sticky lg:top-4">
         <div className="flex items-baseline justify-between gap-2 border-b border-border pb-2">
           <p className="text-sm">{sel === todayK ? "Сегодня" : dm(selDate)}</p>
           {pd !== null && <p className="text-sm"><span className="font-display text-lg tabular-nums">{rub(pd)}</span><span className="text-muted-foreground"> в день</span></p>}

@@ -8,7 +8,7 @@ import { cat, catColor, groupColor, GROUP_SHADES, GROUPS, rub, type Group, type 
 
 export const Route = createFileRoute("/analytics")({
   head: () => meta("Аналитика — Бережный бюджет", "Куда уходят и откуда приходят деньги: диаграммы трат по категориям и доходов по источникам."),
-  component: () => <Shell title="Аналитика">{(s) => <Analytics s={s} />}</Shell>,
+  component: () => <Shell title="Аналитика" wide>{(s) => <Analytics s={s} />}</Shell>,
 });
 
 const color = (id: string) => catColor(cat(id));
@@ -55,6 +55,7 @@ function Analytics({ s }: { s: State }) {
   const R = 70, C = 2 * Math.PI * R;
   let off = 0;
   return (
+    <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
     <div className="space-y-5">
       <div className="relative mx-auto h-56 w-56">
         <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
@@ -115,8 +116,11 @@ function Analytics({ s }: { s: State }) {
       )}
 
       <Link to="/categories" className="flex items-center justify-center gap-2 text-sm text-primary"><Settings2 className="h-4 w-4" /> Настроить категории, иконки и цвета</Link>
-      <h2 className="pt-2 font-display text-lg">{picked ? `Операции: ${label(picked)}` : "Все операции"}</h2>
+    </div>
+    <div className="space-y-5">
+      <h2 className="pt-2 lg:pt-0 font-display text-lg">{picked ? `Операции: ${label(picked)}` : "Все операции"}</h2>
       <TxList txs={listed} />
+    </div>
     </div>
   );
 }
