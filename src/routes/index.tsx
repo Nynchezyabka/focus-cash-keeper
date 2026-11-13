@@ -81,6 +81,16 @@ function Today({ s }: { s: State }) {
       window.history.replaceState(null, "", "/");
     }
   }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || dialog) return;
+      if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
+      if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "т") { e.preventDefault(); setDialog("expense"); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dialog]);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);

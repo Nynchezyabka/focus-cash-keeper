@@ -14,7 +14,7 @@ import { confirmIncome, dayKey, periodOf, toggleIncomeSkip, incomeUpcoming, move
 
 export const Route = createFileRoute("/incomes")({
   head: () => meta("План доходов — Бережный бюджет", "Какого числа приходят аванс, зарплата, наличные или пособия. По этим датам считается дневной бюджет."),
-  component: () => <Shell title="План">{(s) => <><PlanTabs /><Incomes s={s} /></>}</Shell>,
+  component: () => <Shell title="План" wide>{(s) => <><PlanTabs /><Incomes s={s} /></>}</Shell>,
 });
 
 type Draft = { id?: string; name: string; amount: string; day: string; method: "card" | "cash" };
@@ -46,7 +46,7 @@ function Incomes({ s }: { s: State }) {
             <h2 className="font-display text-lg">Каждый месяц</h2>
             <span className="text-sm tabular-nums text-muted-foreground">{rub(total)}</span>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
             {list.map((i) => {
               const isNext = next.income?.id === i.id;
               return (

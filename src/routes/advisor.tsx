@@ -307,7 +307,7 @@ function Chat({ s }: { s: State }) {
     );
 
   return (
-    <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col">
+    <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col lg:h-[calc(100dvh-7rem)]">
       <div className="mb-3 flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("rules")}><Settings2 /> Мои правила</Button>
         <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("facts")}><Eye /> Что помощник видит</Button>

@@ -12,7 +12,7 @@ import { catColor, cats, DEFAULT_CATEGORIES, getState, groupColor, GROUPS, saveC
 
 export const Route = createFileRoute("/categories")({
   head: () => meta("Категории — Бережный бюджет", "Свои категории трат: название, иконка, цвет и кучка — обязательное, безопасность или радости."),
-  component: () => <Shell title="Категории">{(s) => <Categories s={s} />}</Shell>,
+  component: () => <Shell title="Категории" wide>{(s) => <Categories s={s} />}</Shell>,
 });
 
 const ICONS = [
@@ -39,7 +39,7 @@ function Categories({ s }: { s: State }) {
             <h2 className="flex min-w-0 items-center gap-2 font-display text-lg"><span className="h-3 w-3 shrink-0 rounded-full" style={{ background: groupColor(g, s) }} />{GROUPS[g]}</h2>
             <Button variant="ghost" size="icon" aria-label={`Цвет: ${GROUPS[g]}`} title={`Цвет: ${GROUPS[g]}`} onClick={() => setColorGroup(g)}><Palette className="h-5 w-5" /></Button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {list.filter((c) => c.group === g).map((c) => (
               <button key={c.id} onClick={() => setEdit(c)} className="flex flex-col items-center gap-2 rounded-2xl bg-card p-3 text-xs shadow-soft active:scale-95">
                 <span className="grid h-10 w-10 place-items-center rounded-full text-foreground" style={{ background: catColor(c) }}><CatIcon name={c.icon} className="h-5 w-5" /></span>

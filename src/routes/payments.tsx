@@ -16,7 +16,7 @@ import { getState, calc, cat, catColor, dayKey, isPaid, paidAmount, payPart, unp
 
 export const Route = createFileRoute("/payments")({
   head: () => meta("План платежей — Бережный бюджет", "Регулярные и разовые платежи, долги к возврату. Эти деньги откладываются заранее."),
-  component: () => <Shell title="План">{(s) => <><PlanTabs /><Payments s={s} /></>}</Shell>,
+  component: () => <Shell title="План" wide>{(s) => <><PlanTabs /><Payments s={s} /></>}</Shell>,
 });
 
 function Payments({ s }: { s: State }) {
@@ -39,7 +39,7 @@ function Payments({ s }: { s: State }) {
       {loan && <LoanDialog onClose={() => setLoan(false)} />}
       <Button variant="outline" className="w-full" onClick={() => setSchedule("new")}><CalendarClock /> График кредита</Button>
       {schedule && <LoanScheduleEditor o={schedule === "new" ? undefined : schedule} onClose={() => setSchedule(null)} />}
-      <ul className="space-y-2">
+      <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
         {list.map(({ o, due }) => {
           if (o.schedule) return <LoanScheduleCard key={o.id} s={s} o={o} onEdit={() => setSchedule(o)} />;
           const paid = isPaid(s, o, due);
