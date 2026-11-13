@@ -50,6 +50,7 @@ export interface State {
   advisorLoans?: string;
   advisorTone?: "calm" | "direct" | "shake";
   advisorName?: string;
+  demo?: boolean | undefined; // example data from «Посмотреть на примере»
   createdAt: string;
 }
 

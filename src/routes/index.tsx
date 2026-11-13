@@ -1,3 +1,4 @@
+import { clearDemo, startDemo } from "@/lib/demo";
 import { GoalsSection } from "@/components/Goals";
 import { activeGoals, cutGoals, goalSaved, overGoals, unassigned } from "@/lib/goals";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -119,14 +120,22 @@ function Today({ s }: { s: State }) {
       </section>
       {pending && <IncomeArrived p={pending} />}
 
+      {s.demo && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl bg-secondary p-3 text-sm text-secondary-foreground">
+          <span>Вы смотрите пример</span>
+          <Button size="sm" variant="outline" onClick={clearDemo}>Стереть пример</Button>
+        </div>
+      )}
+
       {empty && (
-        <div className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
-          С чего начать: нажмите на «Карта» ниже и впишите, сколько сейчас на карте. Потом укажите, в каких числах
-          приходят деньги, в{" "}
-          <Link to="/incomes" className="underline">
-            вкладке «Доходы» раздела «План»
-          </Link>
-          .
+        <div className="space-y-3 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
+          <p className="font-medium">С чего начать</p>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>Нажмите на «Карта» ниже и впишите, сколько там сейчас.</li>
+            <li>Добавьте доходы с датами в <Link to="/incomes" className="underline">«План» → «Доходы»</Link>.</li>
+            <li>Добавьте обязательные платежи: аренда, связь, кредиты.</li>
+          </ol>
+          <Button variant="outline" className="w-full" onClick={startDemo}>Посмотреть на примере</Button>
         </div>
       )}
 
