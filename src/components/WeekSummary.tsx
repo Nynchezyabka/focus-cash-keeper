@@ -1,4 +1,4 @@
-import { GROUPS, rub, type Group, type State } from "@/lib/budget";
+import { calc, GROUPS, rub, type Group, type State } from "@/lib/budget";
 import { weekSummary } from "@/lib/advisor-calc";
 import { useEffect, useState } from "react";
 import { MessageCircleHeart } from "lucide-react";
@@ -8,6 +8,7 @@ import { aiChat, detectService } from "@/lib/parse";
 /** Facts of the last 7 days, calculated on the phone — works offline and without AI. */
 export function WeekSummary({ s }: { s: State }) {
   const w = weekSummary(s);
+  const c = calc(s);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -24,6 +25,7 @@ export function WeekSummary({ s }: { s: State }) {
         </ul>
       ) : <p className="text-muted-foreground">Трат не записано</p>}
       {w.income > 0 && <p className="flex justify-between"><span>Доходы</span><span className="tabular-nums text-primary">+{rub(w.income)}</span></p>}
+      <p className="border-t border-border pt-2 text-xs text-muted-foreground">До дохода {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}: ориентир {rub(c.dailyNorm)} в день.</p>
       {w.upcoming.length > 0 && (
         <div className="border-t border-border pt-2">
           <p className="mb-1 text-xs text-muted-foreground">Ближайшие платежи</p>

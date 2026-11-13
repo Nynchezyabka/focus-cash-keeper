@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { getFamily } from "@/lib/family";
 import { AiModels } from "@/components/AiModels";
 import { validSchedule } from "@/lib/loan-schedule";
+import { validDebtFee } from "@/lib/debt-fee";
 
 export const Route = createFileRoute("/settings")({
   head: () => meta("Настройки — Бережный бюджет", "Резервная копия в JSON, свой ключ ИИ для разбора трат. Данные хранятся только на устройстве."),
@@ -44,6 +45,15 @@ function Settings({ s }: { s: State }) {
       </section>
 
       <Appearance />
+      <Link to="/family" search={{ join: undefined }} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="block font-display text-lg">Семейный доступ</span><span className="text-xs text-muted-foreground">Общая картина бюджетов по коду</span></span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
+
+      <Link to="/categories" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="block font-display text-lg">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
       <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Распознавание трат</h2>
         <p className="text-sm text-muted-foreground">Когда вы пишете «такси 450, кофе 380», приложение раскладывает это на отдельные траты.</p>
@@ -87,16 +97,6 @@ function Settings({ s }: { s: State }) {
         {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
 
-      <Link to="/family" search={{ join: undefined }} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
-        <span><span className="block font-display text-lg">Семейный доступ</span><span className="text-xs text-muted-foreground">Общая картина двух бюджетов по коду</span></span>
-        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-      </Link>
-
-      <Link to="/categories" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
-        <span><span className="block font-display text-lg">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
-        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-      </Link>
-
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Резервная копия</h2>
         <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Всё хранится только на этом устройстве. Ключ ИИ в копию не попадает.</p>
@@ -122,6 +122,7 @@ function Settings({ s }: { s: State }) {
             const d = data as unknown as Record<string, unknown>;
             if (!num(d["balance"]) || !num(d["cash"]) || !arr(d["incomes"]) || !arr(d["obligations"]) || !arr(d["categories"])) throw new Error();
              if (data.obligations?.some((o) => o.schedule !== undefined && (!Array.isArray(o.schedule) || !validSchedule(o.schedule)))) throw new Error();
+            if (data.obligations?.some((o) => o.debtFee !== undefined && !validDebtFee(o.debtFee))) throw new Error();
             const prev = getState();
             try { localStorage.setItem("budget-backup-before-import", JSON.stringify(prev)); } catch { /* нет места — отмена всё равно есть */ }
             replaceState({ ...data, ai: prev.ai });

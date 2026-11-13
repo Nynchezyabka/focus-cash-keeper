@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { customColor } from "./colors";
+import type { DebtFee } from "./debt-fee";
 import { paymentObligations, type ScheduleRow } from "./loan-schedule";
 
 export type Group = "must" | "safe" | "life";
@@ -23,7 +24,7 @@ export interface Tx {
 export interface Goal { id: string; name: string; target: number; color?: string | undefined; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean | undefined; settled?: "spent" | "kept" }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
-export interface Obligation { id: string; name: string; amount: number; day: number; category: string; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
+export interface Obligation { id: string; name: string; amount: number; day: number; category: string; debtFee?: DebtFee; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; mode?: "auto" | "always" }
 

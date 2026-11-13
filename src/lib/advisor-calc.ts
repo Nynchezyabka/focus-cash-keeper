@@ -2,6 +2,7 @@
 import { calc, cat, dayKey, forecast, getState, moveIncome, moveObligation, nextIncome, rub, setState, transfer, uid, type Method, type State } from "@/lib/budget";
 import { saveGoal } from "@/lib/goals";
 import { validDate } from "@/lib/loan-schedule";
+import { debtFeeAt } from "@/lib/debt-fee";
 
 const d = (x: Date) => x.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
@@ -49,6 +50,18 @@ function amountIn(q: string) {
 /** Recognise a question the app can calculate itself; returns a ready block for the model. */
 export function precompute(s: State, q: string, now = new Date()): string | null {
   const t = q.toLowerCase();
+  if (/(долг|кредит|кубыш|плат[ауы]|вернуть|погаш)/.test(t) && s.obligations.some((o) => o.debtFee)) {
+    const match = t.match(/\b(\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.\d{4})\b/);
+    const raw = match?.[0];
+    const parts = raw?.split('.');
+    const date = raw ? raw.includes('-') ? raw : `${parts?.[2]}-${parts?.[1]?.padStart(2, '0')}-${parts?.[0]?.padStart(2, '0')}` : dayKey(now);
+    const debts = s.obligations.filter((o) => o.debtFee);
+    const named = debts.filter((o) => t.includes(o.name.toLowerCase()));
+    return (named.length ? named : debts).map((o) => {
+      const result = debtFeeAt(s, o, date);
+      return result ? `${o.name}, на ${date}: основной долг ${rub(result.principal)}, плата ${rub(result.fee)} за ${result.chargedDays} платных дней, ставка за день ${rub(result.daily)}, долг с платой ${rub(result.total)}. Условия сохранены в карточке; предполагается, что новых операций не будет. Плата отдельно от планового платежа, автоматически не списывается.` : `${o.name}: точный расчёт недоступен — проверьте даты и покрытие суммы ступенями. Не вычисляй плату сама.`;
+    }).join('\n');
+  }
   const dateMatch = t.match(/\b(\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.\d{4})\b/);
   if (/(плат[её]ж|оплат|списан)/.test(t) && /(нов|добав|внеплан|если)/.test(t) && dateMatch) {
     const raw = dateMatch[0];
@@ -77,7 +90,7 @@ export function unverifiedSums(answer: string, sources: string[]): number[] {
   for (const src of sources) for (const m of src.matchAll(/\d[\d\s\u00a0]*/g)) known.add(Math.round(num(m[0])));
   const out: number[] = [];
   for (const m of answer.matchAll(/(\d[\d\s\u00a0]*(?:[.,]\d+)?)\s*(?:₽|руб)/g)) {
-    const v = Math.round(num(m[1]!));
+    const v = Math.round(num(m[1] ?? ""));
     if (v < 100) continue;
     if (![...known].some((k) => Math.abs(k - v) <= Math.max(1, v * 0.005))) out.push(v);
   }

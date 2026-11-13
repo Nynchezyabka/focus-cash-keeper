@@ -1,6 +1,7 @@
 import { activeGoals, familyCollected, goalSaved, unassigned } from "@/lib/goals";
 import { GUIDE_TEXT } from "@/lib/guide";
 import { paymentObligations } from "@/lib/loan-schedule";
+import { debtFeeAt } from "@/lib/debt-fee";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -22,6 +23,7 @@ import {
   incomeUpcoming,
   periodOf,
   rub,
+  dayKey,
   setState,
   type State,
 } from "@/lib/budget";
@@ -104,7 +106,7 @@ function context(s: State) {
     return `«${g.name}» нужно ${rub(g.target)}${g.date ? ` к ${g.date}` : ""}, ${g.family && !s.advisorNoFamily ? `мой вклад ${rub(mine)}, всего собрано вместе ${rub(familyCollected(g.id, mine))} (семейная)` : `собрано ${rub(mine)}`}`;
   }).join("; ") + `; без цели ${rub(unassigned(s))}`;
   return `ТЕКУЩИЕ ФАКТЫ (собраны на устройстве ${new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}; единственный источник цифр, цифры из прошлых сообщений устарели):
-Сегодня ${d(new Date())}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
+Сегодня ${d(new Date())}, ${new Date().toLocaleDateString("ru-RU", { weekday: "long", year: "numeric" })}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
 Накопления (в «всего» НЕ входят): ${rub(s.cushion)}, из них наличными ${rub(s.cushionCash ?? 0)}.
 Ближайший доход ${d(c.next.date)}, через ${c.days} дн.
 Нужно на обязательные платежи до дохода и накопление на дальние: ${rub(c.reserve)}; реально отложено ${rub(c.held)}${c.shortfall > 0 ? `, не хватает ${rub(c.shortfall)} (сначала защищён минимум на жизнь ${rub(c.minDaily)}/день)` : ""}.
@@ -119,8 +121,9 @@ function context(s: State) {
 Цели накоплений (часть накоплений, не отдельные деньги): ${goalsText}.
 О пользователе и мои правила: ${s.advisorAbout?.trim() || "не указано"}.
 Кредиты и долги (условия со слов пользователя): ${s.advisorLoans?.trim() || "не указаны"}.
+Плата по сохранённым условиям долгов: ${s.obligations.filter((o) => o.debtFee).map((o) => { const r = debtFeeAt(s, o, dayKey(new Date())); const due = o.once ? debtFeeAt(s, o, o.once) : null; return `${o.name}: ${r ? `на сегодня ${rub(r.fee)}, в день ${rub(r.daily)}` : "расчёт недоступен"}${due ? `; к дате возврата ${o.once} плата ${rub(due.fee)}, с долгом ${rub(due.total)}` : ""}`; }).join("; ") || "не заданы"}.
 Минимум на жизнь: ${rub(c.minDaily)} в день.
-ПРОГНОЗ НА 60 ДНЕЙ (раздел «План», отрезки от дохода до дохода; траты на жизнь не учтены, «в день» = (деньги на начало − платежи) / дней):
+ПРОГНОЗ НА 60 ДНЕЙ (раздел «План», отрезки от дохода до дохода; дневной ориентир сглажен с учётом следующих отрезков, деньги на начало уже учитывают плановые траты на жизнь в предыдущих отрезках; не дели остаток самостоятельно):
 ${forecastText(s)}`;
 }
 
@@ -160,7 +163,7 @@ ${GUIDE_TEXT}
 1. Используй ТОЛЬКО цифры из блока ФАКТЫ. Не выдумывай доходы, накопления, ставки, вклады. Если данных не хватает — так и скажи и спроси.
 2. Никогда не ругай и не стыди. Кофе, такси, вкусное, отдых — законный способ восстановиться. Не предлагай урезать их, если пользователь сам не попросит искать, на чём сэкономить.
 3. Не советуй тратить накопления или резерв на обязательные платежи на желания и крупные цели (ипотека, вложения). Накопления — на непредвиденное.
-4. Не предлагай брать новые кредиты, рассрочки и инвестиции. По уже имеющимся долгам из блока «Кредиты и долги» можно помочь посчитать: когда выгоднее вернуть (учитывай ставку, льготный период, штрафы, дату платежа) — но только из свободных денег, не трогая резерв обязательных платежей и накопления. Если условий не хватает — спроси. Налоговые и медицинские вопросы — к специалисту.
+4. Не предлагай брать новые кредиты, рассрочки и инвестиции. По уже имеющимся долгам объясняй только плату, рассчитанную приложением по сохранённым условиям: остаток, дата получения, бесплатные дни, ступени платы, дневной предел, включение дня возврата. Текст в «Кредиты и долги» — контекст, а не готовый расчёт: ставки из него не превращай в свои вычисления. Если расчёта нет — уточни недостающие условия или предложи сохранить их в карточке разового долга в «План → Платежи». Не используй резерв обязательных платежей и накопления. Налоговые и медицинские вопросы — к специалисту.
 8. Если приложен скриншот — сначала коротко перечисли, что на нём видно (цена, товар, условия), затем отвечай по правилам выше.
 5. Оценка покупки: сравни цену со «Свободно до дохода всего» и с дневным ориентиром. Дай вердикт одной фразой («спокойно можно», «можно, но станет тесно до ДАТЫ: ≈ N ₽ в день», «лучше подождать до ДАТЫ»), покажи, сколько останется в день до дохода после покупки (свободно до дохода − цена) / дней. Если сейчас тесно — 1–2 варианта: купить после ДАТЫ дохода или откладывать по N ₽ с каждого дохода (посчитай). Не предлагай таймеры, вишлисты и «подождать 48 часов».
 6. Считай аккуратно, показывай простую арифметику.
@@ -223,6 +226,11 @@ function Chat({ s }: { s: State }) {
 
   async function send(q: string, base: Msg[] = msgs, shot = img) {
     if ((!q.trim() && !shot) || busy) return;
+    const pre = q.trim() ? precompute(s, q) : null;
+    if (pre && /^(Покупка за|Сценарий \(новый платёж|Сценарий \(ближайший доход (меньше|больше))/.test(pre)) {
+      const amount = pre.match(/\d[\d\s\u00a0]*\s*₽/)?.[0];
+      if (amount && !window.confirm(`Считаю на ${amount}, верно?`)) return;
+    }
     const content = (q.trim() || "Посмотри скриншот") + (shot ? "\n📷 скриншот" : "");
     const next: Msg[] = [...base, { role: "user", content }];
     grew.current = true;
@@ -233,7 +241,6 @@ function Chat({ s }: { s: State }) {
     setBusy(true);
     try {
       const facts = context(s);
-      const pre = q.trim() ? precompute(s, q) : null;
       const sys = `${RULES}\n\n${facts}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
       const a = (await aiChat(sys, next.slice(-12).map(({ role, content }) => ({ role, content })), s.ai, shot ?? undefined)).trim();
       const unverified = unverifiedSums(parseActions(a).clean, [facts, pre ?? "", ...next.filter((m) => m.role === "user").map((m) => m.content)]);
@@ -266,7 +273,7 @@ function Chat({ s }: { s: State }) {
     );
 
   return (
-    <div className="pb-36">
+    <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col">
       <div className="mb-3 flex gap-2">
         <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("rules")}><Settings2 /> Мои правила</Button>
         <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("facts")}><Eye /> Что помощник видит</Button>
@@ -291,12 +298,12 @@ function Chat({ s }: { s: State }) {
       {msgs.length === 0 && (
         <div className="grid gap-2">
           {QUICK.map((q) => (
-            <button key={q} onClick={() => send(q)} className="rounded-2xl border border-border bg-card p-3 text-left text-sm">{q}</button>
+            <Button variant="outline" key={q} onClick={() => send(q)} className="h-auto whitespace-normal p-3 text-left text-sm">{q}</Button>
           ))}
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-3">
         {msgs.map((m, i) => {
           if (m.role === "user") return <div key={i} className="ml-8 whitespace-pre-wrap rounded-2xl bg-primary p-3 text-sm text-primary-foreground">{m.content}</div>;
           const { clean, actions } = parseActions(m.content);
@@ -308,7 +315,7 @@ function Chat({ s }: { s: State }) {
               {m.unverified && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
                   <span>Сумма {m.unverified.map(rub).join(", ")} рассчитана моделью ориентировочно.</span>
-                  <button className="inline-flex items-center gap-1 font-medium text-primary" onClick={() => recalc(i)}><Calculator className="h-3.5 w-3.5" /> Пересчитать по формуле</button>
+                  <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" onClick={() => recalc(i)}><Calculator className="h-3.5 w-3.5" /> Пересчитать по формуле</Button>
                 </div>
               )}
               {actions.map((a, k) => (
@@ -322,8 +329,8 @@ function Chat({ s }: { s: State }) {
         <div ref={end} />
       </div>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.6rem+env(safe-area-inset-bottom))] z-10 border-t border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto max-w-md px-[max(1.25rem,env(safe-area-inset-left))] py-2">
+      <div className="shrink-0 border-t border-border bg-background/95 backdrop-blur">
+        <div className="py-2">
           {img && (
             <div className="mb-2 flex items-center gap-2 rounded-xl bg-card p-2 text-xs">
               <img src={img.dataUrl} alt="" className="h-10 w-10 rounded object-cover" />

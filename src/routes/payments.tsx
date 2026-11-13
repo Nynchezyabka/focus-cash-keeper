@@ -1,4 +1,6 @@
 import { activeGoals } from "@/lib/goals";
+import { DebtFeeFields, DebtFeeSummary } from "@/components/DebtFee";
+import { validDebtFee } from "@/lib/debt-fee";
 import { LoanScheduleCard, LoanScheduleEditor } from "@/components/LoanSchedule";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -78,6 +80,7 @@ function Payments({ s }: { s: State }) {
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (done / o.amount) * 100)}%` }} /></div>
                 </div>
               )}
+              {o.debtFee && <DebtFeeSummary s={s} o={o} />}
             </li>
           );
         })}
@@ -116,9 +119,10 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
   const [category, setCategory] = useState(o.category);
   const [method, setMethod] = useState<Method>(o.method ?? "card");
   const [goal, setGoal] = useState(o.goal ?? "");
+  const [debtFee, setDebtFee] = useState(o.debtFee);
   const goals = activeGoals(getState());
   const a = Number(amount.replace(/\s/g, "").replace(",", ".")), d = Number(day);
-  const valid = name.trim() && a > 0 && (once ? !!date : d >= 1 && d <= 31);
+  const valid = name.trim() && a > 0 && (once ? !!date : d >= 1 && d <= 31) && (!debtFee || (once && validDebtFee(debtFee)));
   return (
     <Dialog open onOpenChange={(x) => !x && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-sm overflow-y-auto">
@@ -143,6 +147,7 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
           : <Input inputMode="numeric" placeholder="Какого числа (1–31)" value={day} onChange={(e) => setDay(e.target.value.replace(/\D/g, "").slice(0, 2))} />}
         <MethodToggle value={method} onChange={setMethod} />
         <CategoryPicker value={category} onPick={setCategory} groups={["must", "safe", "life"]} />
+        {once && category === "loan" && <DebtFeeFields value={debtFee} onChange={setDebtFee} />}
         {category === "savings" && goals.length > 0 && (
           <select value={goal} onChange={(e) => setGoal(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
             <option value="">Без цели</option>
@@ -168,6 +173,7 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
               id: o.id || uid(), name: name.trim(), amount: a, category, method, from: o.from ?? new Date().toISOString().slice(0, 10),
               day: once ? Number(date.slice(8, 10)) : d, ...(once ? { once: date } : {}), ...(!once && o.nextOn ? { nextOn: o.nextOn } : {}), ...(o.loanTx ? { loanTx: o.loanTx } : {}),
               ...(category === "savings" && goal ? { goal } : {}),
+              ...(once && category === "loan" && debtFee ? { debtFee } : {}),
             };
             setState((x) => ({ ...x, obligations: isNew ? [...x.obligations, item] : x.obligations.map((y) => (y.id === o.id ? item : y)) }));
             if (!isNew) {
