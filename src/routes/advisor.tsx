@@ -7,7 +7,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { applyAction, describeAction, parseActions, precompute, unverifiedSums, type Action } from "@/lib/advisor-calc";
+import { applyAction, describeAction, parseActions, precompute, unverifiedSums, type AdvisorAction } from "@/lib/advisor-calc";
 import { toast } from "sonner";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ function context(s: State) {
             : paid > 0
               ? `внесено ${rub(paid)} из ${rub(o.amount)}, осталось ${rub(o.amount - paid)}`
               : "ещё не оплачено";
-        return `${o.name} ${rub(o.amount)} — ${d(due)}${o.once ? " (разово)" : " (ежемесячно)"} — ${st}`;
+        return `${o.name} [id=${o.id}] ${rub(o.amount)} — ${d(due)}${o.once ? " (разово)" : " (ежемесячно)"} — ${st}`;
       })
       .join("; ") || "нет";
   const resv =
@@ -80,7 +80,7 @@ function context(s: State) {
     s.incomes
       .map((i) => {
         const u = incomeUpcoming(s, i);
-        return `${i.name} ${rub(i.amount)}${i.method === "cash" ? " наличными" : ""}${i.skip === month ? " — В ЭТОМ МЕСЯЦЕ ОТКЛЮЧЕНА, не рассчитывай на неё" : ""}${u ? ` — ${d(u)}` : ""}`;
+        return `${i.name} [id=${i.id}] ${rub(i.amount)}${i.method === "cash" ? " наличными" : ""}${i.skip === month ? " — В ЭТОМ МЕСЯЦЕ ОТКЛЮЧЕНА, не рассчитывай на неё" : ""}${u ? ` — ${d(u)}` : ""}`;
       })
       .join("; ") || "нет";
   const recent =
@@ -144,6 +144,7 @@ const RULES = `Ты — спокойная помощница по личном�
 ДЕЙСТВИЯ: если человек просит что-то сделать в приложении, добавь в конец ответа тег (он станет карточкой с кнопкой «Применить», сама ты ничего не меняешь):
 [[transfer:card|СУММА]] — снять с карты в наличные; [[transfer:cash|СУММА]] — наличные на карту;
 [[payment:НАЗВАНИЕ|СУММА|ГГГГ-ММ-ДД]] — разовый платёж в план; [[goal:НАЗВАНИЕ|СУММА]] — цель накоплений.
+[[movePayment:ID|ГГГГ-ММ-ДД]] — перенести платёж; [[moveIncome:ID|ГГГГ-ММ-ДД]] — перенести ближайший доход. ID бери только из текущих фактов, никогда не выдумывай. Если запись неоднозначна, уточни название. Оплаченные строки графика не переноси.
 Не добавляй теги без просьбы человека.
 НЕ заканчивай ответ дежурными вопросами и предложениями («Хотите, я…?», «Нужно что-то ещё?»). Уточняющий вопрос задавай, только если без него нельзя посчитать.
 Если спрашивают, как пользоваться приложением, отвечай по этой инструкции, не выдумывай кнопок и функций, которых в ней нет:
@@ -164,7 +165,7 @@ ${GUIDE_TEXT}
 5. Оценка покупки: сравни цену со «Свободно до дохода всего» и с дневным ориентиром. Дай вердикт одной фразой («спокойно можно», «можно, но станет тесно до ДАТЫ: ≈ N ₽ в день», «лучше подождать до ДАТЫ»), покажи, сколько останется в день до дохода после покупки (свободно до дохода − цена) / дней. Если сейчас тесно — 1–2 варианта: купить после ДАТЫ дохода или откладывать по N ₽ с каждого дохода (посчитай). Не предлагай таймеры, вишлисты и «подождать 48 часов».
 6. Считай аккуратно, показывай простую арифметику.
 7. Если человек просто хочет обсудить траты — слушай и отражай, без лишних вопросов.
-9. Сценарии «а что если» (доход уменьшится, выплата сдвинется, начнётся декрет, пособие, новый платёж): возьми отрезки из ПРОГНОЗА, замени только то, что изменил пользователь, и пересчитай каждый затронутый отрезок по формуле (деньги на начало − платежи) / дней; остаток или нехватка переходит в следующий отрезок. Покажи короткую таблицу «Период | было в день | станет в день», отметь отрезки ниже минимума на жизнь (он указан в ФАКТАХ) и предложи 1–2 спокойных варианта. Если не хватает данных (сумма, дата) — спроси. Подчеркни, что это прикидка, план в приложении не меняется.`;
+9. Сценарии «а что если»: используй только РАСЧЁТ ПРИЛОЖЕНИЯ. Если он отсутствует, не пересчитывай прогноз сама: уточни сумму и дату или объясни, что такой расчёт пока недоступен. План от сценария не меняется.`;
 
 const QUICK = [
   "Можно ли купить пылесос за 35 000 ₽?",
@@ -354,7 +355,7 @@ function Chat({ s }: { s: State }) {
   );
 }
 
-function ActionCard({ a, s, done, onDone }: { a: Action; s: State; done?: boolean | undefined; onDone: () => void }) {
+function ActionCard({ a, s, done, onDone }: { a: AdvisorAction; s: State; done?: boolean | undefined; onDone: () => void }) {
   const [gone, setGone] = useState(false);
   if (gone) return null;
   const v = describeAction(a, s);
@@ -365,7 +366,7 @@ function ActionCard({ a, s, done, onDone }: { a: Action; s: State; done?: boolea
       <p className="text-xs text-foreground">Станет: {v.after}</p>
       {done ? <p className="text-xs text-primary">Применено</p> : (
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => { if (applyAction(a)) { toast("Готово"); onDone(); } else toast("Не получилось: на счёте не хватает денег"); }}>Применить</Button>
+          <Button size="sm" onClick={() => { if (applyAction(a)) { toast("Готово"); onDone(); } else toast(a.type === "transfer" ? "На счёте не хватает денег" : "Не удалось применить: проверьте запись, дату и наличие оплаты"); }}>Применить</Button>
           <Button size="sm" variant="ghost" onClick={() => setGone(true)}>Отклонить</Button>
         </div>
       )}

@@ -1,9 +1,18 @@
 import { GROUPS, rub, type Group, type State } from "@/lib/budget";
 import { weekSummary } from "@/lib/advisor-calc";
+import { useEffect, useState } from "react";
+import { MessageCircleHeart } from "lucide-react";
+import { Button } from "./ui/button";
+import { aiChat, detectService } from "@/lib/parse";
 
 /** Facts of the last 7 days, calculated on the phone — works offline and without AI. */
 export function WeekSummary({ s }: { s: State }) {
   const w = weekSummary(s);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const signature = JSON.stringify([w.groups, w.income, w.count, w.upcoming.map((e) => [e.refId, e.amount])]);
+  useEffect(() => { setNote(""); setError(""); }, [signature]);
   if (!w.count && !w.upcoming.length) return null;
   const groups = (Object.keys(GROUPS) as Group[]).filter((g) => w.groups[g]);
   return (
@@ -11,7 +20,7 @@ export function WeekSummary({ s }: { s: State }) {
       <h2 className="text-sm text-muted-foreground">За 7 дней</h2>
       {groups.length ? (
         <ul className="space-y-1">
-          {groups.map((g) => <li key={g} className="flex justify-between"><span>{GROUPS[g]}</span><span className="tabular-nums">{rub(w.groups[g]!)}</span></li>)}
+          {groups.map((g) => <li key={g} className="flex justify-between"><span>{GROUPS[g]}</span><span className="tabular-nums">{rub(w.groups[g] ?? 0)}</span></li>)}
         </ul>
       ) : <p className="text-muted-foreground">Трат не записано</p>}
       {w.income > 0 && <p className="flex justify-between"><span>Доходы</span><span className="tabular-nums text-primary">+{rub(w.income)}</span></p>}
@@ -23,6 +32,17 @@ export function WeekSummary({ s }: { s: State }) {
           ))}
         </div>
       )}
+      {detectService(s.ai.apiKey) && <div className="border-t border-border pt-2">
+        {note ? <p className="text-sm">{note}</p> : <Button variant="ghost" size="sm" disabled={busy} onClick={async () => {
+          setBusy(true); setError("");
+          try {
+            const reply = await aiChat("Одно короткое доброжелательное наблюдение о неделе, до двух предложений. Не советуй экономить, не оценивай траты, не ругай кофе, такси и отдых. Не вычисляй и не называй суммы, не давай советы по кредитам. Используй только предоставленные факты. Отвечай на русском, обращайся на вы.", [{ role: "user", content: `Сводка за 7 дней: ${groups.map((g) => `${GROUPS[g]} ${rub(w.groups[g] ?? 0)}`).join("; ")}. Доходы ${rub(w.income)}. Ближайшие платежи: ${w.upcoming.map((e) => `${e.name} ${rub(e.amount)}`).join("; ") || "нет"}.` }], s.ai);
+            setNote(reply);
+          } catch { setError("Не удалось получить наблюдение. Цифры сводки доступны без интернета."); }
+          finally { setBusy(false); }
+        }}><MessageCircleHeart />{busy ? "Смотрю неделю…" : "Наблюдение Помощника"}</Button>}
+        {error && <p role="status" className="text-xs text-muted-foreground">{error}</p>}
+      </div>}
     </section>
   );
 }

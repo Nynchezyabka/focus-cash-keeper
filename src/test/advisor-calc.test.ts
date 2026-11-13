@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { evaluatePurchase, parseActions, precompute, unverifiedSums, whatIf } from "@/lib/advisor-calc";
+import { applyAction, evaluatePurchase, parseActions, precompute, unverifiedSums, whatIf } from "@/lib/advisor-calc";
 import { replaceState, getState, type State } from "@/lib/budget";
 
 const NOW = new Date(2026, 9, 16);
@@ -30,5 +30,28 @@ describe("advisor math", () => {
     const r = parseActions("Можно так. [[transfer:card|3000]]");
     expect(r.clean).toBe("Можно так.");
     expect(r.actions).toEqual([{ type: "transfer", from: "card", amount: 3000 }]);
+  });
+  it("calculates a new payment without mistaking the date for the amount or changing the plan", () => {
+    const out = precompute(getState(), "Что если новый платёж 2026-10-20 на 5 000 ₽?", NOW);
+    expect(out).toContain("новый платёж 5 000 ₽ 2026-10-20");
+    expect(getState().obligations).toEqual([]);
+    expect(whatIf(getState(), { kind: "payment", amount: 5000, date: "2026-10-20" }, NOW)[0]?.after).toBeLessThan(whatIf(getState(), { kind: "payment", amount: 0, date: "2026-10-20" }, NOW)[0]?.after ?? 0);
+  });
+  it("date cards do not change anything until applied", () => {
+    const r = parseActions("[[moveIncome:z|2999-12-01]]");
+    expect(getState().incomes[0]?.nextOn).toBeUndefined();
+    const action = r.actions[0]; if (!action) throw new Error("Missing action");
+    expect(applyAction(action)).toBe(true);
+    expect(getState().incomes[0]?.nextOn).toBe("2999-12-01");
+    expect(getState().balance).toBe(20000);
+  });
+  it("rejects missing IDs and impossible dates", () => {
+    expect(parseActions("[[movePayment:z|2026-02-31]]").actions).toEqual([]);
+    expect(applyAction({ type: "movePayment", id: "missing", date: "2999-12-01" })).toBe(false);
+  });
+  it("cannot move an already paid credit schedule row", () => {
+    replaceState({ ...base(), obligations: [{ id: "loan", name: "Кредит", amount: 1000, day: 0, category: "loan", schedule: [{ id: "row", date: "2999-01-01", amount: 1000 }] }], txs: [{ id: "tx", kind: "expense", amount: 1000, category: "loan", date: "2026-10-16", obligationId: "loan::row" }] });
+    expect(applyAction({ type: "movePayment", id: "loan::row", date: "2999-12-01" })).toBe(false);
+    expect(getState().obligations[0]?.schedule?.[0]?.date).toBe("2999-01-01");
   });
 });

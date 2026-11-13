@@ -18,6 +18,7 @@
 - Category colors default to stable group shades; optional palette IDs are stored on categories/goals, with CSS tokens resolving their display and whitelisted colors accompanying shared data.
 - BYOK model selection is resolved centrally in parse.ts: parsing uses model, the advisor uses advisorModel with parsing/default fallback; all calls remain browser-only.
 - Credit schedules live on parent obligations with stable row IDs; virtual one-off obligations feed existing payment/forecast logic, and outstanding totals derive only from linked expense transactions so undo never requires a stored debt balance.
+- Advisor date-change cards resolve IDs against fresh local state before applying; paid schedule rows are immutable and unsupported scenarios must not be calculated by the model.
 - One `CategoryPicker` (src/components/Pickers.tsx) is used on every screen that chooses a category — the same chooser everywhere.
 - Offline/updates: hand-written cache-first-with-background-refresh `public/sw.js` registered by `src/lib/pwa.ts`, disabled in editor previews — opens instantly on weak networks, update check (`?_v=`) bypasses cache.
 - AI economy mode: local keyword parse first, AI only for unknown words; saved items teach keywords via `learnKeys` — saves the user's AI requests.
