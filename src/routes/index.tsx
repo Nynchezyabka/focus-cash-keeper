@@ -214,7 +214,7 @@ function Today({ s }: { s: State }) {
           <Stat
             label="Отложено на платежи"
             Icon={Lock}
-            value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}
+            value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve + c.aheadHeld)}
             progress={c.shortfall > 0 && c.reserve > 0 ? c.held / c.reserve : undefined}
             onClick={() => setDialog("reserve")}
           />
@@ -327,7 +327,7 @@ function ReserveDialog({
           не входят.
         </p>
         {c.reserved.length + c.saving.length === 0 && (
-          <p className="text-sm">Сейчас ничего не отложено — до {dm(c.next.date)} платежей нет.</p>
+          <p className="text-sm">Сейчас ничего не отложено — до {dm(c.next.date)} платежей нет, а следующие доходы покрывают платежи позже.</p>
         )}
         {c.reserved.length > 0 && (
           <div>
@@ -346,7 +346,7 @@ function ReserveDialog({
         )}
         {c.saving.length > 0 && (
           <div>
-            <p className="mb-1 text-xs text-muted-foreground">Откладываю понемногу на платежи позже</p>
+            <p className="mb-1 text-xs text-muted-foreground">Откладываю заранее на платежи после {dm(c.next.date)} — следующий доход их целиком не покроет</p>
             <ul className="divide-y divide-border rounded-xl bg-secondary text-sm">
               {c.saving.map(({ o, due, part }) => (
                 <li key={o.id} className="flex justify-between gap-2 px-3 py-2">
@@ -364,7 +364,7 @@ function ReserveDialog({
         <p className="flex justify-between border-t border-border pt-2 text-sm">
           <span>Всего отложено</span>
           <span className="tabular-nums">
-            {c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}
+            {c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve + c.aheadHeld)}
           </span>
         </p>
         <p className="text-xs text-muted-foreground">Накопления лежат отдельно: {rub(cushion)}</p>

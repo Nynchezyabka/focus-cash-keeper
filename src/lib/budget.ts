@@ -271,11 +271,25 @@ export function calc(s: State, now = new Date()) {
     const first = forecast(s, 60, now, pool)[0];
     if (first && first.perDay < dailyNorm) dailyNorm = Math.max(first.perDay, Math.min(minDaily, pool / days));
   }
+  // money kept now for payments after the next income — shown in «Отложено на платежи», not hidden
+  let ahead = Math.max(0, Math.round(pool - held - dailyNorm * days));
+  if (ahead > 0) {
+    const later = forecast(s, 60, now, pool).flatMap((g) => g.events).filter((e) => e.kind === "payment" && !e.paid && e.date >= next.date);
+    for (const e of later) {
+      if (ahead <= 0) break;
+      const o = s.obligations.find((x) => x.id === e.refId);
+      if (!o) continue;
+      const part = Math.min(ahead, e.amount);
+      saving.push({ o, due: e.date, part });
+      ahead -= part;
+    }
+  }
+  const aheadHeld = saving.reduce((a, x) => a + x.part, 0);
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
   const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm * days - spentToday, rest - held) / (days - 1)) : 0;
-  return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, payGap, minDaily, todayKey: tk };
+  return { next, days, reserve, held, reserved, saving, aheadHeld, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, payGap, minDaily, todayKey: tk };
 }
 
 // ---------- actions ----------

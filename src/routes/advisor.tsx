@@ -77,7 +77,7 @@ function context(s: State, readable = false) {
   const resv =
     [
       ...c.reserved.map((r) => `${r.o.name} ${rub(r.o.amount - paidAmount(s, r.o, r.due))}`),
-      ...c.saving.map((x) => `${x.o.name} (копится) ${rub(x.part)}`),
+      ...c.saving.map((x) => `${x.o.name} ${d(x.due)} (заранее, после дохода) ${rub(x.part)}`),
     ].join("; ") || "ничего";
   const month = periodOf(new Date());
   const inc =
@@ -130,6 +130,7 @@ function context(s: State, readable = false) {
 Свободно сегодня: ${rub(Math.max(0, c.freeToday))}, дневной ориентир ${rub(c.dailyNorm)}, с завтрашнего дня по ${rub(c.afterSpread)} в день.
 Сегодня потрачено (все траты дня, кроме оплаты плановых платежей): ${rub(c.spentToday)}${c.spentToday > 0 ? ` — ${s.txs.filter((t) => t.kind === "expense" && !t.obligationId && !t.goal && dayKey(new Date(t.date)) === c.todayKey).map((t) => `${t.note || cat(t.category).name} ${rub(t.amount)}`).join(", ")}` : ""}; из дневного ориентира ${rub(c.dailyNorm)}.
 Свободно до дохода всего (с учётом потраченного сегодня): ${rub(freeUntilIncome(c))}.
+КАК СКЛАДЫВАЕТСЯ (объясняй именно так, не пересчитывай): всего ${rub(c.total)} + уже потрачено сегодня ${rub(c.spentToday)} = ${rub(c.total + c.spentToday)}; минус отложено на платежи до дохода ${rub(c.held)} и заранее на платежи после дохода ${rub(c.aheadHeld)}; на жизнь до дохода ${rub(c.dailyNorm * c.days)} = ${rub(c.dailyNorm)} × ${c.days} дн. «С завтрашнего дня по ${rub(c.afterSpread)}» — это остаток этой суммы после сегодняшних трат, делённый на оставшиеся дни. Остаток на счетах уже учитывает сегодняшние траты — не вычитай их второй раз. Свободно на сегодня вечером: ${rub(Math.max(0, c.freeToday))}.
 Что именно отложено сейчас: ${resv}.
 Платежи и их состояние (оплаченные уже списаны и не резервируются): ${obl}.
 Плановые доходы: ${inc}.
