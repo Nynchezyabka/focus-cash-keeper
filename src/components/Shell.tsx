@@ -29,7 +29,24 @@ export function Shell({ title, children }: { title?: string; children: (s: State
   useEffect(() => { setDot(!!s && path !== "/advisor" && !!openerDue(s)); }, [s, path]);
   const nav = fam ? [...NAV.slice(0, 3), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(3)] : NAV;
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
+    <div className="min-h-screen bg-background lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-1 border-r border-border bg-card/60 px-3 py-6 lg:flex">
+        <Link to="/" className="mb-6 px-3 font-display text-xl text-foreground">Бережный бюджет</Link>
+        {nav.map(({ to, label, Icon }) => {
+          const active = to === "/calendar" ? PLAN_PATHS.includes(path) : path === to;
+          return (
+            <Link key={to} to={to} className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm ${active ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-secondary/60"}`}>
+              <span className="relative"><Icon className="h-5 w-5" />{to === "/advisor" && dot && <span aria-label="Есть сообщение" className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-primary" />}</span>
+              {label}
+            </Link>
+          );
+        })}
+        <div className="mt-auto space-y-1">
+          <Link to="/help" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><HelpCircle className="h-5 w-5" />Справка</Link>
+          <Link to="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><Settings className="h-5 w-5" />Настройки</Link>
+        </div>
+      </aside>
+    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col lg:max-w-2xl lg:px-6">
       <div className="relative flex items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         {title ? (
           <div className="flex min-w-0 items-center gap-1">
@@ -53,10 +70,10 @@ export function Shell({ title, children }: { title?: string; children: (s: State
           </Link>
         </div>
       </div>
-      <main className="flex-1 px-[max(1.25rem,env(safe-area-inset-left))] pb-[calc(7rem+env(safe-area-inset-bottom))] pt-2">
+      <main className="flex-1 px-[max(1.25rem,env(safe-area-inset-left))] pb-[calc(7rem+env(safe-area-inset-bottom))] pt-2 lg:pb-12">
         {s ? children(s) : <div className="py-20 text-center text-muted-foreground">…</div>}
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+      <nav className="fixed inset-x-0 bottom-0 z-20 lg:hidden border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className={`mx-auto grid max-w-md px-[env(safe-area-inset-left)] ${fam ? "grid-cols-5" : "grid-cols-4"}`}>
           {nav.map(({ to, label, Icon }) => {
             const active = to === "/calendar" ? PLAN_PATHS.includes(path) : path === to;
@@ -69,6 +86,7 @@ export function Shell({ title, children }: { title?: string; children: (s: State
           })}
         </div>
       </nav>
+    </div>
     </div>
   );
 }
