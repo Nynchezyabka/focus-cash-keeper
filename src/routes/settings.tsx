@@ -14,6 +14,7 @@ import { MIN_DAILY, getState, replaceState, setState, type AiSettings, type Stat
 import { Switch } from "@/components/ui/switch";
 import { getFamily } from "@/lib/family";
 import { AiModels } from "@/components/AiModels";
+import { validSchedule } from "@/lib/loan-schedule";
 
 export const Route = createFileRoute("/settings")({
   head: () => meta("Настройки — Бережный бюджет", "Резервная копия в JSON, свой ключ ИИ для разбора трат. Данные хранятся только на устройстве."),
@@ -120,6 +121,7 @@ function Settings({ s }: { s: State }) {
             if (!data.txs.every((t) => t && typeof t === "object" && typeof t.amount === "number" && Number.isFinite(t.amount))) throw new Error();
             const d = data as unknown as Record<string, unknown>;
             if (!num(d["balance"]) || !num(d["cash"]) || !arr(d["incomes"]) || !arr(d["obligations"]) || !arr(d["categories"])) throw new Error();
+             if (data.obligations?.some((o) => o.schedule !== undefined && (!Array.isArray(o.schedule) || !validSchedule(o.schedule)))) throw new Error();
             const prev = getState();
             try { localStorage.setItem("budget-backup-before-import", JSON.stringify(prev)); } catch { /* нет места — отмена всё равно есть */ }
             replaceState({ ...data, ai: prev.ai });

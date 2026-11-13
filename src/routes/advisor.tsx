@@ -1,5 +1,6 @@
 import { activeGoals, familyCollected, goalSaved, unassigned } from "@/lib/goals";
 import { GUIDE_TEXT } from "@/lib/guide";
+import { paymentObligations } from "@/lib/loan-schedule";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -56,7 +57,7 @@ function context(s: State) {
       .map(([id, v]) => `${cat(id).name} (${GROUPS[cat(id).group]}): ${rub(v)}`)
       .join("; ") || "нет записей";
   const obl =
-    s.obligations
+    paymentObligations(s)
       .map((o) => {
         const due = obligationDue(o),
           paid = paidAmount(s, o, due);

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { customColor } from "./colors";
+import { paymentObligations, type ScheduleRow } from "./loan-schedule";
 
 export type Group = "must" | "safe" | "life";
 export type TxKind = "expense" | "income" | "adjust" | "cushion" | "savings" | "goal" | "transfer"; // transfer = card ↔ cash, total unchanged
@@ -22,7 +23,7 @@ export interface Tx {
 export interface Goal { id: string; name: string; target: number; color?: string | undefined; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean | undefined; settled?: "spent" | "kept" }
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
-export interface Obligation { id: string; name: string; amount: number; day: number; category: string; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
+export interface Obligation { id: string; name: string; amount: number; day: number; category: string; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; mode?: "auto" | "always" }
 
@@ -234,7 +235,7 @@ export function calc(s: State, now = new Date()) {
   const today = startOfDay(now);
   const next = nextIncome(s, now);
   const days = Math.max(1, Math.round((+next.date - +today) / 86400000));
-  const reserved = s.obligations
+  const reserved = paymentObligations(s)
     .map((o) => ({ o, due: obligationDue(o, now) }))
     .filter(({ o, due }) => due < next.date && !isPaid(s, o, due));
   // only payments due before the next income are set aside from today's money;
@@ -443,13 +444,14 @@ export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: 
     if (inc.nextOn) { const m = parseKey(inc.nextOn); if (dates.length) dates[0] = m; else if (m > today) dates.push(m); }
     for (const d of dates) if (d > today && d <= limit) ev.push({ date: d, kind: "income", name: inc.name, amount: inc.amount, method: inc.method, refId: inc.id });
   }
-  for (const o of s.obligations) {
+  for (const o of paymentObligations(s)) {
     const first = obligationDue(o, now);
     const dates = o.once ? [first] : [first, onDay(first.getFullYear(), first.getMonth() + 1, o.day), onDay(first.getFullYear(), first.getMonth() + 2, o.day)];
     dates.forEach((d, i) => {
-      if (d > limit) return;
+      if (d >= limit) return;
       const left = o.amount - (i === 0 ? paidAmount(s, o, d) : 0);
-      ev.push({ date: d, kind: "payment", name: o.name, amount: Math.max(0, left), paid: left <= 0, method: o.method, refId: o.id });
+      if (d < today && left <= 0) return;
+      ev.push({ date: d < today ? today : d, kind: "payment", name: o.name, amount: Math.max(0, left), paid: left <= 0, method: o.method, refId: o.id });
     });
   }
   ev.sort((a, b) => +a.date - +b.date || (a.kind === "income" ? -1 : 1));

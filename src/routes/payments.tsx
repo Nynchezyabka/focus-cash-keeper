@@ -1,4 +1,5 @@
 import { activeGoals } from "@/lib/goals";
+import { LoanScheduleCard, LoanScheduleEditor } from "@/components/LoanSchedule";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2 } from "lucide-react";
@@ -22,6 +23,7 @@ function Payments({ s }: { s: State }) {
   const [moving, setMoving] = useState<Obligation | null>(null);
   const [part, setPart] = useState<Obligation | null>(null);
   const [loan, setLoan] = useState(false);
+  const [schedule, setSchedule] = useState<Obligation | "new" | null>(null);
   const list = [...s.obligations].map((o) => ({ o, due: obligationDue(o) })).sort((a, b) => +a.due - +b.due);
   const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   return (
@@ -33,8 +35,11 @@ function Payments({ s }: { s: State }) {
         <Button variant="secondary" className="h-12 rounded-2xl" onClick={() => setLoan(true)}><HandCoins /> Взяла в долг</Button>
       </div>
       {loan && <LoanDialog onClose={() => setLoan(false)} />}
+      <Button variant="outline" className="w-full" onClick={() => setSchedule("new")}><CalendarClock /> График кредита</Button>
+      {schedule && <LoanScheduleEditor o={schedule === "new" ? undefined : schedule} onClose={() => setSchedule(null)} />}
       <ul className="space-y-2">
         {list.map(({ o, due }) => {
+          if (o.schedule) return <LoanScheduleCard key={o.id} s={s} o={o} onEdit={() => setSchedule(o)} />;
           const paid = isPaid(s, o, due);
           const done = paidAmount(s, o, due);
           const reserved = c.reserved.some((r) => r.o.id === o.id);
