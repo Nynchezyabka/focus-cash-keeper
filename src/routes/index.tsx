@@ -88,8 +88,6 @@ function Today({ s }: { s: State }) {
 
   return (
     <div className="space-y-5">
-      {pending && <IncomeArrived p={pending} />}
-
       <section className="text-center">
         <p className="text-sm text-muted-foreground">Сегодня свободно</p>
         <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
@@ -119,6 +117,7 @@ function Today({ s }: { s: State }) {
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
         </Link>
       </section>
+      {pending && <IncomeArrived p={pending} />}
 
       {empty && (
         <div className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
@@ -197,9 +196,10 @@ function Today({ s }: { s: State }) {
         <div className="mx-3 border-t border-border" />
         <div className="grid grid-cols-2">
           <Stat
-            label="Отложено на счета"
+            label="На счета"
             Icon={Lock}
-            value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}
+            value={c.shortfall > 0 ? `${rub(c.held)} / ${rub(c.reserve)}` : rub(c.reserve)}
+            progress={c.shortfall > 0 && c.reserve > 0 ? c.held / c.reserve : undefined}
             onClick={() => setDialog("reserve")}
           />
           <Stat label="Накопления" Icon={PiggyBank} value={rub(s.cushion)} onClick={() => setDialog("savings")} />
@@ -261,9 +261,11 @@ function Stat({
   value,
   Icon,
   onClick,
+  progress,
 }: {
   label: string;
   value: string;
+  progress?: number | undefined;
   Icon: typeof Lock;
   onClick: () => void;
 }) {
@@ -273,7 +275,12 @@ function Stat({
         <Icon className="h-3.5 w-3.5" />
         {label}
       </p>
-      <p className="mt-1 text-base text-foreground tabular-nums">{value}</p>
+      <p className="mt-1 truncate whitespace-nowrap text-base text-foreground tabular-nums">{value}</p>
+      {progress !== undefined && (
+        <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-secondary">
+          <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }} />
+        </span>
+      )}
     </button>
   );
 }
@@ -653,7 +660,7 @@ function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: numb
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        До дохода на платежи не хватает {rub(gap)}: сначала я оставила на жизнь {rub(minDaily)} в день. Как поступим?
+        До дохода на платежи не хватает {rub(gap)}. На жизнь оставлено {rub(minDaily)} в день — можно спокойно выбрать, как быть.
       </p>
       <div className="grid gap-2">
         <Button asChild variant="secondary" className="h-auto whitespace-normal py-2">

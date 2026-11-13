@@ -25,10 +25,6 @@ function Settings({ s }: { s: State }) {
   const setAi = (p: Partial<AiSettings>) => setState((x) => ({ ...x, ai: { ...x.ai, ...p } }));
   return (
     <div className="space-y-6">
-      <Link to="/feedback" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
-        <span><span className="font-display text-lg">Предложить идею</span><br /><span className="text-sm text-muted-foreground">Идея, неудобство или вопрос — автору</span></span>
-        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-      </Link>
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Минимум на жизнь</h2>
         <p className="text-sm text-muted-foreground">Сколько в день оставлять на жизнь, даже если денег на платежи не хватает. По умолчанию {MIN_DAILY} ₽.</p>
@@ -44,6 +40,8 @@ function Settings({ s }: { s: State }) {
           }}
         />
       </section>
+
+      <Appearance />
       <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Распознавание трат</h2>
         <p className="text-sm text-muted-foreground">Когда вы пишете «такси 450, кофе 380», приложение раскладывает это на отдельные траты.</p>
@@ -92,10 +90,6 @@ function Settings({ s }: { s: State }) {
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </Link>
 
-      <Appearance />
-
-      <Updates />
-
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Резервная копия</h2>
         <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Всё хранится только на этом устройстве. Ключ ИИ в копию не попадает.</p>
@@ -128,6 +122,13 @@ function Settings({ s }: { s: State }) {
           e.target.value = "";
         }} />
       </section>
+
+      <Updates />
+
+      <Link to="/feedback" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="font-display text-lg">Предложить идею</span><br /><span className="text-sm text-muted-foreground">Идея, неудобство или вопрос — автору</span></span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
     </div>
   );
 }

@@ -56,25 +56,6 @@ function Analytics({ s }: { s: State }) {
   let off = 0;
   return (
     <div className="space-y-5">
-      <div className="flex gap-1 rounded-full bg-secondary p-1">
-        {PERIODS.map((p) => (
-          <button key={p.id} onClick={() => { setPeriod(p.id); setPicked(null); }}
-            className={`flex-1 rounded-full py-2 text-sm ${period === p.id ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{p.label}</button>
-        ))}
-      </div>
-
-      <div className="flex gap-1 rounded-xl bg-muted p-1 text-xs">
-        {([["exp", "Расходы"], ["inc", "Доходы"]] as const).map(([id, l]) => (
-          <button key={id} onClick={() => { setMode(id); setPicked(null); }} className={`flex-1 rounded-lg py-2 ${mode === id ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{l}</button>
-        ))}
-      </div>
-
-      {mode === "exp" && <div className="flex gap-1 rounded-xl bg-muted p-1 text-xs">
-        {([["groups", "3 группы"], ["cats", "Все категории"]] as const).map(([id, l]) => (
-          <button key={id} onClick={() => { setView(id); setPicked(null); }} className={`flex-1 rounded-lg py-2 ${view === id ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{l}</button>
-        ))}
-      </div>}
-
       <div className="relative mx-auto h-56 w-56">
         <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
           <circle cx="90" cy="90" r={R} fill="none" stroke="var(--secondary)" strokeWidth="22" />
@@ -96,6 +77,20 @@ function Analytics({ s }: { s: State }) {
           </div>
         </div>
       </div>
+      <div className="flex items-center gap-1.5 text-xs">
+        <select aria-label="Период" value={period} onChange={(e) => { setPeriod(e.target.value as typeof period); setPicked(null); }}
+          className="rounded-lg bg-muted px-2 py-2 text-foreground">
+          {PERIODS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+        <div className="flex flex-1 gap-1 rounded-lg bg-muted p-1">
+          {([["exp", "Расходы"], ["inc", "Доходы"]] as const).map(([id, l]) => (
+            <button key={id} onClick={() => { setMode(id); setPicked(null); }} className={`flex-1 rounded-md py-1.5 ${mode === id ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{l}</button>
+          ))}
+        </div>
+        {mode === "exp" && <button onClick={() => { setView(view === "groups" ? "cats" : "groups"); setPicked(null); }}
+          className="rounded-lg bg-muted px-2 py-2 text-foreground">{view === "groups" ? "Группы" : "Категории"}</button>}
+      </div>
+
 
       {sum === 0 ? (
         <p className="text-center text-sm text-muted-foreground">{mode === "inc" ? "За этот период доходов нет." : "За этот период трат нет."}</p>

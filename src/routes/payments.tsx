@@ -52,6 +52,7 @@ function Payments({ s }: { s: State }) {
                 </span>
                 <span className="text-sm tabular-nums">{rub(o.amount)}</span>
               </button>
+              <span className="flex shrink-0 flex-col items-center gap-0.5">
               <button
                 type="button"
                 aria-label={paid ? "Отменить оплату" : "Отметить оплаченным"}
@@ -63,6 +64,8 @@ function Payments({ s }: { s: State }) {
               >
                 {paid && <Check className="h-4 w-4" />}
               </button>
+              <span className="text-[10px] leading-none text-muted-foreground">Оплачено</span>
+              </span>
               </div>
               {!paid && done > 0 && (
                 <div className="mt-3 space-y-1">

@@ -1,5 +1,5 @@
 // Обновления приложения: сервис-воркер «сначала сеть», ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.28.0";
+export const APP_VERSION = "1.29.0";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -65,6 +65,8 @@ function remindBackup() {
     const s = getState(), day = 86400000, now = Date.now();
     const last = +new Date(s.lastBackup ?? s.createdAt);
     const shown = Number(localStorage.getItem("berezhny-backup-hint") ?? 0);
+    const v = localStorage.getItem("berezhny-seen-version");
+    if (v && v !== APP_VERSION) return; // сначала «Что нового», копия — в следующий запуск
     if (now - last < 30 * day || now - shown < 7 * day || !s.txs.length) return;
     localStorage.setItem("berezhny-backup-hint", String(now));
     import("sonner").then(({ toast }) => toast("Давно не было резервной копии. Её можно сделать в Настройках — одна кнопка «Экспорт».", { duration: 8000 }));

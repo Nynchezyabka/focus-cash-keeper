@@ -32,16 +32,14 @@ function Calendar({ s }: { s: State }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-display text-lg">План на {horizon} дней</h2>
+        <label className="flex items-center gap-1 font-display text-lg">План на
+          <select aria-label="Горизонт плана" value={horizon} onChange={(e) => pickH(Number(e.target.value))} className="rounded-lg bg-secondary px-1.5 py-0.5 font-display text-lg">
+            {HORIZONS.map((h) => <option key={h} value={h}>{h}</option>)}
+          </select> дней</label>
         <div className="flex rounded-full bg-secondary p-1">
           <button aria-label="Списком" onClick={() => pickV("list")} className={`grid h-9 w-9 place-items-center rounded-full ${view === "list" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}><List className="h-4 w-4" /></button>
           <button aria-label="Календарём" onClick={() => pickV("grid")} className={`grid h-9 w-9 place-items-center rounded-full ${view === "grid" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}><CalendarDays className="h-4 w-4" /></button>
         </div>
-      </div>
-      <div className="flex gap-2">
-        {HORIZONS.map((h) => (
-          <button key={h} onClick={() => pickH(h)} className={`rounded-full px-3 py-1.5 text-sm ${h === horizon ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{h} дней</button>
-        ))}
       </div>
       {view === "grid" ? <Grid s={s} horizon={horizon} /> : <Segments s={s} horizon={horizon} />}
     </div>
