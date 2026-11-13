@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { catColor, DEFAULT_CATEGORIES, getState, replaceState, saveCategories, type AiSettings } from "@/lib/budget";
+import { catColor, groupColor, DEFAULT_CATEGORIES, getState, replaceState, saveCategories, type AiSettings } from "@/lib/budget";
 import { PALETTE } from "@/lib/colors";
 import { saveGoal, sharedGoals, mergeGoals } from "@/lib/goals";
 import { sharedTxs } from "@/lib/family";
@@ -7,6 +7,25 @@ import { aiChat, parseAi, selectedModel, checkAiModel } from "@/lib/parse";
 
 afterEach(() => vi.unstubAllGlobals());
 describe("palette persistence", () => {
+  it("uses the selected main category color", () => {
+    const s = { ...getState(), groupAppearance: { life: { color: "rose", shades: true } } };
+    expect(groupColor("life", s)).toBe("var(--palette-rose)");
+  });
+  it("applies stable shades of the selected color to all subcategories", () => {
+    const s = { ...getState(), groupAppearance: { life: { color: "rose", shades: true } } };
+    const food = DEFAULT_CATEGORIES.find((c) => c.id === "food");
+    const cafe = DEFAULT_CATEGORIES.find((c) => c.id === "cafe");
+    if (!food || !cafe) throw new Error("Missing categories");
+    expect(catColor({ ...food, color: "sky" }, s)).toBe("color-mix(in oklch, var(--palette-rose) var(--category-shade-0), var(--category-shade-base))");
+    expect(catColor(cafe, s)).toBe("color-mix(in oklch, var(--palette-rose) var(--category-shade-1), var(--category-shade-base))");
+  });
+  it("restores an individual color when group shades are switched off", () => {
+    const c = DEFAULT_CATEGORIES.find((c) => c.id === "food");
+    if (!c) throw new Error("Missing category");
+    const s = { ...getState(), groupAppearance: { life: { color: "rose", shades: false } } };
+    expect(catColor({ ...c, color: "sky" }, s)).toBe("var(--palette-sky)");
+    expect(catColor(c, s)).toBe("var(--palette-rose)");
+  });
   it("offers 12 colors", () => expect(PALETTE).toHaveLength(12));
   it("category colors stay stable when a neighbour is removed", () => {
     const c = DEFAULT_CATEGORIES[1];

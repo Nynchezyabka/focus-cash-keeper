@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Palette } from "lucide-react";
 import { CatIcon, Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { ColorPicker } from "@/components/ColorPicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { catColor, cats, DEFAULT_CATEGORIES, GROUP_SHADES, GROUPS, saveCategories, uid, type Category, type Group, type State } from "@/lib/budget";
+import { catColor, cats, DEFAULT_CATEGORIES, getState, groupColor, GROUPS, saveCategories, setState, uid, type Category, type Group, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/categories")({
   head: () => meta("Категории — Бережный бюджет", "Свои категории трат: название, иконка, цвет и кучка — обязательное, безопасность или радости."),
@@ -24,6 +25,7 @@ const ICONS = [
 function Categories({ s }: { s: State }) {
   const list = cats(s);
   const [edit, setEdit] = useState<Category | null>(null);
+  const [colorGroup, setColorGroup] = useState<Group | null>(null);
   const save = (c: Category) => {
     const exists = list.some((x) => x.id === c.id);
     saveCategories(exists ? list.map((x) => (x.id === c.id ? c : x)) : [...list, c]);
@@ -33,7 +35,10 @@ function Categories({ s }: { s: State }) {
     <div className="space-y-5">
       {(Object.keys(GROUPS) as Group[]).map((g) => (
         <section key={g} className="space-y-2">
-          <h2 className="flex items-center gap-2 font-display text-lg"><span className="h-3 w-3 rounded-full" style={{ background: GROUP_SHADES[g][0] }} />{GROUPS[g]}</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex min-w-0 items-center gap-2 font-display text-lg"><span className="h-3 w-3 shrink-0 rounded-full" style={{ background: groupColor(g, s) }} />{GROUPS[g]}</h2>
+            <Button variant="ghost" size="icon" aria-label={`Цвет: ${GROUPS[g]}`} title={`Цвет: ${GROUPS[g]}`} onClick={() => setColorGroup(g)}><Palette className="h-5 w-5" /></Button>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {list.filter((c) => c.group === g).map((c) => (
               <button key={c.id} onClick={() => setEdit(c)} className="flex flex-col items-center gap-2 rounded-2xl bg-card p-3 text-xs shadow-soft active:scale-95">
@@ -53,6 +58,7 @@ function Categories({ s }: { s: State }) {
         saveCategories(DEFAULT_CATEGORIES);
         undoable("Категории сброшены", () => setStateCats(prev));
       }}>Вернуть стандартные категории</Button>
+      {colorGroup && <GroupColors group={colorGroup} s={s} onClose={() => setColorGroup(null)} />}
       {edit && <Editor c={edit} isNew={!list.some((x) => x.id === edit.id)} onSave={save} onClose={() => setEdit(null)} onDelete={() => {
         const prev = list;
         saveCategories(list.filter((x) => x.id !== edit.id));
@@ -61,6 +67,28 @@ function Categories({ s }: { s: State }) {
       }} />}
     </div>
   );
+}
+
+function GroupColors({ group, s, onClose }: { group: Group; s: State; onClose: () => void }) {
+  const appearance = s.groupAppearance?.[group];
+  const update = (color: string | undefined, shades: boolean) => setState((state) => ({
+    ...state, groupAppearance: { ...state.groupAppearance, [group]: { color, shades } },
+  }));
+  return <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <DialogContent className="max-w-sm">
+      <DialogHeader><DialogTitle>{GROUPS[group]}</DialogTitle></DialogHeader>
+      <ColorPicker value={appearance?.color} showAutomatic={false} onChange={(color) => update(color, true)} />
+      <label className="flex items-center justify-between gap-3 text-sm">
+        <span>Подкатегории в оттенках этого цвета</span>
+        <Switch aria-label="Подкатегории в оттенках этого цвета" checked={appearance?.shades ?? true} onCheckedChange={(shades) => update(appearance?.color, shades)} />
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {cats(s).filter((c) => c.group === group).map((c) => <span key={c.id} title={c.name} className="grid h-10 w-10 place-items-center rounded-full text-palette-ink" style={{ background: catColor(c, s) }}><CatIcon name={c.icon} className="h-5 w-5" /></span>)}
+      </div>
+      <Button variant="ghost" onClick={() => update(undefined, true)}>Стандартный цвет</Button>
+      <Button onClick={onClose}>Готово</Button>
+    </DialogContent>
+  </Dialog>;
 }
 
 function setStateCats(prev: Category[] | undefined) { saveCategories(prev ?? DEFAULT_CATEGORIES); }
@@ -80,7 +108,9 @@ function Editor({ c, isNew, onSave, onClose, onDelete }: { c: Category; isNew: b
             <button key={g} onClick={() => setV({ ...v, group: g })} className={`flex-1 rounded-lg py-2 ${v.group === g ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{GROUPS[g]}</button>
           ))}
         </div>
-        <ColorPicker value={v.color} onChange={(color) => setV({ ...v, color })} />
+        {getState().groupAppearance?.[v.group]?.shades
+          ? <p className="text-sm text-muted-foreground">Цвет задан в настройках «{GROUPS[v.group]}».</p>
+          : <ColorPicker value={v.color} onChange={(color) => setV({ ...v, color })} />}
         <p className="text-xs text-muted-foreground">Иконка</p>
         <div className="grid grid-cols-7 gap-1">
           {ICONS.map((i) => (

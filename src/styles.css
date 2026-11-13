@@ -69,6 +69,13 @@
 }
 
 :root {
+  --category-shade-base: oklch(0.98 0 0);
+  --category-shade-0: 100%;
+  --category-shade-1: 88%;
+  --category-shade-2: 76%;
+  --category-shade-3: 64%;
+  --category-shade-4: 52%;
+  --category-shade-5: 40%;
   --palette-ink: oklch(0.25 0.02 150);
   --palette-sage: oklch(0.74 0.07 150);
   --palette-mint: oklch(0.84 0.06 160);

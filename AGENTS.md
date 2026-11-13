@@ -15,7 +15,7 @@
 - Family numbers are always recomputed by `familyTotals` from members' snapshots, never stored — they must stay correct as dates move.
 - AI expense parsing runs in the browser with the user’s own key (BYOK) and falls back to a local parser — no server is involved in AI.
 - Money is split into card (`balance`) and `cash`; every tx carries `method`, and `calc` uses their sum — keeps card/cash consistent everywhere.
-- Category colors default to stable group shades; optional palette IDs are stored on categories/goals, with CSS tokens resolving their display and whitelisted colors accompanying shared data.
+- Category colors resolve centrally in budget.ts from local groupAppearance and optional palette IDs; group shade mode overrides individual colors without deleting them, so toggling it off restores personal choices. Shade mixing uses global CSS tokens.
 - BYOK model selection is resolved centrally in parse.ts: parsing uses model, the advisor uses advisorModel with parsing/default fallback; all calls remain browser-only.
 - Credit schedules live on parent obligations with stable row IDs; virtual one-off obligations feed existing payment/forecast logic, and outstanding totals derive only from linked expense transactions so undo never requires a stored debt balance.
 - Advisor date-change cards resolve IDs against fresh local state before applying; paid schedule rows are immutable and unsupported scenarios must not be calculated by the model.

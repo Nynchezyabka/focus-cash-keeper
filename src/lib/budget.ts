@@ -43,6 +43,7 @@ export interface State {
   minDaily?: number | undefined; // protected minimum for life per day
   ai: AiSettings;
   categories?: Category[];
+  groupAppearance?: Partial<Record<Group, { color?: string; shades: boolean }>>;
   advisorAbout?: string;
   goals?: Goal[];
   advisorNoFamily?: boolean; // do not send family numbers to the AI
@@ -82,14 +83,18 @@ export const GROUP_SHADES: Record<Group, string[]> = {
   safe: Array.from({ length: 5 }, (_, i) => `var(--group-safe-${i})`),
   life: Array.from({ length: 6 }, (_, i) => `var(--group-life-${i})`),
 };
-export const groupColor = (g: Group) => GROUP_SHADES[g][0] ?? "var(--primary)";
-export const catColor = (c: Category) => {
+export const groupColor = (g: Group, s: State = getState()) => customColor(s.groupAppearance?.[g]?.color) ?? GROUP_SHADES[g][0] ?? "var(--primary)";
+export const catColor = (c: Category, s: State = getState()) => {
+  const appearance = s.groupAppearance?.[c.group];
   const chosen = customColor(c.color);
-  if (chosen) return chosen;
+  if (chosen && !appearance?.shades) return chosen;
   const shades = GROUP_SHADES[c.group];
   const defaults = DEFAULT_CATEGORIES.filter((x) => x.group === c.group);
   const index = defaults.findIndex((x) => x.id === c.id);
   const hash = Array.from(c.id).reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const base = customColor(appearance?.color);
+  if (appearance?.shades && base) return `color-mix(in oklch, ${base} var(--category-shade-${(index >= 0 ? index : hash) % 6}), var(--category-shade-base))`;
+  if (base) return base;
   return shades[(index >= 0 ? index : hash) % shades.length] ?? "var(--primary)";
 };
 export function saveCategories(list: Category[]) { setState((s) => ({ ...s, categories: list })); }

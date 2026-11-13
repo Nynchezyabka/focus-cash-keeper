@@ -1,9 +1,10 @@
-import { Check, RotateCcw } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { PALETTE, customColor } from "@/lib/colors";
 
-export function ColorPicker({ value, onChange, automatic = "По группе" }: {
-  value?: string | undefined; onChange: (value: string | undefined) => void; automatic?: string;
+export function ColorPicker({ value, onChange, automatic = "Цвет основной категории", showAutomatic = true }: {
+  value?: string | undefined; onChange: (value: string | undefined) => void; automatic?: string; showAutomatic?: boolean;
 }) {
   return <fieldset className="space-y-2">
     <legend className="mb-2 text-sm">Цвет</legend>
@@ -15,8 +16,9 @@ export function ColorPicker({ value, onChange, automatic = "По группе" }
         {value === c.id && <Check className="h-4 w-4" />}
       </Button>)}
     </div>
-    <Button type="button" variant="ghost" size="sm" aria-pressed={!value} onClick={() => onChange(undefined)}>
-      <RotateCcw className="h-3 w-3" />{automatic}{!value && <Check className="h-3 w-3" />}
-    </Button>
+    {showAutomatic && <label className="flex items-center justify-between gap-3 text-sm">
+      <span>{automatic}</span>
+      <Switch aria-label={automatic} checked={!value} onCheckedChange={(checked) => onChange(checked ? undefined : PALETTE[0].id)} />
+    </label>}
   </fieldset>;
 }
