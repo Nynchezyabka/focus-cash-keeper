@@ -326,7 +326,7 @@ function ReserveDialog({
           Эти деньги лежат на карте или наличными, но уже «заняты» платежами из Плана платежей. В «Сегодня свободно» они
           не входят.
         </p>
-        {c.reserved.length + c.saving.length === 0 && (
+        {c.reserved.length + c.saving.length === 0 && c.aheadEven === 0 && (
           <p className="text-sm">Сейчас ничего не отложено — до {dm(c.next.date)} платежей нет, а следующие доходы покрывают платежи позже.</p>
         )}
         {c.reserved.length > 0 && (
@@ -359,6 +359,15 @@ function ReserveDialog({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+        {c.aheadEven > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-muted-foreground">Оставляю на дни после {dm(c.next.date)} — дальше доходы меньше, так ориентир на день остаётся ровным</p>
+            <p className="flex justify-between gap-2 rounded-xl bg-secondary px-3 py-2 text-sm">
+              <span>На следующие недели</span>
+              <span className="tabular-nums">{rub(c.aheadEven)}</span>
+            </p>
           </div>
         )}
         <p className="flex justify-between border-t border-border pt-2 text-sm">

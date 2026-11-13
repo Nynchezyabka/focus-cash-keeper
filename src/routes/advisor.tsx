@@ -6,10 +6,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator, Brain } from "lucide-react";
+import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator, Brain, Flag } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyAction, describeAction, parseActions, precompute, unverifiedSums, type AdvisorAction, freeUntilIncome } from "@/lib/advisor-calc";
 import { toast } from "sonner";
+import { feedbackApi } from "@/lib/feedback";
+import { APP_VERSION } from "@/lib/pwa";
 import { TONES, STARTERS, greeting, isNextStep, nameOf, personaRules, toneOf } from "@/lib/persona";
 import { Shell, meta } from "@/components/Shell";
 import { HONEST_RULE, MEMORY_MAX, addMemory, extractRemember, forgetMemory, markOpener, memoryCommand, memoryOk, memoryPrompt, openerDue } from "@/lib/advisor-memory";
@@ -78,6 +80,7 @@ function context(s: State, readable = false) {
     [
       ...c.reserved.map((r) => `${r.o.name} ${rub(r.o.amount - paidAmount(s, r.o, r.due))}`),
       ...c.saving.map((x) => `${x.o.name} ${d(x.due)} (заранее, после дохода) ${rub(x.part)}`),
+      ...(c.aheadEven > 0 ? [`на следующие недели, чтобы ориентир был ровным ${rub(c.aheadEven)}`] : []),
     ].join("; ") || "ничего";
   const month = periodOf(new Date());
   const inc =
@@ -130,7 +133,7 @@ function context(s: State, readable = false) {
 Свободно сегодня: ${rub(Math.max(0, c.freeToday))}, дневной ориентир ${rub(c.dailyNorm)}, с завтрашнего дня по ${rub(c.afterSpread)} в день.
 Сегодня потрачено (все траты дня, кроме оплаты плановых платежей): ${rub(c.spentToday)}${c.spentToday > 0 ? ` — ${s.txs.filter((t) => t.kind === "expense" && !t.obligationId && !t.goal && dayKey(new Date(t.date)) === c.todayKey).map((t) => `${t.note || cat(t.category).name} ${rub(t.amount)}`).join(", ")}` : ""}; из дневного ориентира ${rub(c.dailyNorm)}.
 Свободно до дохода всего (с учётом потраченного сегодня): ${rub(freeUntilIncome(c))}.
-КАК СКЛАДЫВАЕТСЯ (объясняй именно так, не пересчитывай): всего ${rub(c.total)} + уже потрачено сегодня ${rub(c.spentToday)} = ${rub(c.total + c.spentToday)}; минус отложено на платежи до дохода ${rub(c.held)} и заранее на платежи после дохода ${rub(c.aheadHeld)}; на жизнь до дохода ${rub(c.dailyNorm * c.days)} = ${rub(c.dailyNorm)} × ${c.days} дн. «С завтрашнего дня по ${rub(c.afterSpread)}» — это остаток этой суммы после сегодняшних трат, делённый на оставшиеся дни. Остаток на счетах уже учитывает сегодняшние траты — не вычитай их второй раз. Свободно на сегодня вечером: ${rub(Math.max(0, c.freeToday))}.
+КАК СКЛАДЫВАЕТСЯ (объясняй именно так, не пересчитывай): всего ${rub(c.total)} + уже потрачено сегодня ${rub(c.spentToday)} = ${rub(c.total + c.spentToday)}; минус отложено на платежи до дохода ${rub(c.held)} и заранее на время после дохода ${rub(c.aheadHeld)}${c.aheadEven > 0 ? ` (из них ${rub(c.aheadEven)} — чтобы ориентир на день оставался ровным, дальше доходы меньше)` : ""}; на жизнь до дохода ${rub(c.dailyNorm * c.days)} = ${rub(c.dailyNorm)} × ${c.days} дн. «С завтрашнего дня по ${rub(c.afterSpread)}» — это остаток этой суммы после сегодняшних трат, делённый на оставшиеся дни. Остаток на счетах уже учитывает сегодняшние траты — не вычитай их второй раз. Свободно на сегодня вечером: ${rub(Math.max(0, c.freeToday))}.
 Что именно отложено сейчас: ${resv}.
 Платежи и их состояние (оплаченные уже списаны и не резервируются): ${obl}.
 Плановые доходы: ${inc}.
@@ -197,6 +200,7 @@ function Advisor() {
 
 function Chat({ s }: { s: State }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [report, setReport] = useState<{ q: string; a: string } | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -379,12 +383,16 @@ function Chat({ s }: { s: State }) {
                   <Button size="sm" variant="ghost" className="h-7" onClick={() => setMsgs((all) => all.map((x, j) => (j === i ? { ...x, remember: undefined } : x)) as Msg[])}>Не нужно</Button>
                 </div>
               )}
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setReport({ q: (msgs[i - 1]?.role === "user" ? msgs[i - 1]!.content : ""), a: clean })}><Flag className="h-3.5 w-3.5" /> Ошибка в ответе</Button>
+              </div>
               {actions.map((a, k) => (
                 <ActionCard key={k} a={a} s={s} done={m.done?.includes(k)} onDone={() => setMsgs((all) => all.map((x, j) => (j === i ? { ...x, done: [...(x.done ?? []), k] } : x)))} />
               ))}
             </div>
           );
         })}
+        <ReportDialog data={report} onClose={() => setReport(null)} />
         {busy && <div className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground">Думаю…</div>}
         {err && <p className="rounded-2xl bg-accent p-3 text-sm text-accent-foreground">{err}</p>}
         <div ref={end} />
@@ -468,5 +476,46 @@ function MemoryList({ list }: { list: string[] }) {
       )}
       {list.length > 0 && <Button variant="outline" size="sm" onClick={() => { if (window.confirm("Стереть всё, что Помощник помнит?")) save([]); }}>Стереть всё</Button>}
     </div>
+  );
+}
+
+/** Send a wrong advisor answer to «Отзывы и предложения» — the user sees and can edit everything before it leaves */
+export function reportText(q: string, a: string, note: string) {
+  const head = `[Ошибка Помощника] ${note.trim() || "без комментария"}`;
+  const body = `\nВопрос: ${q.trim() || "—"}\nОтвет: ${a.trim()}`;
+  return (head + body).slice(0, 2000);
+}
+function ReportDialog({ data, onClose }: { data: { q: string; a: string } | null; onClose: () => void }) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (data) setNote(""); }, [data]);
+  if (!data) return null;
+  const send = async () => {
+    setBusy(true);
+    try {
+      await feedbackApi.send("bug", reportText(data.q, data.a, note), "", APP_VERSION);
+      toast("Спасибо, отправлено в «Отзывы и предложения»");
+      onClose();
+    } catch {
+      toast("Не получилось отправить — нет сети или отзывы не подключены");
+    } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Ошибка в ответе</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-sm">
+          <Textarea autoFocus value={note} maxLength={400} onChange={(e) => setNote(e.target.value)} placeholder="Что не так? Например: посчитал 57 ₽, а на карте 7 000" />
+          <div className="max-h-48 overflow-y-auto rounded-xl bg-muted p-3 text-xs text-muted-foreground whitespace-pre-wrap">
+            {`Вопрос: ${data.q || "—"}\n\nОтвет: ${data.a}`}
+          </div>
+          <p className="text-xs text-muted-foreground">Вместе с комментарием уйдут только этот вопрос и ответ — с цифрами, которые в них есть. Остальной бюджет остаётся на телефоне.</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={onClose}>Отмена</Button>
+            <Button disabled={busy} onClick={send}>Отправить</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
