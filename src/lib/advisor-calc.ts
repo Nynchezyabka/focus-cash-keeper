@@ -1,5 +1,5 @@
 // Deterministic math for the Помощник: the app calculates, the model only explains.
-import { addTx, calc, dayKey, forecast, getState, nextIncome, rub, setState, transfer, uid, type Method, type State } from "@/lib/budget";
+import { calc, cat, dayKey, forecast, nextIncome, rub, setState, transfer, uid, type Method, type State } from "@/lib/budget";
 import { saveGoal } from "@/lib/goals";
 
 const d = (x: Date) => x.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
@@ -27,7 +27,7 @@ export function whatIf(s: State, ch: Change, now = new Date()): ScenarioRow[] {
   let t: State = s;
   if (ch.kind === "income" && inc) t = { ...s, incomes: s.incomes.map((i) => (i.id === inc.id ? { ...i, amount: Math.max(0, i.amount + ch.delta) } : i)) };
   if (ch.kind === "delay" && inc) t = { ...s, incomes: s.incomes.map((i) => (i.id === inc.id ? { ...i, nextOn: dayKey(new Date(+nextIncome(s, now).date + ch.days * 86400000)) } : i)) };
-  if (ch.kind === "payment") t = { ...s, obligations: [...s.obligations, { id: "whatif", name: "Новый платёж", amount: ch.amount, day: Number(ch.date.slice(8)), category: "must", once: ch.date }] };
+  if (ch.kind === "payment") t = { ...s, obligations: [...s.obligations, { id: "whatif", name: "Новый платёж", amount: ch.amount, day: Number(ch.date.slice(8)), category: "unexpected", once: ch.date }] };
   const a = forecast(s, 60, now), b = forecast(t, 60, now);
   const min = s.minDaily ?? 500;
   return b.map((g, i) => ({ period: `${d(g.start)} – ${d(g.end)}`, before: a[i]?.perDay ?? 0, after: g.perDay, low: g.perDay < min, gap: g.gap }));
@@ -99,13 +99,12 @@ export function describeAction(a: Action, s: State): { title: string; before: st
 export function applyAction(a: Action): boolean {
   if (a.type === "transfer") return !!transfer(a.amount, a.from);
   if (a.type === "payment") {
-    setState((s) => ({ ...s, obligations: [...s.obligations, { id: uid(), name: a.name, amount: a.amount, day: Number(a.date.slice(8)), category: "must", once: a.date, method: "card" }] }));
+    setState((s) => ({ ...s, obligations: [...s.obligations, { id: uid(), name: a.name, amount: a.amount, day: Number(a.date.slice(8)), category: "unexpected", once: a.date, method: "card" }] }));
     return true;
   }
   saveGoal({ name: a.name, target: a.target });
   return true;
 }
-void addTx; void getState;
 
 // ---------- weekly summary (offline, no AI) ----------
 export function weekSummary(s: State, now = new Date()) {
@@ -115,10 +114,8 @@ export function weekSummary(s: State, now = new Date()) {
   let income = 0;
   for (const t of week) {
     if (t.kind === "income") income += t.amount;
-    if (t.kind === "expense" && !t.goal) { const g = (s.categories ?? []).find((c) => c.id === t.category)?.group ?? catGroup(t.category); groups[g] = (groups[g] ?? 0) + t.amount; }
+    if (t.kind === "expense" && !t.goal) { const g = cat(t.category).group; groups[g] = (groups[g] ?? 0) + t.amount; }
   }
   const upcoming = forecast(s, 30, now).flatMap((g) => g.events).filter((e) => !e.paid).slice(0, 3);
   return { groups, income, upcoming, count: week.length };
 }
-import { cat } from "@/lib/budget";
-const catGroup = (id: string) => cat(id).group;

@@ -19,6 +19,7 @@ import {
   Banknote,
 } from "lucide-react";
 import { TransferButton } from "@/components/Transfer";
+import { WeekSummary } from "@/components/WeekSummary";
 import { toast } from "sonner";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
@@ -207,6 +208,7 @@ function Today({ s }: { s: State }) {
       {c.total < 0 && <BorrowCard gap={-c.total} />}
       {c.total >= 0 && c.shortfall > 0 && <ShortfallCard gap={c.shortfall} minDaily={c.minDaily} cushion={s.cushion} />}
 
+      <WeekSummary s={s} />
       {s.txs.length > 0 && (
         <section>
           <div className="mb-2 flex items-baseline justify-between">
