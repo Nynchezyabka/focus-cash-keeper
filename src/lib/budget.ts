@@ -254,7 +254,8 @@ export function calc(s: State, now = new Date()) {
   const saving: { o: Obligation; due: Date; part: number }[] = [];
   const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0);
   const tk = dayKey(today);
-  const todayLife = s.txs.filter((t) => t.kind === "expense" && !t.goal && cat(t.category).group === "life" && dayKey(new Date(t.date)) === tk);
+  // every expense entered today counts (medicine too); only planned payments paid from the reserve do not
+  const todayLife = s.txs.filter((t) => t.kind === "expense" && !t.goal && !t.obligationId && dayKey(new Date(t.date)) === tk);
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
   const total = s.balance + (s.cash ?? 0);
   // life minimum comes first; "set aside" never exceeds real money

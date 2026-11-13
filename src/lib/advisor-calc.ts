@@ -70,6 +70,10 @@ export function spendDay(t: string, now = new Date()): Date | null {
   if (i < 0) return null;
   return add((i - base.getDay() + 7) % 7);
 }
+/** «потратила», «потрачено», «ушло», «списали» — about the past, not a purchase. */
+export function isPastSpending(t: string) {
+  return /(потратил|потрачен|потратилось|ушл[оа]|списал|посчитал|заплатил|купил[аи]?(?![а-яё]))/i.test(t) && !/(хочу|можно ли|могу ли|стоит ли|если)/i.test(t);
+}
 /** Recognise a question the app can calculate itself; returns a ready block for the model. */
 export function precompute(s: State, q: string, now = new Date()): string | null {
   const t = q.toLowerCase();
@@ -98,15 +102,17 @@ export function precompute(s: State, q: string, now = new Date()): string | null
       return scenarioText(ch, whatIf(s, ch, now));
     }
   }
-  const buying = /(купить|куплю|покупк|потянуть|потрат|стоит ли брать)/.test(t);
+  // past tense («потратила», «ушло») is a question about what happened, not a purchase to evaluate
+  if (isPastSpending(t)) return null;
+  const buying = /(купить|куплю|покупк|потянуть|потратить|потрачу|стоит ли брать)/.test(t);
   const n = moneyIn(t, buying);
   const day = spendDay(t, now);
-  if (day && /(потрат|трат|купл|куплю|отдам)/.test(t) && n > 0) {
+  if (day && /(потратить|потрачу|купить|куплю|отдам)/.test(t) && n > 0) {
     const e = evaluatePurchase(s, n, now);
     if (+day >= +e.nextDate) return `Трата ${rub(n)} ${d(day)} придётся уже после ближайшего дохода (${d(e.nextDate)}) — она пойдёт из следующего периода, текущее «свободно» не меняется.`;
     return `Если потратить ${d(day)}: ` + purchaseText(e);
   }
-  if (/(купить|покупк|потянуть|могу ли|можно ли|потрат)/.test(t) && !/(перенес|сдвин|отлож|оплат|плат[её]ж)/.test(t) && n > 0) return purchaseText(evaluatePurchase(s, n, now));
+  if (/(купить|покупк|потянуть|могу ли|можно ли|потратить|потрачу)/.test(t) && !/(перенес|сдвин|отлож|оплат|плат[её]ж)/.test(t) && n > 0) return purchaseText(evaluatePurchase(s, n, now));
   if (/(зарплат|доход|выплат)/.test(t) && /(меньше|больше|урежут|снизит|вырастет)/.test(t) && n > 0) {
     const ch: Change = { kind: "income", delta: /больше|вырастет/.test(t) ? n : -n };
     return scenarioText(ch, whatIf(s, ch, now));

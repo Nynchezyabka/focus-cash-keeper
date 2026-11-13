@@ -18,3 +18,22 @@ describe("advisor question detection", () => {
     expect(isOwnTransfer("Пятёрочка")).toBe(false);
   });
 });
+
+import { precompute as pc2 } from "@/lib/advisor-calc";
+import { calc as calc2 } from "@/lib/budget";
+describe("spent today", () => {
+  const base = { version: 1, balance: 10000, cushion: 0, obligations: [], incomes: [], incomeAck: {}, ai: { provider: "none", apiKey: "", model: "" }, createdAt: "" } as never;
+  it("past-tense question is not a purchase", () => {
+    expect(pc2({ ...(base as object), txs: [] } as never, "я потратила 425+3566+690, почему так посчиталось?")).toBeNull();
+  });
+  it("medicine counts in today's spending, planned payment does not", () => {
+    const now = new Date().toISOString();
+    const s = { ...(base as object), txs: [
+      { id: "a", kind: "expense", amount: 425, category: "food", date: now },
+      { id: "b", kind: "expense", amount: 3566, category: "health", date: now },
+      { id: "c", kind: "expense", amount: 690, category: "cafe", date: now },
+      { id: "d", kind: "expense", amount: 5000, category: "home", date: now, obligationId: "x" },
+    ] } as never;
+    expect(calc2(s).spentToday).toBe(4681);
+  });
+});

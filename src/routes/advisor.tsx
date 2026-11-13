@@ -128,6 +128,7 @@ function context(s: State, readable = false) {
 Ближайший доход ${d(c.next.date)}, через ${c.days} дн.
 Нужно на обязательные платежи до дохода и накопление на дальние: ${rub(c.reserve)}; реально отложено ${rub(c.held)}${c.shortfall > 0 ? `, на платежи не хватает ${rub(c.payGap)}${c.shortfall !== c.payGap ? `, а вместе с минимумом на жизнь ${rub(c.minDaily)}/день — ${rub(c.shortfall)}` : ""}` : ""}.
 Свободно сегодня: ${rub(Math.max(0, c.freeToday))}, дневной ориентир ${rub(c.dailyNorm)}, с завтрашнего дня по ${rub(c.afterSpread)} в день.
+Сегодня потрачено (все траты дня, кроме оплаты плановых платежей): ${rub(c.spentToday)}${c.spentToday > 0 ? ` — ${s.txs.filter((t) => t.kind === "expense" && !t.obligationId && !t.goal && dayKey(new Date(t.date)) === c.todayKey).map((t) => `${t.note || cat(t.category).name} ${rub(t.amount)}`).join(", ")}` : ""}; из дневного ориентира ${rub(c.dailyNorm)}.
 Свободно до дохода всего (с учётом потраченного сегодня): ${rub(freeUntilIncome(c))}.
 Что именно отложено сейчас: ${resv}.
 Платежи и их состояние (оплаченные уже списаны и не резервируются): ${obl}.
@@ -243,10 +244,6 @@ function Chat({ s }: { s: State }) {
   async function send(q: string, base: Msg[] = msgs, shot = img) {
     if ((!q.trim() && !shot) || busy) return;
     const pre = q.trim() ? precompute(s, q) : null;
-    if (pre && /^(Покупка за|Сценарий \(новый платёж|Сценарий \(ближайший доход (меньше|больше))/.test(pre)) {
-      const amount = pre.match(/\d[\d\s\u00a0]*\s*₽/)?.[0];
-      if (amount && !window.confirm(`Считаю на ${amount}, верно?`)) return;
-    }
     const cmd = !shot ? memoryCommand(q) : null;
     if (cmd) {
       let reply: string;
