@@ -48,6 +48,8 @@ export interface State {
   advisorNoFamily?: boolean; // do not send family numbers to the AI
   lastBackup?: string; // ISO of the last export
   advisorLoans?: string;
+  advisorTone?: "calm" | "direct" | "shake";
+  advisorName?: string;
   createdAt: string;
 }
 

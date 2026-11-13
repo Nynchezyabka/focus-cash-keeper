@@ -10,6 +10,7 @@ import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator } from "lucide-r
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyAction, describeAction, parseActions, precompute, unverifiedSums, type AdvisorAction, freeUntilIncome } from "@/lib/advisor-calc";
 import { toast } from "sonner";
+import { TONES, STARTERS, greeting, isNextStep, nameOf, personaRules, toneOf } from "@/lib/persona";
 import { Shell, meta } from "@/components/Shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -140,7 +141,7 @@ function forecastText(s: State) {
     .join("\n");
 }
 
-const RULES = `Ты — спокойная помощница по личному бюджету в приложении «Бережный бюджет». Обращайся к человеку на «вы». О себе говори в женском роде («поняла», «посмотрела»). Особенности человека смотри в поле «О себе», если оно есть. Отвечай простым живым русским языком без калек с английского, коротко (до 8 предложений или короткий список), тепло и без морали.
+const RULES = `Ты — помощник по личному бюджету в приложении «Бережный бюджет». Обращайся к человеку на «вы». Особенности человека смотри в поле «О себе», если оно есть. Отвечай простым живым русским языком без калек с английского, коротко (до 8 предложений или короткий список), тепло и без морали.
 ГЛАВНЫЙ ПРИНЦИП: считает приложение, ты объясняешь. Если есть блок «РАСЧЁТ ПРИЛОЖЕНИЯ» — бери вердикт и цифры только оттуда, не пересчитывай их по-своему.
 Разделяй источники: то, что взято из бюджета, начинай с «Из ваших данных:»; справку о налогах, пособиях, законах помечай «Общая информация (справочно):».
 Не выдумывай кнопки, разделы и настройки. Если такой функции в приложении нет — честно скажи, что её нет.
@@ -170,11 +171,6 @@ ${GUIDE_TEXT}
 7. Если человек просто хочет обсудить траты — слушай и отражай, без лишних вопросов.
 9. Сценарии «а что если»: используй только РАСЧЁТ ПРИЛОЖЕНИЯ. Если он отсутствует, не пересчитывай прогноз сама: уточни сумму и дату или объясни, что такой расчёт пока недоступен. План от сценария не меняется.`;
 
-const QUICK = [
-  "Можно ли купить пылесос за 35 000 ₽?",
-  "Как у меня дела до следующего дохода?",
-  "Что будет, если зарплата будет на 10 000 ₽ меньше?",
-];
 type Msg = ChatMsg & { calc?: string; unverified?: number[]; done?: number[] };
 
 function Advisor() {
@@ -241,7 +237,8 @@ function Chat({ s }: { s: State }) {
     setBusy(true);
     try {
       const facts = context(s);
-      const sys = `${RULES}\n\n${facts}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
+      const tone = toneOf(s.advisorTone);
+      const sys = `${RULES}\n\n${personaRules(tone, nameOf(s.advisorName))}${isNextStep(q) ? "\nЭТО ВОПРОС ПРО СЛЕДУЮЩИЙ ШАГ: ответь одним шагом." : ""}\n\n${facts}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
       const a = (await aiChat(sys, next.slice(-12).map(({ role, content }) => ({ role, content })), s.ai, shot ?? undefined)).trim();
       const unverified = unverifiedSums(parseActions(a).clean, [facts, pre ?? "", ...next.filter((m) => m.role === "user").map((m) => m.content)]);
       grew.current = true;
@@ -296,10 +293,13 @@ function Chat({ s }: { s: State }) {
       </Dialog>
 
       {msgs.length === 0 && (
-        <div className="grid gap-2">
-          {QUICK.map((q) => (
-            <Button variant="outline" key={q} onClick={() => send(q)} className="h-auto whitespace-normal p-3 text-left text-sm">{q}</Button>
-          ))}
+        <div className="space-y-2">
+          <p className="rounded-2xl bg-card p-3 text-sm">{greeting(toneOf(s.advisorTone), nameOf(s.advisorName))}</p>
+          <div className="flex flex-wrap gap-2">
+            {STARTERS.map((q) => (
+              <Button variant="outline" size="sm" key={q} className="rounded-full" onClick={() => (q.endsWith("…") ? setText(q.slice(0, -1) + " ") : send(q))}>{q}</Button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -331,6 +331,11 @@ function Chat({ s }: { s: State }) {
 
       <div className="shrink-0 border-t border-border bg-background/95 backdrop-blur">
         <div className="py-2">
+          <div role="radiogroup" aria-label="Режим" className="mb-2 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1 text-xs">
+            {TONES.map((t) => (
+              <button key={t.id} role="radio" aria-checked={toneOf(s.advisorTone) === t.id} onClick={() => setState((x) => ({ ...x, advisorTone: t.id }))} className={`rounded-lg py-1.5 ${toneOf(s.advisorTone) === t.id ? "bg-card font-medium shadow-soft" : "text-muted-foreground"}`}>{t.label}</button>
+            ))}
+          </div>
           {img && (
             <div className="mb-2 flex items-center gap-2 rounded-xl bg-card p-2 text-xs">
               <img src={img.dataUrl} alt="" className="h-10 w-10 rounded object-cover" />

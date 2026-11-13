@@ -65,7 +65,7 @@ function Payments({ s }: { s: State }) {
                 aria-label={paid ? "Отменить оплату" : "Отметить оплаченным"}
                 onClick={() => {
                   if (paid) { const l = unpay(o); undoable(`«${o.name}» снова ждёт оплаты`, () => l.forEach(restoreTx)); }
-                  else { const rest = o.amount - done; addedToast(done > 0 ? payPart(o, rest) : payObligation(o), `${o.name} оплачено`); }
+                  else { const rest = o.amount - done; addedToast(done > 0 ? payPart(o, rest) : payObligation(o), `${o.name} оплачено — минус одна забота`); }
                 }}
                 className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 active:scale-95 ${paid ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
               >

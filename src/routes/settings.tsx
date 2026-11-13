@@ -73,6 +73,10 @@ function Settings({ s }: { s: State }) {
           );
         })()}
         <p className="text-xs text-muted-foreground">Ключ хранится только в этом браузере и уходит напрямую в сервис ИИ. Совет: в кабинете сервиса поставьте месячный лимит трат (например, 2–5 $) — тогда даже при утечке ключа много не потратят.</p>
+        <label className="block space-y-1 text-sm">
+          <span>Имя Помощника</span>
+          <Input maxLength={30} placeholder="Помощник" value={s.advisorName ?? ""} onChange={(e) => setState((x) => ({ ...x, advisorName: e.target.value }))} />
+        </label>
         {getFamily() && (
           <label className="flex items-center justify-between gap-2 text-sm">
             <span>Не показывать Помощнику цифры семьи</span>
