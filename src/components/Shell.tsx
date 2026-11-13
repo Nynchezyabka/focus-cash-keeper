@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, Users, Sun, CalendarDays, PieChart, Settings, MessageCircleHeart, HelpCircle, icons } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { openerDue, trackOpen } from "@/lib/advisor-memory";
 import { useBudget, type State } from "@/lib/budget";
 import { useFamily } from "@/lib/family";
 
@@ -23,6 +24,9 @@ export function Shell({ title, children }: { title?: string; children: (s: State
   const fam = useFamily();
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
+  const [dot, setDot] = useState(false);
+  useEffect(() => { trackOpen(); }, []);
+  useEffect(() => { setDot(!!s && path !== "/advisor" && !!openerDue(s)); }, [s, path]);
   const nav = fam ? [...NAV.slice(0, 3), { to: "/family", label: "Семья", Icon: Users } as const, ...NAV.slice(3)] : NAV;
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-background">
@@ -58,7 +62,7 @@ export function Shell({ title, children }: { title?: string; children: (s: State
             const active = to === "/calendar" ? PLAN_PATHS.includes(path) : path === to;
             return (
               <Link key={to} to={to} className={`flex min-h-14 flex-col items-center justify-center gap-1 py-2.5 text-[11px] ${active ? "text-primary" : "text-muted-foreground"}`}>
-                <Icon className="h-5 w-5" />
+                <span className="relative"><Icon className="h-5 w-5" />{to === "/advisor" && dot && <span aria-label="Есть сообщение" className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-primary" />}</span>
                 {label}
               </Link>
             );

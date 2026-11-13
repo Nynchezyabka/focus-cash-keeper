@@ -77,6 +77,10 @@ function Settings({ s }: { s: State }) {
           <span>Имя Помощника</span>
           <Input maxLength={30} placeholder="Помощник" value={s.advisorName ?? ""} onChange={(e) => setState((x) => ({ ...x, advisorName: e.target.value }))} />
         </label>
+        <label className="flex items-center justify-between gap-2 text-sm">
+          <span>Помощник пишет первым<span className="block text-xs text-muted-foreground">Раз в день, если есть повод. Без уведомлений.</span></span>
+          <Switch checked={s.advisorInitiative !== false} onCheckedChange={(v) => setState((x) => ({ ...x, advisorInitiative: v }))} />
+        </label>
         {getFamily() && (
           <label className="flex items-center justify-between gap-2 text-sm">
             <span>Не показывать Помощнику цифры семьи</span>

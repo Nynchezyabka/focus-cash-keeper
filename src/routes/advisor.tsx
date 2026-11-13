@@ -6,12 +6,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator } from "lucide-react";
+import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator, Brain } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyAction, describeAction, parseActions, precompute, unverifiedSums, type AdvisorAction, freeUntilIncome } from "@/lib/advisor-calc";
 import { toast } from "sonner";
 import { TONES, STARTERS, greeting, isNextStep, nameOf, personaRules, toneOf } from "@/lib/persona";
 import { Shell, meta } from "@/components/Shell";
+import { HONEST_RULE, MEMORY_MAX, addMemory, extractRemember, forgetMemory, markOpener, memoryCommand, memoryOk, memoryPrompt, openerDue } from "@/lib/advisor-memory";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -171,7 +172,7 @@ ${GUIDE_TEXT}
 7. Если человек просто хочет обсудить траты — слушай и отражай, без лишних вопросов.
 9. Сценарии «а что если»: используй только РАСЧЁТ ПРИЛОЖЕНИЯ. Если он отсутствует, не пересчитывай прогноз сама: уточни сумму и дату или объясни, что такой расчёт пока недоступен. План от сценария не меняется.`;
 
-type Msg = ChatMsg & { calc?: string; unverified?: number[]; done?: number[] };
+type Msg = ChatMsg & { calc?: string; unverified?: number[]; done?: number[]; remember?: string; opener?: boolean };
 
 function Advisor() {
   return <Shell title="Помощник">{(s) => <Chat s={s} />}</Shell>;
@@ -182,7 +183,7 @@ function Chat({ s }: { s: State }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [panel, setPanel] = useState<"" | "rules" | "facts">("");
+  const [panel, setPanel] = useState<"" | "rules" | "facts" | "memory">("");
   const [about, setAbout] = useState(s.advisorAbout ?? "");
   const [loans, setLoans] = useState(s.advisorLoans ?? "");
   const [img, setImg] = useState<{ dataUrl: string; type: string; name: string } | null>(null);
@@ -190,6 +191,7 @@ function Chat({ s }: { s: State }) {
   const [ready, setReady] = useState(false);
   const grew = useRef(false);
   const hasKey = !!detectService(s.ai.apiKey);
+  const [noKeyOpener] = useState(() => (hasKey ? null : openerDue(s)?.text(toneOf(s.advisorTone)) ?? null));
 
   useEffect(() => {
     let h: Msg[] = [];
@@ -198,6 +200,9 @@ function Chat({ s }: { s: State }) {
     } catch {
       /* empty */
     }
+    const op = hasKey ? openerDue(s) : null;
+    if (op) { h = [...h, { role: "assistant", content: op.text(toneOf(s.advisorTone)), opener: true }]; grew.current = true; }
+    if (op || noKeyOpener) markOpener();
     setMsgs(h);
     setReady(true);
     const raw = sessionStorage.getItem(ASK_KEY);
@@ -227,6 +232,24 @@ function Chat({ s }: { s: State }) {
       const amount = pre.match(/\d[\d\s\u00a0]*\s*₽/)?.[0];
       if (amount && !window.confirm(`Считаю на ${amount}, верно?`)) return;
     }
+    const cmd = !shot ? memoryCommand(q) : null;
+    if (cmd) {
+      let reply: string;
+      if (cmd.add) {
+        const ok = memoryOk(cmd.add);
+        if (ok) setState((x) => ({ ...x, advisorMemory: addMemory(x.advisorMemory, cmd.add!) }));
+        reply = ok ? `Запомнила: «${cmd.add}». Список — в «Что я помню о вас».` : "Это не запоминаю: суммы, даты, здоровье и настроение дня я беру из приложения или не храню вовсе.";
+      } else {
+        const before = s.advisorMemory?.length ?? 0;
+        const after = forgetMemory(s.advisorMemory, cmd.forget!);
+        setState((x) => ({ ...x, advisorMemory: after }));
+        reply = after.length < before ? "Забыла. Больше это не учитываю." : "Такого в памяти не нашла. Посмотрите «Что я помню о вас».";
+      }
+      grew.current = true;
+      setMsgs([...base, { role: "user", content: q.trim() }, { role: "assistant", content: reply }]);
+      setText("");
+      return;
+    }
     const content = (q.trim() || "Посмотри скриншот") + (shot ? "\n📷 скриншот" : "");
     const next: Msg[] = [...base, { role: "user", content }];
     grew.current = true;
@@ -238,11 +261,12 @@ function Chat({ s }: { s: State }) {
     try {
       const facts = context(s);
       const tone = toneOf(s.advisorTone);
-      const sys = `${RULES}\n\n${personaRules(tone, nameOf(s.advisorName))}${isNextStep(q) ? "\nЭТО ВОПРОС ПРО СЛЕДУЮЩИЙ ШАГ: ответь одним шагом." : ""}\n\n${facts}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
-      const a = (await aiChat(sys, next.slice(-12).map(({ role, content }) => ({ role, content })), s.ai, shot ?? undefined)).trim();
+      const sys = `${RULES}\n\n${personaRules(tone, nameOf(s.advisorName))}\n${HONEST_RULE}\n${memoryPrompt(s.advisorMemory)}${isNextStep(q) ? "\nЭТО ВОПРОС ПРО СЛЕДУЮЩИЙ ШАГ: ответь одним шагом." : ""}\n\n${facts}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
+      const raw = (await aiChat(sys, next.slice(-12).map(({ role, content }) => ({ role, content })), s.ai, shot ?? undefined)).trim();
+      const { clean: a, remember } = extractRemember(raw);
       const unverified = unverifiedSums(parseActions(a).clean, [facts, pre ?? "", ...next.filter((m) => m.role === "user").map((m) => m.content)]);
       grew.current = true;
-      setMsgs([...next, { role: "assistant", content: a || "Не получилось ответить, попробуйте ещё раз.", ...(pre ? { calc: pre } : {}), ...(unverified.length ? { unverified } : {}) }]);
+      setMsgs([...next, { role: "assistant", content: a || "Не получилось ответить, попробуйте ещё раз.", ...(pre ? { calc: pre } : {}), ...(unverified.length ? { unverified } : {}), ...(remember && !s.advisorMemory?.includes(remember) ? { remember } : {}) }]);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Не удалось связаться с ИИ");
     }
@@ -260,6 +284,7 @@ function Chat({ s }: { s: State }) {
   if (!hasKey)
     return (
       <div className="space-y-3 rounded-2xl bg-card p-5 text-sm">
+        {noKeyOpener && <p className="rounded-xl bg-secondary p-3 text-secondary-foreground">{noKeyOpener}</p>}
         <p>
           Помощнику нужен ваш ключ ИИ (например, DeepSeek). Он видит только цифры из приложения и не ругает за кофе.
         </p>
@@ -271,15 +296,22 @@ function Chat({ s }: { s: State }) {
 
   return (
     <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col">
-      <div className="mb-3 flex gap-2">
+      <div className="mb-3 flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("rules")}><Settings2 /> Мои правила</Button>
         <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("facts")}><Eye /> Что помощник видит</Button>
+        <Button variant="secondary" size="sm" className="rounded-full" onClick={() => setPanel("memory")}><Brain /> Что я помню{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}</Button>
       </div>
+      <Dialog open={panel === "memory"} onOpenChange={(o) => !o && setPanel("")}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Что я помню о вас</DialogTitle></DialogHeader>
+          <MemoryList list={s.advisorMemory ?? []} />
+        </DialogContent>
+      </Dialog>
       <Dialog open={panel === "rules"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
           <DialogHeader><DialogTitle>Мои правила</DialogTitle></DialogHeader>
           <Textarea rows={3} value={about} onChange={(e) => setAbout(e.target.value)} placeholder="Например: скоро декрет. Муж платит за квартиру. Кофе и такси — мой отдых, не предлагать их урезать." />
-          <p className="text-xs text-muted-foreground">Помощник учитывает это в каждом ответе. Свой разговор он не запоминает — постоянное пишите сюда.</p>
+          <p className="text-xs text-muted-foreground">Помощник учитывает это в каждом ответе. Разговор целиком он не хранит — постоянное пишите сюда, а короткие предпочтения он может запомнить сам с вашего согласия.</p>
           <p className="text-sm text-muted-foreground">Кредиты и долги — чтобы спрашивать, когда лучше вернуть</p>
           <Textarea rows={3} value={loans} onChange={(e) => setLoans(e.target.value)} placeholder="Например: кредитка, долг 40 000 ₽, беспроцентный период до 15 декабря, потом 30% годовых, минимальный платёж 2 000 ₽ 5-го числа." />
           <Button onClick={() => { setState((x) => ({ ...x, advisorAbout: about, advisorLoans: loans })); toast("Сохранено"); setPanel(""); }}>Сохранить</Button>
@@ -316,6 +348,13 @@ function Chat({ s }: { s: State }) {
                 <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
                   <span>Сумма {m.unverified.map(rub).join(", ")} рассчитана моделью ориентировочно.</span>
                   <Button variant="ghost" size="sm" className="h-auto p-0 text-xs" onClick={() => recalc(i)}><Calculator className="h-3.5 w-3.5" /> Пересчитать по формуле</Button>
+                </div>
+              )}
+              {m.remember && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted px-3 py-2 text-xs">
+                  <span className="flex-1">Запомнить: «{m.remember}»?</span>
+                  <Button size="sm" className="h-7" onClick={() => { setState((x) => ({ ...x, advisorMemory: addMemory(x.advisorMemory, m.remember!) })); setMsgs((all) => all.map((x, j) => (j === i ? { ...x, remember: undefined } : x)) as Msg[]); toast("Запомнила"); }}>Да</Button>
+                  <Button size="sm" variant="ghost" className="h-7" onClick={() => setMsgs((all) => all.map((x, j) => (j === i ? { ...x, remember: undefined } : x)) as Msg[])}>Не нужно</Button>
                 </div>
               )}
               {actions.map((a, k) => (
@@ -382,6 +421,30 @@ function ActionCard({ a, s, done, onDone }: { a: AdvisorAction; s: State; done?:
           <Button size="sm" variant="ghost" onClick={() => setGone(true)}>Отклонить</Button>
         </div>
       )}
+    </div>
+  );
+}
+
+function MemoryList({ list }: { list: string[] }) {
+  const save = (next: string[]) => setState((x) => ({ ...x, advisorMemory: next }));
+  const [draft, setDraft] = useState("");
+  return (
+    <div className="space-y-2 text-sm">
+      <p className="text-xs text-muted-foreground">Короткие предпочтения, которые вы подтвердили. Хранятся только на этом телефоне и попадают в резервную копию. Суммы и даты Помощник всегда берёт из приложения. Можно сказать в чате «запомни, что…» или «забудь…».</p>
+      {list.length === 0 && <p className="text-muted-foreground">Пока ничего.</p>}
+      {list.map((line, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Textarea rows={1} className="min-h-9 flex-1" defaultValue={line} onBlur={(e) => { const v = e.target.value.trim(); if (v === line) return; if (!v) save(list.filter((_, j) => j !== i)); else if (memoryOk(v)) save(list.map((x, j) => (j === i ? v : x))); else { toast("Без сумм, дат и здоровья"); e.target.value = line; } }} />
+          <Button size="sm" variant="ghost" onClick={() => save(list.filter((_, j) => j !== i))}>Удалить</Button>
+        </div>
+      ))}
+      {list.length < MEMORY_MAX && (
+        <div className="flex gap-2">
+          <Textarea rows={1} className="min-h-9 flex-1" value={draft} placeholder="Например: лучше один шаг, а не список" onChange={(e) => setDraft(e.target.value)} />
+          <Button size="sm" disabled={!draft.trim()} onClick={() => { if (!memoryOk(draft)) { toast("Без сумм, дат и здоровья"); return; } save(addMemory(list, draft)); setDraft(""); }}>Добавить</Button>
+        </div>
+      )}
+      {list.length > 0 && <Button variant="outline" size="sm" onClick={() => { if (window.confirm("Стереть всё, что Помощник помнит?")) save([]); }}>Стереть всё</Button>}
     </div>
   );
 }

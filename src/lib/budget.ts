@@ -50,6 +50,8 @@ export interface State {
   advisorLoans?: string;
   advisorTone?: "calm" | "direct" | "shake";
   advisorName?: string;
+  advisorMemory?: string[]; // short stable preferences the person approved
+  advisorInitiative?: boolean; // false = Помощник не пишет первым
   demo?: boolean | undefined; // example data from «Посмотреть на примере»
   createdAt: string;
 }

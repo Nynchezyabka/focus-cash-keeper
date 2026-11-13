@@ -37,7 +37,7 @@ export const isDemo = (s: State) => !!s.demo;
 export function startDemo() { replaceState(demoState()); }
 /** стереть пример и начать с чистого листа (оформление и ключ ИИ не трогаем) */
 export function clearDemo() {
-  const { ai, advisorTone, advisorName } = getState();
-  replaceState({ version: 1, balance: 0, cushion: 0, txs: [], obligations: [], incomes: [], incomeAck: {}, ai, advisorTone, advisorName, createdAt: new Date().toISOString() } as State);
+  const { ai, advisorTone, advisorName, advisorMemory, advisorInitiative } = getState();
+  replaceState({ version: 1, balance: 0, cushion: 0, txs: [], obligations: [], incomes: [], incomeAck: {}, ai, advisorTone, advisorName, advisorMemory, advisorInitiative, createdAt: new Date().toISOString() } as State);
   setState((s) => ({ ...s, demo: undefined }));
 }
