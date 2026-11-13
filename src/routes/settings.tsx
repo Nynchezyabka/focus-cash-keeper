@@ -27,9 +27,9 @@ function Settings({ s }: { s: State }) {
   const file = useRef<HTMLInputElement>(null);
   const setAi = (p: Partial<AiSettings>) => setState((x) => ({ ...x, ai: { ...x.ai, ...p } }));
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
-        <h2 className="font-display text-lg">Минимум на жизнь</h2>
+        <h2 className="text-base font-medium">Минимум на жизнь</h2>
         <p className="text-sm text-muted-foreground">Сколько в день оставлять на жизнь, даже если денег на платежи не хватает. По умолчанию {MIN_DAILY} ₽.</p>
         <Input
           type="number"
@@ -45,17 +45,16 @@ function Settings({ s }: { s: State }) {
       </section>
 
       <Appearance />
-      <Link to="/family" search={{ join: undefined }} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
-        <span><span className="block font-display text-lg">Семейный доступ</span><span className="text-xs text-muted-foreground">Общая картина бюджетов по коду</span></span>
+      <Link to="/categories" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="block text-base font-medium">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </Link>
-
-      <Link to="/categories" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
-        <span><span className="block font-display text-lg">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
+      <Link to="/family" search={{ join: undefined }} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="block text-base font-medium">Семейный доступ</span><span className="text-xs text-muted-foreground">Общая картина бюджетов по коду</span></span>
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </Link>
       <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
-        <h2 className="font-display text-lg">Распознавание трат</h2>
+        <h2 className="text-base font-medium">Ключ ИИ и выбор моделей</h2>
         <p className="text-sm text-muted-foreground">Когда вы пишете «такси 450, кофе 380», приложение раскладывает это на отдельные траты.</p>
         <Input type="password" autoComplete="off" placeholder="Вставьте ваш API-ключ (необязательно)" value={s.ai.apiKey} onChange={(e) => {
           const apiKey = e.target.value;
@@ -98,7 +97,7 @@ function Settings({ s }: { s: State }) {
       </section>
 
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
-        <h2 className="font-display text-lg">Резервная копия</h2>
+        <h2 className="text-base font-medium">Резервная копия</h2>
         <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Всё хранится только на этом устройстве. Ключ ИИ в копию не попадает.</p>
         <p className="text-xs text-muted-foreground">{s.lastBackup ? `Последняя копия: ${new Date(s.lastBackup).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}.` : "Копию ещё не делали."} Раз в месяц приложение напомнит.</p>
         <div className="grid grid-cols-2 gap-2">
@@ -135,7 +134,7 @@ function Settings({ s }: { s: State }) {
       <Updates />
 
       <Link to="/feedback" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
-        <span><span className="font-display text-lg">Предложить идею</span><br /><span className="text-sm text-muted-foreground">Идея, неудобство или вопрос — автору</span></span>
+        <span><span className="text-base font-medium">Предложить идею</span><br /><span className="text-sm text-muted-foreground">Идея, неудобство или вопрос — автору</span></span>
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </Link>
     </div>
@@ -147,7 +146,7 @@ function Appearance() {
   useEffect(() => setT(getTheme()), []);
   return (
     <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
-      <h2 className="font-display text-lg">Оформление</h2>
+      <h2 className="text-base font-medium">Оформление</h2>
       <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1 text-xs">
         {([["light", "Дневная"], ["dark", "Ночная"], ["system", "Как в телефоне"]] as const).map(([m, l]) => (
           <button key={m} onClick={() => { setTheme(m); setT(m); }} className={`rounded-lg py-2 ${t === m ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{l}</button>
@@ -162,7 +161,7 @@ function Updates() {
   const [news, setNews] = useState(false);
   return (
     <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
-      <h2 className="font-display text-lg">Обновления</h2>
+      <h2 className="text-base font-medium">Обновления</h2>
       <p className="text-xs text-muted-foreground">Приложение обновляется само, когда есть интернет. Если что-то выглядит по-старому — нажмите кнопку.</p>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="secondary" disabled={checking} onClick={async () => {

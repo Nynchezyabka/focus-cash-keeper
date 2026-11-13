@@ -252,7 +252,8 @@ export function calc(s: State, now = new Date()) {
   const pool = Math.max(0, total + spentToday);
   const floor = Math.min(pool, minDaily * days);
   const held = Math.min(reserve, Math.max(0, pool - floor));
-  const shortfall = Math.max(0, reserve - held); // payments before the next income not covered by money now
+  const shortfall = Math.max(0, reserve - held); // payments before the next income not covered once the life minimum is kept
+  const payGap = Math.max(0, reserve - pool); // payments not covered by money at all — the same number the Plan shows
   let dailyNorm = Math.max(0, (pool - held) / days);
   // if later payments need part of today's money (incomes ahead are too small), spend a bit less now
   if (!s.nextIncomeOverride) {
@@ -263,7 +264,7 @@ export function calc(s: State, now = new Date()) {
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
   const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm * days - spentToday, rest - held) / (days - 1)) : 0;
-  return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, minDaily, todayKey: tk };
+  return { next, days, reserve, held, reserved, saving, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, payGap, minDaily, todayKey: tk };
 }
 
 // ---------- actions ----------

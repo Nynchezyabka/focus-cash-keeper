@@ -6,11 +6,13 @@ import { debtFeeAt } from "@/lib/debt-fee";
 
 const d = (x: Date) => x.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
+/** The one «free until income» number: daily amount × days minus what was already spent today. */
+export function freeUntilIncome(c: { dailyNorm: number; days: number; spentToday: number }) { return Math.max(0, c.dailyNorm * c.days - c.spentToday); }
 export interface PurchaseEval { price: number; untilIncome: number; after: number; perDayAfter: number; days: number; nextDate: Date; verdict: "calm" | "tight" | "wait" }
 /** Can I buy X now? Compares the price with what is free until the next income. */
 export function evaluatePurchase(s: State, price: number, now = new Date()): PurchaseEval {
   const c = calc(s, now);
-  const untilIncome = Math.max(0, c.dailyNorm * c.days - c.spentToday);
+  const untilIncome = freeUntilIncome(c);
   const after = untilIncome - price;
   const perDayAfter = after / c.days;
   const verdict = after < 0 ? "wait" : perDayAfter < c.minDaily ? "tight" : "calm";
@@ -42,6 +44,16 @@ export function scenarioText(ch: Change, rows: ScenarioRow[]) {
 
 const num = (x: string) => Number(x.replace(/[\s\u00a0]/g, "").replace(",", "."));
 const AMOUNT = /(\d[\d\s\u00a0]*(?:[.,]\d+)?)\s*(к|тыс\.?|тысяч\w*)?\s*(?:₽|р\b|руб)?/i;
+/** «15 числа», «до 20-го», «15 ноября», 15.11 — dates, not money. */
+const DATE_NUM = /\b\d{1,2}(?:\s*-?\s*(?:го|е|ое|числа|число)(?![а-яё])|\s+(?:январ|феврал|март|апрел|ма[яй]|июн|июл|август|сентябр|октябр|ноябр|декабр)\w*|[.\/]\d{1,2}(?:[.\/]\d{2,4})?)|\b\d{4}-\d{2}-\d{2}\b/gi;
+const MONEY = /\d[\d\s\u00a0]*(?:[.,]\d+)?\s*(?:к(?![а-яё])|тыс|тысяч|₽|р\b|руб)/i;
+export function stripDates(q: string) { return q.replace(DATE_NUM, " "); }
+/** A sum only counts when it looks like money (₽, руб, к, тыс) or the question is clearly about buying. */
+export function moneyIn(q: string, buying = false) {
+  const t = stripDates(q);
+  if (!MONEY.test(t) && !buying) return 0;
+  return amountIn(t);
+}
 function amountIn(q: string) {
   const m = q.match(AMOUNT);
   if (!m) return 0;
@@ -61,13 +73,15 @@ export function spendDay(t: string, now = new Date()): Date | null {
 /** Recognise a question the app can calculate itself; returns a ready block for the model. */
 export function precompute(s: State, q: string, now = new Date()): string | null {
   const t = q.toLowerCase();
-  if (/(долг|кредит|кубыш|плат[ауы]|вернуть|погаш)/.test(t) && s.obligations.some((o) => o.debtFee)) {
+  const debts0 = s.obligations.filter((o) => o.debtFee);
+  const namedDebt = debts0.some((o) => t.includes(o.name.toLowerCase().replace(/^вернуть:\s*/, "")));
+  if (debts0.length && (namedDebt || /(плат[ауы] за (долг|кредит|займ)|сколько набеж|процент|долг с плат|переплат|сколько (должна|вернуть)|кубыш)/.test(t))) {
     const match = t.match(/\b(\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.\d{4})\b/);
     const raw = match?.[0];
     const parts = raw?.split('.');
     const date = raw ? raw.includes('-') ? raw : `${parts?.[2]}-${parts?.[1]?.padStart(2, '0')}-${parts?.[0]?.padStart(2, '0')}` : dayKey(now);
     const debts = s.obligations.filter((o) => o.debtFee);
-    const named = debts.filter((o) => t.includes(o.name.toLowerCase()));
+    const named = debts.filter((o) => t.includes(o.name.toLowerCase().replace(/^вернуть:\s*/, "")));
     return (named.length ? named : debts).map((o) => {
       const result = debtFeeAt(s, o, date);
       return result ? `${o.name}, на ${date}: основной долг ${rub(result.principal)}, плата ${rub(result.fee)} за ${result.chargedDays} платных дней, ставка за день ${rub(result.daily)}, долг с платой ${rub(result.total)}. Условия сохранены в карточке; предполагается, что новых операций не будет. Плата отдельно от планового платежа, автоматически не списывается.` : `${o.name}: точный расчёт недоступен — проверьте даты и покрытие суммы ступенями. Не вычисляй плату сама.`;
@@ -78,20 +92,21 @@ export function precompute(s: State, q: string, now = new Date()): string | null
     const raw = dateMatch[0];
     const parts = raw.split(".");
     const date = raw.includes("-") ? raw : `${parts[2]}-${parts[1]?.padStart(2, "0")}-${parts[0]?.padStart(2, "0")}`;
-    const amount = amountIn(t.replace(raw, ""));
+    const amount = moneyIn(t.replace(raw, ""), true);
     if (amount > 0 && validDate(date)) {
       const ch: Change = { kind: "payment", amount, date };
       return scenarioText(ch, whatIf(s, ch, now));
     }
   }
-  const n = amountIn(t);
+  const buying = /(купить|куплю|покупк|потянуть|потрат|стоит ли брать)/.test(t);
+  const n = moneyIn(t, buying);
   const day = spendDay(t, now);
   if (day && /(потрат|трат|купл|куплю|отдам)/.test(t) && n > 0) {
     const e = evaluatePurchase(s, n, now);
     if (+day >= +e.nextDate) return `Трата ${rub(n)} ${d(day)} придётся уже после ближайшего дохода (${d(e.nextDate)}) — она пойдёт из следующего периода, текущее «свободно» не меняется.`;
     return `Если потратить ${d(day)}: ` + purchaseText(e);
   }
-  if (/(купить|покупк|потянуть|могу ли|можно ли)/.test(t) && n > 0) return purchaseText(evaluatePurchase(s, n, now));
+  if (/(купить|покупк|потянуть|могу ли|можно ли|потрат)/.test(t) && !/(перенес|сдвин|отлож|оплат|плат[её]ж)/.test(t) && n > 0) return purchaseText(evaluatePurchase(s, n, now));
   if (/(зарплат|доход|выплат)/.test(t) && /(меньше|больше|урежут|снизит|вырастет)/.test(t) && n > 0) {
     const ch: Change = { kind: "income", delta: /больше|вырастет/.test(t) ? n : -n };
     return scenarioText(ch, whatIf(s, ch, now));

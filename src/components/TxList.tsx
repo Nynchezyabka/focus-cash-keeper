@@ -73,7 +73,13 @@ function EditTx({ t, onClose }: { t: Tx; onClose: () => void }) {
           <Input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Сумма" className="text-lg" />
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Название" />
           {t.kind === "expense" && <CategoryChip value={category} onChange={setCategory} />}
-          <MethodToggle value={method} onChange={setMethod} />
+          {t.kind === "transfer" ? (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Откуда перевели</p>
+              <MethodToggle value={method} onChange={setMethod} />
+              <p className="text-xs text-muted-foreground">{method === "cash" ? "Из наличных на карту" : "С карты в наличные"}</p>
+            </div>
+          ) : <MethodToggle value={method} onChange={setMethod} />}
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <Button className="w-full" onClick={save}>Сохранить</Button>
         </div>

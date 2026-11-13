@@ -196,9 +196,9 @@ function Today({ s }: { s: State }) {
         <div className="mx-3 border-t border-border" />
         <div className="grid grid-cols-2">
           <Stat
-            label="На счета"
+            label="Отложено на платежи"
             Icon={Lock}
-            value={c.shortfall > 0 ? `${rub(c.held)} / ${rub(c.reserve)}` : rub(c.reserve)}
+            value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve)}
             progress={c.shortfall > 0 && c.reserve > 0 ? c.held / c.reserve : undefined}
             onClick={() => setDialog("reserve")}
           />
@@ -206,7 +206,7 @@ function Today({ s }: { s: State }) {
         </div>
       </section>
       {c.total < 0 && <BorrowCard gap={-c.total} />}
-      {c.total >= 0 && c.shortfall > 0 && <ShortfallCard gap={c.shortfall} minDaily={c.minDaily} cushion={s.cushion} />}
+      {c.total >= 0 && c.shortfall > 0 && <ShortfallCard gap={c.shortfall} payGap={c.payGap} minDaily={c.minDaily} cushion={s.cushion} />}
 
       <WeekSummary s={s} />
       {s.txs.length > 0 && (
@@ -275,7 +275,7 @@ function Stat({
         <Icon className="h-3.5 w-3.5" />
         {label}
       </p>
-      <p className="mt-1 truncate whitespace-nowrap text-base text-foreground tabular-nums">{value}</p>
+      <p className="mt-1 break-words text-base leading-snug text-foreground tabular-nums">{value}</p>
       {progress !== undefined && (
         <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-secondary">
           <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }} />
@@ -654,29 +654,32 @@ function ReconcileDialog({
   );
 }
 
-function ShortfallCard({ gap, minDaily, cushion }: { gap: number; minDaily: number; cushion: number }) {
+function ShortfallCard({ gap, payGap, minDaily, cushion }: { gap: number; payGap: number; minDaily: number; cushion: number }) {
   const [mode, setMode] = useState<null | "borrow">(null);
+  const [more, setMore] = useState(false);
   if (mode === "borrow") return <BorrowCard gap={gap} />;
+  const take = Math.min(gap, cushion);
+  const btn = "h-auto whitespace-normal py-2";
+  const move = <Button asChild variant="secondary" className={btn}><Link to="/payments">Перенести или оплатить частично</Link></Button>;
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        До дохода на платежи не хватает {rub(gap)}. На жизнь оставлено {rub(minDaily)} в день — можно спокойно выбрать, как быть.
+        {payGap > 0
+          ? <>До дохода на платежи не хватает {rub(payGap)}{gap > payGap && <> (вместе с минимумом на жизнь {rub(minDaily)} в день — {rub(gap)})</>}.</>
+          : <>На платежи денег хватает, но вместе с минимумом на жизнь {rub(minDaily)} в день не хватает {rub(gap)}.</>}{" "}
+        Можно спокойно выбрать, как быть.
       </p>
       <div className="grid gap-2">
-        <Button asChild variant="secondary" className="h-auto whitespace-normal py-2">
-          <Link to="/payments">Перенести или оплатить частично</Link>
-        </Button>
-        <Button variant="secondary" className="h-auto whitespace-normal py-2" onClick={() => setMode("borrow")}>
-          Закрыть кредиткой или займом
-        </Button>
-        {cushion > 0 && (
-          <Button
-            variant="secondary"
-            className="h-auto whitespace-normal py-2"
-            onClick={() => addedToast(coverFromCushion(Math.min(gap, cushion)), "Взяли из накоплений")}
-          >
-            Взять из накоплений ({rub(Math.min(gap, cushion))})
-          </Button>
+        {cushion > 0
+          ? <Button className={btn} onClick={() => addedToast(coverFromCushion(take), "Взяли из накоплений")}>Взять из накоплений ({rub(take)})</Button>
+          : move}
+        {!more ? (
+          <Button variant="ghost" className={btn} onClick={() => setMore(true)}>Другие варианты</Button>
+        ) : (
+          <>
+            {cushion > 0 && move}
+            <Button variant="secondary" className={btn} onClick={() => setMode("borrow")}>Уже оплачено в долг — записать, когда вернуть</Button>
+          </>
         )}
       </div>
     </div>

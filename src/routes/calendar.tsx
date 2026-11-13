@@ -125,7 +125,7 @@ function Segments({ s, horizon }: { s: State; horizon: number }) {
             )}
             {g.gap > 0 && (
               <p className="mt-3 rounded-xl bg-accent p-2.5 text-xs text-accent-foreground">
-                Не хватает {rub(g.gap)}. Можно заранее перенести платёж во вкладке <Link to="/payments" className="underline">Платежи</Link>.
+                На платежи не хватает {rub(g.gap)}. Можно заранее перенести платёж во вкладке <Link to="/payments" className="underline">Платежи</Link>.
               </p>
             )}
           </section>
