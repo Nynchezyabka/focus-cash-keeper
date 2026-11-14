@@ -18,15 +18,16 @@ export const Route = createFileRoute("/incomes")({
   component: () => <Shell title="План" wide>{(s) => <><PlanTabs /><MonthStrip s={s} /><Incomes s={s} /></>}</Shell>,
 });
 
-type Draft = { id?: string; name: string; amount: string; day: string; method: "card" | "cash" };
-const empty: Draft = { name: "", amount: "", day: "", method: "card" };
+type Draft = { id?: string; name: string; amount: string; day: string; method: "card" | "cash"; once: string | null };
+const empty: Draft = { name: "", amount: "", day: "", method: "card", once: null };
 
 function Incomes({ s }: { s: State }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [moving, setMoving] = useState<Income | null>(null);
   const pending = pendingIncome(s);
   const next = nextIncome(s);
-  const list = [...s.incomes].sort((a, b) => a.day - b.day);
+  const list = s.incomes.filter((i) => !i.once).sort((a, b) => a.day - b.day);
+  const onceList = s.incomes.filter((i) => i.once).sort((a, b) => a.once!.localeCompare(b.once!));
   const total = list.reduce((a, i) => a + i.amount, 0);
 
   return (
@@ -52,7 +53,7 @@ function Incomes({ s }: { s: State }) {
               const isNext = next.income?.id === i.id;
               return (
                 <li key={i.id} className={`rounded-2xl bg-card p-4 shadow-soft ${isNext ? "ring-2 ring-primary" : ""}`}>
-                  <button onClick={() => setDraft({ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card" })} className="flex w-full items-center gap-3 text-left">
+                  <button onClick={() => setDraft({ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: null })} className="flex w-full items-center gap-3 text-left">
                     <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-secondary leading-none text-secondary-foreground">
                       <span className="text-center"><span className="block font-display text-lg tabular-nums">{i.day}</span><span className="text-[10px]">число</span></span>
                     </span>
@@ -80,7 +81,38 @@ function Incomes({ s }: { s: State }) {
           </ul>
         </section>
       )}
-      {list.length === 0 && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">Добавьте каждую выплату отдельно: например, «Аванс» 10-го на карту, «Аванс наличными» 10-го, «Зарплата» 25-го.</p>}
+      {onceList.length > 0 && (
+        <section>
+          <h2 className="mb-2 font-display text-lg">Разовые выплаты</h2>
+          <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
+            {onceList.map((i) => {
+              const done = !!s.incomeAck[i.id] && s.incomeAck[i.id]! >= (i.nextOn ?? i.once!);
+              const due = i.nextOn ?? i.once!;
+              const isDue = pending?.income.id === i.id;
+              return (
+                <li key={i.id} className={`rounded-2xl bg-card p-4 shadow-soft ${done ? "opacity-60" : ""} ${next.income?.id === i.id ? "ring-2 ring-primary" : ""}`}>
+                  <button onClick={() => setDraft({ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: i.once! })} className="flex w-full items-center gap-3 text-left">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">{i.name}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"><Badge m={i.method} />{new Date(due + "T00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}{done ? " · пришла" : ""}</span>
+                    </span>
+                    <span className="text-sm tabular-nums">{rub(i.amount)}</span>
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                  {!done && (
+                    <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+                      <span className="flex-1 text-xs text-muted-foreground">{isDue ? "Дата наступила — пришла?" : "Один раз"}</span>
+                      <Button size="sm" variant="ghost" onClick={() => setMoving(i)}><CalendarClock /> Перенести</Button>
+                      <Button size="sm" variant="secondary" onClick={() => addedToast(confirmIncome(s, i), `${i.name}: +${rub(i.amount)}`)}><Check /> Пришла</Button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+      {list.length === 0 && onceList.length === 0 && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">Добавьте каждую выплату отдельно: например, «Аванс» 10-го на карту, «Аванс наличными» 10-го, «Зарплата» 25-го.</p>}
 
 
       <DateDialog open={!!moving} title={`Когда придёт «${moving?.name ?? ""}»?`} initial={moving ? dayKey(incomeUpcoming(s, moving) ?? new Date()) : ""} onClose={() => setMoving(null)} onSave={(d) => moving && moveIncome(moving.id, d)} />
@@ -96,19 +128,26 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
   if (key !== openId) { setOpenId(key); if (draft) setV(draft); }
   const isNew = !draft?.id;
   const a = Number(v.amount.replace(/\s/g, "").replace(",", ".")), d = Number(v.day);
-  const valid = v.name.trim() && a > 0 && d >= 1 && d <= 31;
+  const valid = v.name.trim() && a > 0 && (v.once !== null ? /^\d{4}-\d{2}-\d{2}$/.test(v.once) : d >= 1 && d <= 31);
 
   return (
     <Dialog open={!!draft} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>{isNew ? "Новая выплата" : "Изменить выплату"}</DialogTitle></DialogHeader>
         <Input autoFocus placeholder="Название: Аванс, Зарплата, Пособие" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 text-sm">
+          {[false, true].map((o) => (
+            <button key={String(o)} type="button" onClick={() => setV({ ...v, once: o ? (v.once ?? "") : null })} className={`rounded-lg py-2 ${(v.once !== null) === o ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{o ? "Один раз" : "Каждый месяц"}</button>
+          ))}
+        </div>
         <div className="flex gap-2">
           <Input inputMode="decimal" placeholder="Сумма, ₽" value={v.amount} onChange={(e) => setV({ ...v, amount: e.target.value })} />
-          <Input inputMode="numeric" placeholder="Число (1–31)" value={v.day} onChange={(e) => setV({ ...v, day: e.target.value.replace(/\D/g, "").slice(0, 2) })} />
+          {v.once === null
+            ? <Input inputMode="numeric" placeholder="Число (1–31)" value={v.day} onChange={(e) => setV({ ...v, day: e.target.value.replace(/\D/g, "").slice(0, 2) })} />
+            : <Input type="date" aria-label="Дата выплаты" value={v.once} onChange={(e) => setV({ ...v, once: e.target.value })} />}
         </div>
         <MethodToggle value={v.method} onChange={(m) => setV({ ...v, method: m })} />
-        <p className="text-xs text-muted-foreground">Каждый месяц в этот день. Если в месяце нет такого числа — в последний день.</p>
+        <p className="text-xs text-muted-foreground">{v.once === null ? "Каждый месяц в этот день. Если в месяце нет такого числа — в последний день." : "Один раз в этот день: декретные, отпускные, премия, возврат налога."}</p>
         <div className="flex gap-2">
           {!isNew && (
             <Button variant="outline" size="icon" aria-label="Удалить" onClick={() => {
@@ -119,9 +158,9 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
             }}><Trash2 /></Button>
           )}
           <Button className="flex-1" disabled={!valid} onClick={() => {
-            const item: Income = { id: draft?.id ?? uid(), name: v.name.trim(), amount: a, day: d, method: v.method };
+            const item: Income = { id: draft?.id ?? uid(), name: v.name.trim(), amount: a, day: v.once !== null ? Number(v.once.slice(8, 10)) : d, method: v.method, ...(v.once !== null ? { once: v.once } : {}) };
             setState((x) => isNew
-              ? { ...x, incomes: [...x.incomes, item], incomeAck: { ...x.incomeAck, [item.id]: dayKey(new Date()) } }
+              ? { ...x, incomes: [...x.incomes, item], incomeAck: item.once ? x.incomeAck : { ...x.incomeAck, [item.id]: dayKey(new Date()) } }
               : { ...x, incomes: x.incomes.map((y) => (y.id === item.id ? item : y)) });
             onClose();
           }}>Сохранить</Button>

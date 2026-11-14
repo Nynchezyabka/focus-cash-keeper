@@ -25,7 +25,7 @@ export interface Goal { id: string; name: string; target: number; color?: string
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string; debtFee?: DebtFee; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
-export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
+export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; once?: string | undefined /* YYYY-MM-DD: one-off income */; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; mode?: "auto" | "always" }
 
 export interface State {
@@ -148,6 +148,7 @@ function onDay(y: number, m: number, day: number) {
 }
 /** occurrences of an income around today */
 function incomeDates(inc: Income, from: Date, count = 4): Date[] {
+  if (inc.once && safeKey(inc.once)) return [parseKey(inc.once)];
   const out: Date[] = [];
   for (let i = -2; i < count; i++) {
     const base = onDay(from.getFullYear(), from.getMonth() + i, inc.day);
@@ -471,6 +472,7 @@ export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: 
     const ack = s.incomeAck[inc.id];
     const dates: Date[] = [];
     for (let i = 0; i < 3; i++) {
+      if (inc.once) { const d = safeKey(inc.once) ? parseKey(inc.once) : null; if (i === 0 && d && d > today && d <= limit && (!ack || dayKey(d) > ack)) dates.push(d); continue; }
       const d = onDay(today.getFullYear(), today.getMonth() + i, inc.day);
       if (d > today && d <= limit && (!ack || dayKey(d) > ack) && periodOf(d) !== inc.skip) dates.push(d);
     }
