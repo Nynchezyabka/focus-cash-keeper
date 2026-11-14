@@ -78,7 +78,7 @@ function Setup({ initialCode }: { initialCode: string }) {
     <div className="space-y-5">
       {!familyConfigured() && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">На этом сайте семейный доступ ещё не настроен. Личный бюджет работает полностью. Чтобы включить семью, владельцу сайта нужно один раз подготовить базу и вписать два значения на хостинге — шаги в README.</p>}
       <p className="text-sm text-muted-foreground">Каждый ведёт свой бюджет на своём телефоне. Здесь будет общая картина двух бюджетов. Ничего не объединяется и не заменяется.</p>
-      <Input placeholder="Как вас назвать? (Наталья, Муж)" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input placeholder="Как вас назвать?" value={name} onChange={(e) => setName(e.target.value)} />
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="font-display text-lg">Создать семью</h2>
         <p className="text-xs text-muted-foreground">Получите код и QR — покажите их второму человеку.</p>
