@@ -235,7 +235,8 @@ function Today({ s }: { s: State }) {
               Все операции
             </Link>
           </div>
-          <TxList txs={s.txs.slice(0, 4)} />
+          <div className="lg:hidden"><TxList txs={s.txs.slice(0, 4)} /></div>
+          <div className="hidden lg:block"><TxList txs={s.txs.slice(0, 10)} /></div>
         </section>
       )}
     </div>
