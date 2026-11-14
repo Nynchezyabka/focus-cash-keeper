@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator, Brain, Flag, MoreHorizontal, Copy } from "lucide-react";
+import { ImagePlus, Send, Trash2, X, Settings2, Wallet, Calculator, Brain, Flag, MoreHorizontal, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyAction, describeAction, parseActions, precompute, unverifiedSums, type AdvisorAction, freeUntilIncome } from "@/lib/advisor-calc";
 import { toast } from "sonner";
@@ -318,14 +318,14 @@ function Chat({ s }: { s: State }) {
 
   return (
     <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col lg:relative lg:mx-auto lg:h-[calc(100dvh-7rem)] lg:max-w-4xl lg:pl-60">
-      <div className="mb-3 flex flex-wrap gap-2 lg:absolute lg:left-0 lg:top-0 lg:w-52 lg:flex-col lg:items-stretch">
+      <div className="mb-3 flex flex-nowrap items-center gap-1.5 lg:absolute lg:left-0 lg:top-0 lg:w-52 lg:flex-col lg:items-stretch">
         <p className="hidden px-1 text-xs text-muted-foreground lg:block">{nameOf(s.advisorName)} учитывает ваши правила, память и цифры приложения. Характер — над полем ввода.</p>
         <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("rules")}><Settings2 /> Правила</Button>
-        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("facts")}><Eye /> Цифры бюджета</Button>
+        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("facts")}><Wallet /> Бюджет</Button>
         <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("memory")}><Brain /> Память{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}</Button>
         {msgs.length > 0 && (
           <AlertDialog>
-            <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="rounded-full text-muted-foreground lg:justify-start"><Trash2 /> Новый разговор</Button></AlertDialogTrigger>
+            <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="ml-auto shrink-0 rounded-full text-muted-foreground lg:ml-0 lg:justify-start" aria-label="Новый разговор"><Trash2 /><span className="hidden lg:inline">Новый разговор</span></Button></AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader><AlertDialogTitle>Начать новый разговор?</AlertDialogTitle><AlertDialogDescription>Сообщения этого разговора исчезнут. Правила и память Помощника останутся.</AlertDialogDescription></AlertDialogHeader>
               <AlertDialogFooter><AlertDialogCancel>Оставить</AlertDialogCancel><AlertDialogAction onClick={() => setMsgs([])}>Начать заново</AlertDialogAction></AlertDialogFooter>
@@ -351,7 +351,7 @@ function Chat({ s }: { s: State }) {
       </Dialog>
       <Dialog open={panel === "facts"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Цифры бюджета</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Бюджет</DialogTitle></DialogHeader>
           <div className="min-w-0 space-y-5 text-sm leading-relaxed">
             {context(s, true).split("\n\n").map((section, i) => {
               const colon = section.indexOf(": ");
