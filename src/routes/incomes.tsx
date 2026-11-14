@@ -18,8 +18,10 @@ export const Route = createFileRoute("/incomes")({
   component: () => <Shell title="План" wide>{(s) => <><PlanTabs /><MonthStrip s={s} /><Incomes s={s} /></>}</Shell>,
 });
 
-type Draft = { id?: string; name: string; amount: string; day: string; method: "card" | "cash"; once: string | null };
-const empty: Draft = { name: "", amount: "", day: "", method: "card", once: null };
+type Draft = { id?: string; name: string; amount: string; day: string; method: "card" | "cash"; once: string | null; start: string; end: string };
+const empty: Draft = { name: "", amount: "", day: "", method: "card", once: null, start: "", end: "" };
+const fmtD = (k: string) => new Date(k + "T00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+const periodText = (i: Income) => i.start && i.end ? `с ${fmtD(i.start)} по ${fmtD(i.end)}` : i.start ? `с ${fmtD(i.start)}` : i.end ? `по ${fmtD(i.end)}` : "";
 
 function Incomes({ s }: { s: State }) {
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -51,15 +53,16 @@ function Incomes({ s }: { s: State }) {
           <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
             {list.map((i) => {
               const isNext = next.income?.id === i.id;
+              const ended = !!i.end && i.end < dayKey(new Date());
               return (
-                <li key={i.id} className={`rounded-2xl bg-card p-4 shadow-soft ${isNext ? "ring-2 ring-primary" : ""}`}>
-                  <button onClick={() => setDraft({ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: null })} className="flex w-full items-center gap-3 text-left">
+                <li key={i.id} className={`rounded-2xl bg-card p-4 shadow-soft ${isNext ? "ring-2 ring-primary" : ""} ${ended ? "opacity-60" : ""}`}>
+                  <button onClick={() => setDraft({ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: null, start: i.start ?? "", end: i.end ?? "" })} className="flex w-full items-center gap-3 text-left">
                     <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-secondary leading-none text-secondary-foreground">
                       <span className="text-center"><span className="block font-display text-lg tabular-nums">{i.day}</span><span className="text-[10px]">число</span></span>
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm">{i.name}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-2"><Badge m={i.method} />{isNext && <span className="text-[11px] text-primary">следующий</span>}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2"><Badge m={i.method} />{isNext && <span className="text-[11px] text-primary">следующий</span>}{periodText(i) && <span className="text-[11px] text-muted-foreground">{ended ? "закончилась · " : ""}{periodText(i)}</span>}</span>
                     </span>
                     <span className="text-sm tabular-nums">{rub(i.amount)}</span>
                     <Pencil className="h-4 w-4 text-muted-foreground" />
@@ -91,7 +94,7 @@ function Incomes({ s }: { s: State }) {
               const isDue = pending?.income.id === i.id;
               return (
                 <li key={i.id} className={`rounded-2xl bg-card p-4 shadow-soft ${done ? "opacity-60" : ""} ${next.income?.id === i.id ? "ring-2 ring-primary" : ""}`}>
-                  <button onClick={() => setDraft({ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: i.once! })} className="flex w-full items-center gap-3 text-left">
+                  <button onClick={() => setDraft({ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: i.once!, start: "", end: "" })} className="flex w-full items-center gap-3 text-left">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm">{i.name}</span>
                       <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"><Badge m={i.method} />{new Date(due + "T00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}{done ? " · пришла" : ""}</span>
@@ -128,7 +131,8 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
   if (key !== openId) { setOpenId(key); if (draft) setV(draft); }
   const isNew = !draft?.id;
   const a = Number(v.amount.replace(/\s/g, "").replace(",", ".")), d = Number(v.day);
-  const valid = v.name.trim() && a > 0 && (v.once !== null ? /^\d{4}-\d{2}-\d{2}$/.test(v.once) : d >= 1 && d <= 31);
+  const periodOk = !v.start || !v.end || v.start <= v.end;
+  const valid = v.name.trim() && a > 0 && (v.once !== null ? /^\d{4}-\d{2}-\d{2}$/.test(v.once) : d >= 1 && d <= 31 && periodOk);
 
   return (
     <Dialog open={!!draft} onOpenChange={(o) => !o && onClose()}>
@@ -146,6 +150,16 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
             ? <Input inputMode="numeric" placeholder="Число (1–31)" value={v.day} onChange={(e) => setV({ ...v, day: e.target.value.replace(/\D/g, "").slice(0, 2) })} />
             : <Input type="date" aria-label="Дата выплаты" value={v.once} onChange={(e) => setV({ ...v, once: e.target.value })} />}
         </div>
+        {v.once === null && (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Период (необязательно) — например, пособие с мая на полтора года</p>
+            <div className="flex gap-2">
+              <label className="flex-1 text-xs text-muted-foreground">Действует с<Input type="date" value={v.start} onChange={(e) => setV({ ...v, start: e.target.value })} /></label>
+              <label className="flex-1 text-xs text-muted-foreground">по<Input type="date" value={v.end} onChange={(e) => setV({ ...v, end: e.target.value })} /></label>
+            </div>
+            {!periodOk && <p className="text-xs text-destructive">Дата окончания раньше начала</p>}
+          </div>
+        )}
         <MethodToggle value={v.method} onChange={(m) => setV({ ...v, method: m })} />
         <p className="text-xs text-muted-foreground">{v.once === null ? "Каждый месяц в этот день. Если в месяце нет такого числа — в последний день." : "Один раз в этот день: декретные, отпускные, премия, возврат налога."}</p>
         <div className="flex gap-2">
@@ -158,7 +172,7 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
             }}><Trash2 /></Button>
           )}
           <Button className="flex-1" disabled={!valid} onClick={() => {
-            const item: Income = { id: draft?.id ?? uid(), name: v.name.trim(), amount: a, day: v.once !== null ? Number(v.once.slice(8, 10)) : d, method: v.method, ...(v.once !== null ? { once: v.once } : {}) };
+            const item: Income = { id: draft?.id ?? uid(), name: v.name.trim(), amount: a, day: v.once !== null ? Number(v.once.slice(8, 10)) : d, method: v.method, ...(v.once !== null ? { once: v.once } : {}), ...(v.once === null && v.start ? { start: v.start } : {}), ...(v.once === null && v.end ? { end: v.end } : {}) };
             setState((x) => isNew
               ? { ...x, incomes: [...x.incomes, item], incomeAck: item.once ? x.incomeAck : { ...x.incomeAck, [item.id]: dayKey(new Date()) } }
               : { ...x, incomes: x.incomes.map((y) => (y.id === item.id ? item : y)) });

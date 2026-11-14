@@ -25,7 +25,7 @@ export interface Goal { id: string; name: string; target: number; color?: string
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string; debtFee?: DebtFee; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
-export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; once?: string | undefined /* YYYY-MM-DD: one-off income */; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
+export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; once?: string | undefined /* YYYY-MM-DD: one-off income */; skip?: string | undefined /* "YYYY-MM": not counted this month */; start?: string | undefined /* YYYY-MM-DD: regular income begins */; end?: string | undefined /* YYYY-MM-DD: last possible date */ }
 export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; advisorApiKey?: string; mode?: "auto" | "always" }
 
 export interface State {
@@ -146,13 +146,21 @@ function onDay(y: number, m: number, day: number) {
   const last = new Date(y, m + 1, 0).getDate();
   return new Date(y, m, Math.min(day, last));
 }
+/** a regular income counts only inside its optional «с … по …» period */
+export const incomeActive = (inc: Income, d: Date) => {
+  const k = dayKey(d);
+  return (!inc.start || !safeKey(inc.start) || k >= inc.start) && (!inc.end || !safeKey(inc.end) || k <= inc.end);
+};
 /** occurrences of an income around today */
 function incomeDates(inc: Income, from: Date, count = 4): Date[] {
   if (inc.once && safeKey(inc.once)) return [parseKey(inc.once)];
   const out: Date[] = [];
+  // a later start: look from that month so the first payment is found even a year ahead
+  const st = inc.start && safeKey(inc.start) ? parseKey(inc.start) : null;
+  const ref = st && st > from ? st : from;
   for (let i = -2; i < count; i++) {
-    const base = onDay(from.getFullYear(), from.getMonth() + i, inc.day);
-    out.push(base);
+    const base = onDay(ref.getFullYear(), ref.getMonth() + i, inc.day);
+    if (incomeActive(inc, base)) out.push(base);
   }
   return out.sort((a, b) => +a - +b);
 }
@@ -471,10 +479,11 @@ export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: 
   for (const inc of s.incomes) {
     const ack = s.incomeAck[inc.id];
     const dates: Date[] = [];
-    for (let i = 0; i < 3; i++) {
+    const months = Math.max(3, Math.ceil(horizon / 28) + 1);
+    for (let i = 0; i < months; i++) {
       if (inc.once) { const d = safeKey(inc.once) ? parseKey(inc.once) : null; if (i === 0 && d && d > today && d <= limit && (!ack || dayKey(d) > ack)) dates.push(d); continue; }
       const d = onDay(today.getFullYear(), today.getMonth() + i, inc.day);
-      if (d > today && d <= limit && (!ack || dayKey(d) > ack) && periodOf(d) !== inc.skip) dates.push(d);
+      if (d > today && d <= limit && (!ack || dayKey(d) > ack) && periodOf(d) !== inc.skip && incomeActive(inc, d)) dates.push(d);
     }
     if (inc.nextOn) { const m = parseKey(inc.nextOn); if (dates.length) dates[0] = m; else if (m > today) dates.push(m); }
     for (const d of dates) if (d > today && d <= limit) ev.push({ date: d, kind: "income", name: inc.name, amount: inc.amount, method: inc.method, refId: inc.id });
