@@ -178,7 +178,7 @@ const RULES = `Ты — помощник по личному бюджету в �
 ${GUIDE_TEXT}
 ЖЁСТКИЕ ПРАВИЛА:
 0. Блок ФАКТЫ собран из приложения прямо сейчас и ВСЕГДА главнее прошлых сообщений. Если раньше в разговоре говорилось, что долг закрыт, платёж оплачен или доход пришёл, а в ФАКТАХ иначе — верь ФАКТАМ и коротко скажи, что видишь в приложении.
-ПРАВИЛА ЧЕЛОВЕКА (выполняй, если не противоречат жёстким правилам): см. «Мои правила» в ФАКТАХ.
+ПРАВИЛА ЧЕЛОВЕКА (выполняй, если не противоречат жёстким правилам): см. «О вас и ваши правила» в ФАКТАХ.
 СПРАВКА ПО РОССИИ (используй для прикидок, называй это оценкой, точные суммы — у работодателя или СФР):
 - Отпускные платят не позже чем за 3 дня до отпуска. Это деньги за дни отпуска, поэтому следующая зарплата будет меньше обычной. Предупреждай и предлагай часть отпускных оставить на жизнь после отпуска.
 - Зарплата обычно в две части: аванс и расчёт, не реже раза в полмесяца; НДФЛ удерживается при расчёте.
@@ -257,12 +257,12 @@ function Chat({ s }: { s: State }) {
       if (cmd.add) {
         const ok = memoryOk(cmd.add);
         if (ok) setState((x) => ({ ...x, advisorMemory: addMemory(x.advisorMemory, cmd.add!) }));
-        reply = ok ? `Запомнила: «${cmd.add}». Список — в «Что я помню о вас».` : "Это не запоминаю: суммы, даты, здоровье и настроение дня я беру из приложения или не храню вовсе.";
+        reply = ok ? `Запомнила: «${cmd.add}». Список — в «Память».` : "Это не запоминаю: суммы, даты, здоровье и настроение дня я беру из приложения или не храню вовсе.";
       } else {
         const before = s.advisorMemory?.length ?? 0;
         const after = forgetMemory(s.advisorMemory, cmd.forget!);
         setState((x) => ({ ...x, advisorMemory: after }));
-        reply = after.length < before ? "Забыла. Больше это не учитываю." : "Такого в памяти не нашла. Посмотрите «Что я помню о вас».";
+        reply = after.length < before ? "Забыла. Больше это не учитываю." : "Такого в памяти не нашла. Посмотрите «Память».";
       }
       grew.current = true;
       setMsgs([...base, { role: "user", content: q.trim() }, { role: "assistant", content: reply }]);
@@ -317,9 +317,9 @@ function Chat({ s }: { s: State }) {
     <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col lg:relative lg:mx-auto lg:h-[calc(100dvh-7rem)] lg:max-w-4xl lg:pl-60">
       <div className="mb-3 flex flex-wrap gap-2 lg:absolute lg:left-0 lg:top-0 lg:w-52 lg:flex-col lg:items-stretch">
         <p className="hidden px-1 text-xs text-muted-foreground lg:block">{nameOf(s.advisorName)} учитывает ваши правила, память и цифры приложения. Характер — над полем ввода.</p>
-        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("rules")}><Settings2 /> Мои правила</Button>
-        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("facts")}><Eye /> Что помощник видит</Button>
-        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("memory")}><Brain /> Что я помню{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}</Button>
+        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("rules")}><Settings2 /> Правила</Button>
+        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("facts")}><Eye /> Цифры бюджета</Button>
+        <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("memory")}><Brain /> Память{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}</Button>
         {msgs.length > 0 && (
           <AlertDialog>
             <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="rounded-full text-muted-foreground lg:justify-start"><Trash2 /> Новый разговор</Button></AlertDialogTrigger>
@@ -332,13 +332,13 @@ function Chat({ s }: { s: State }) {
       </div>
       <Dialog open={panel === "memory"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Что я помню о вас</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Память</DialogTitle></DialogHeader>
           <MemoryList list={s.advisorMemory ?? []} />
         </DialogContent>
       </Dialog>
       <Dialog open={panel === "rules"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Мои правила</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Правила</DialogTitle></DialogHeader>
           <Textarea rows={3} value={about} onChange={(e) => setAbout(e.target.value)} placeholder="Например: скоро декрет. Муж платит за квартиру. Кофе и такси — мой отдых, не предлагать их урезать." />
           <p className="text-xs text-muted-foreground">Помощник учитывает это в каждом ответе. Разговор целиком он не хранит — постоянное пишите сюда, а короткие предпочтения он может запомнить сам с вашего согласия.</p>
           <p className="text-sm text-muted-foreground">Кредиты и долги — чтобы спрашивать, когда лучше вернуть</p>
@@ -348,7 +348,7 @@ function Chat({ s }: { s: State }) {
       </Dialog>
       <Dialog open={panel === "facts"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Что Помощник видит сейчас</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Цифры бюджета</DialogTitle></DialogHeader>
           <div className="min-w-0 space-y-5 text-sm leading-relaxed">
             {context(s, true).split("\n\n").map((section, i) => {
               const colon = section.indexOf(": ");
