@@ -3,7 +3,7 @@ import { forecast, incomeUpcoming, nextIncome, pendingIncome, type State } from 
 
 const now = new Date(2026, 10, 14, 12);
 const base = (): State => ({ version: 1, balance: 10000, cushion: 0, txs: [], obligations: [], incomeAck: {}, createdAt: new Date(2026, 9, 1).toISOString(),
-  incomes: [{ id: "sfr", name: "Декретные", amount: 288860, day: 25, once: "2027-01-25" }] } as State);
+  incomes: [{ id: "sfr", name: "Декретные", amount: 288860, day: 25, once: "2027-01-25" }] } as unknown as State);
 
 describe("one-off income", () => {
   it("comes once on its exact date", () => {
