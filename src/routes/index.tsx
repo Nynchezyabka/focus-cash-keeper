@@ -305,7 +305,7 @@ function Stat({
   );
 }
 
-const dm = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+const dm = (d: Date) => Number.isNaN(+d) ? "без даты" : d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 function ReserveDialog({
   open,
   onClose,

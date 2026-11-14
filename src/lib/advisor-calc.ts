@@ -1,5 +1,5 @@
 // Deterministic math for the Помощник: the app calculates, the model only explains.
-import { calc, cat, dayKey, forecast, getState, moveIncome, moveObligation, nextIncome, rub, setState, transfer, uid, type Method, type State } from "@/lib/budget";
+import { calc, cat, dayKey, forecast, getState, moveIncome, moveObligation, nextIncome, rub, safeKey, setState, transfer, uid, type Method, type State } from "@/lib/budget";
 import { saveGoal } from "@/lib/goals";
 import { validDate } from "@/lib/loan-schedule";
 import { debtFeeAt } from "@/lib/debt-fee";
@@ -186,6 +186,7 @@ export function applyAction(a: AdvisorAction): boolean {
   }
   if (a.type === "transfer") return !!transfer(a.amount, a.from);
   if (a.type === "payment") {
+    if (!safeKey(a.date)) return false;
     setState((s) => ({ ...s, obligations: [...s.obligations, { id: uid(), name: a.name, amount: a.amount, day: Number(a.date.slice(8)), category: "unexpected", once: a.date, method: "card" }] }));
     return true;
   }

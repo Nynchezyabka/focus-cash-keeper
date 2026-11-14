@@ -140,6 +140,8 @@ export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1
 export const periodOf = (d: Date) => dayKey(d).slice(0, 7);
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const parseKey = (k: string) => { const [y = 2000, m = 1, d = 1] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+/** a YYYY-MM-DD key or undefined — AI and screenshots may return «15 ноября» or empty dates */
+export const safeKey = (k?: string) => (k && /^\d{4}-\d{2}-\d{2}$/.test(k.slice(0, 10)) && !Number.isNaN(+parseKey(k.slice(0, 10))) ? k.slice(0, 10) : undefined);
 function onDay(y: number, m: number, day: number) {
   const last = new Date(y, m + 1, 0).getDate();
   return new Date(y, m, Math.min(day, last));
@@ -156,13 +158,13 @@ function incomeDates(inc: Income, from: Date, count = 4): Date[] {
 /** nearest future date of one income, respecting a moved date and early confirmation */
 export function incomeUpcoming(s: State, inc: Income, now = new Date()): Date | null {
   const today = startOfDay(now);
-  if (inc.nextOn) { const d = parseKey(inc.nextOn); return d > today ? d : null; }
+  if (inc.nextOn && safeKey(inc.nextOn)) { const d = parseKey(inc.nextOn); return d > today ? d : null; }
   const ack = s.incomeAck[inc.id];
   return incomeDates(inc, today).find((x) => x > today && (!ack || dayKey(x) > ack) && periodOf(x) !== inc.skip) ?? null;
 }
 export function nextIncome(s: State, now = new Date()): { date: Date; income?: Income } {
   const today = startOfDay(now);
-  if (s.nextIncomeOverride && parseKey(s.nextIncomeOverride) > today) return { date: parseKey(s.nextIncomeOverride) };
+  if (s.nextIncomeOverride && safeKey(s.nextIncomeOverride) && parseKey(s.nextIncomeOverride) > today) return { date: parseKey(s.nextIncomeOverride) };
   let best: { date: Date; income?: Income } | null = null;
   for (const inc of s.incomes) {
     const d = incomeUpcoming(s, inc, now);
@@ -175,7 +177,7 @@ export function pendingIncome(s: State, now = new Date()): { income: Income; dat
   const today = startOfDay(now);
   const created = startOfDay(new Date(s.createdAt));
   for (const inc of s.incomes) {
-    if (inc.nextOn) {
+    if (inc.nextOn && safeKey(inc.nextOn)) {
       if (parseKey(inc.nextOn) <= today) return { income: inc, date: inc.nextOn };
       continue;
     }
@@ -190,10 +192,12 @@ export function pendingIncome(s: State, now = new Date()): { income: Income; dat
 }
 export function obligationDue(o: Obligation, now = new Date()) {
   const today = startOfDay(now);
-  if (o.once) return parseKey(o.once);
-  if (o.nextOn) return parseKey(o.nextOn);
-  const d = onDay(today.getFullYear(), today.getMonth(), o.day);
-  return d >= today ? d : onDay(today.getFullYear(), today.getMonth() + 1, o.day);
+  const ok = (d: Date) => !Number.isNaN(+d);
+  if (o.once && ok(parseKey(o.once))) return parseKey(o.once);
+  if (o.nextOn && ok(parseKey(o.nextOn))) return parseKey(o.nextOn);
+  const day = Number.isFinite(o.day) && o.day > 0 ? o.day : today.getDate();
+  const d = onDay(today.getFullYear(), today.getMonth(), day);
+  return d >= today ? d : onDay(today.getFullYear(), today.getMonth() + 1, day);
 }
 export function paidAmount(s: State, o: Obligation, due: Date) {
   return s.txs.filter((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due))).reduce((a, t) => a + t.amount, 0);
