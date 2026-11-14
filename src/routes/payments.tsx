@@ -2,6 +2,7 @@ import { activeGoals } from "@/lib/goals";
 import { DebtFeeFields, DebtFeeSummary } from "@/components/DebtFee";
 import { validDebtFee } from "@/lib/debt-fee";
 import { LoanScheduleCard, LoanScheduleEditor } from "@/components/LoanSchedule";
+import { paymentObligations } from "@/lib/loan-schedule";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2 } from "lucide-react";
@@ -110,7 +111,7 @@ const PRESETS = [
   { name: "Страховка", category: "unexpected", once: true },
 ];
 
-function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => void; onMove?: (() => void) | undefined; onPart?: (() => void) | undefined }) {
+export function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => void; onMove?: (() => void) | undefined; onPart?: (() => void) | undefined }) {
   const isNew = !o.id;
   const [name, setName] = useState(o.name);
   const [amount, setAmount] = useState(o.amount ? String(o.amount) : "");
@@ -189,7 +190,7 @@ function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose: () => 
   );
 }
 
-function PartDialog({ o, left, onClose }: { o: Obligation; left: number; onClose: () => void }) {
+export function PartDialog({ o, left, onClose }: { o: Obligation; left: number; onClose: () => void }) {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<Method>(o.method ?? "card");
   const a = Number(amount.replace(/\s/g, "").replace(",", "."));
@@ -239,4 +240,20 @@ function LoanDialog({ onClose }: { onClose: () => void }) {
       </DialogContent>
     </Dialog>
   );
+}
+
+/** opens the same payment editor (with move / part flows) from the calendar or the 30-day strip */
+export function PaymentEditFlow({ s, id, onClose }: { s: State; id: string; onClose: () => void }) {
+  const o0 = s.obligations.find((o) => o.id === id) ?? s.obligations.find((o) => o.schedule && paymentObligations({ ...s, obligations: [o] }).some((p) => p.id === id));
+  const [mode, setMode] = useState<"edit" | "move" | "part" | "schedule">(o0?.schedule ? "schedule" : "edit");
+  if (!o0) return null;
+  const o = o0;
+  if (mode === "schedule") return <LoanScheduleEditor o={o} onClose={onClose} />;
+  if (mode === "part") return <PartDialog o={o} left={o.amount - paidAmount(s, o, obligationDue(o))} onClose={onClose} />;
+  if (mode === "move") return <DateDialog open title={`Новая дата: «${o.name}»`} initial={dayKey(obligationDue(o))} onClose={onClose} onSave={(d) => {
+    const wasPaid = isPaid(s, o, obligationDue(o));
+    moveObligation(o.id, d);
+    if (wasPaid && confirm("Это новый платёж на новую дату? Отметить его неоплаченным?")) unpay(o);
+  }} />;
+  return <Editor o={o} onClose={onClose} onMove={() => setMode("move")} onPart={isPaid(s, o, obligationDue(o)) ? undefined : () => setMode("part")} />;
 }

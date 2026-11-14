@@ -5,6 +5,7 @@ import { DateDialog, MethodBadge as Badge, MethodToggle } from "@/components/Pic
 import { addedToast } from "@/components/Undo";
 import { Shell, meta } from "@/components/Shell";
 import { MonthStrip } from "@/components/MonthStrip";
+import { PaymentEditFlow } from "./payments";
 import { PlanTabs } from "@/components/PlanTabs";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
@@ -182,4 +183,16 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
       </DialogContent>
     </Dialog>
   );
+}
+
+/** opens the same income editor from the calendar or the 30-day strip */
+export function IncomeEditFlow({ s, id, onClose }: { s: State; id: string; onClose: () => void }) {
+  const i = s.incomes.find((x) => x.id === id);
+  if (!i) return null;
+  return <IncomeEditor draft={{ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: i.once ?? null, start: i.start ?? "", end: i.end ?? "" }} onClose={onClose} />;
+}
+
+export function PlanEventEditor({ s, e, onClose }: { s: State; e: { kind: "income" | "payment"; refId: string } | null; onClose: () => void }) {
+  if (!e) return null;
+  return e.kind === "income" ? <IncomeEditFlow s={s} id={e.refId} onClose={onClose} /> : <PaymentEditFlow s={s} id={e.refId} onClose={onClose} />;
 }

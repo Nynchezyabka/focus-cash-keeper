@@ -4,6 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight } from "l
 import { Shell, meta } from "@/components/Shell";
 import { PlanTabs } from "@/components/PlanTabs";
 import { MethodBadge } from "@/components/Pickers";
+import { PlanEventEditor } from "./incomes";
 import { calc, dayKey, forecast, rub, type CalEvent, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/calendar")({
@@ -82,10 +83,10 @@ function EmptyPlan() {
   );
 }
 
-function Row({ e, today }: { e: CalEvent; today: string }) {
+function Row({ e, today, onOpen }: { e: CalEvent; today: string; onOpen?: (e: CalEvent) => void }) {
   const inc = e.kind === "income";
   return (
-    <li className={`flex items-center gap-3 text-sm ${e.paid ? "opacity-50" : ""}`}>
+    <li><button type="button" onClick={() => onOpen?.(e)} className={`flex w-full items-center gap-3 rounded-xl text-left text-sm hover:bg-secondary/60 ${e.paid ? "opacity-50" : ""}`}>
       <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${inc ? "bg-primary/15 text-primary" : "bg-spend-soft text-spend"}`}>
         {inc ? <ArrowDownLeft className="h-4 w-4" /> : e.paid ? <Check className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
       </span>
@@ -94,11 +95,12 @@ function Row({ e, today }: { e: CalEvent; today: string }) {
         <span className="text-xs text-muted-foreground">{dayKey(e.date) === today ? "сегодня" : dm(e.date)}{e.paid ? " · оплачено" : ""}</span>
       </span>
       <span className={`shrink-0 tabular-nums ${inc ? "text-primary" : "text-spend"}`}>{inc ? "+" : "−"}{rub(e.amount)}</span>
-    </li>
+    </button></li>
   );
 }
 
 function Segments({ s, horizon }: { s: State; horizon: number }) {
+  const [open, setOpen] = useState<CalEvent | null>(null);
   const c = calc(s);
   const segs = forecast(s, horizon);
   const todayK = dayKey(new Date());
@@ -108,7 +110,7 @@ function Segments({ s, horizon }: { s: State; horizon: number }) {
         const perDay = i === 0 ? c.dailyNorm : g.perDay;
         return (
           <section key={dayKey(g.start)} className="rounded-2xl bg-card p-4 shadow-soft">
-            {g.incomes.length > 0 && <ul className="mb-3 space-y-2">{g.incomes.map((e) => <Row key={e.refId + dayKey(e.date)} e={e} today={todayK} />)}</ul>}
+            {g.incomes.length > 0 && <ul className="mb-3 space-y-2">{g.incomes.map((e) => <Row key={e.refId + dayKey(e.date)} e={e} today={todayK} onOpen={setOpen} />)}</ul>}
             <div className="flex items-baseline justify-between gap-2 border-b border-border pb-2">
               <p className="text-xs text-muted-foreground">
                 {i === 0 ? "Сейчас" : "С " + g.start.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })} · {g.days} дн.
@@ -122,7 +124,7 @@ function Segments({ s, horizon }: { s: State; horizon: number }) {
             {g.events.length === 0 ? (
               <p className="pt-2 text-xs text-muted-foreground">Платежей нет</p>
             ) : (
-              <ul className="space-y-2 pt-2">{g.events.map((e) => <Row key={e.refId + dayKey(e.date)} e={e} today={todayK} />)}</ul>
+              <ul className="space-y-2 pt-2">{g.events.map((e) => <Row key={e.refId + dayKey(e.date)} e={e} today={todayK} onOpen={setOpen} />)}</ul>
             )}
             {g.gap > 0 && (
               <p className="mt-3 rounded-xl bg-accent p-2.5 text-xs text-accent-foreground">
@@ -132,6 +134,7 @@ function Segments({ s, horizon }: { s: State; horizon: number }) {
           </section>
         );
       })}
+      <PlanEventEditor s={s} e={open} onClose={() => setOpen(null)} />
     </>
   );
 }
@@ -149,6 +152,7 @@ export function monthCells(year: number, month: number): (Date | null)[] {
 const MAX_AHEAD = 2;
 
 function Grid({ s }: { s: State }) {
+  const [open, setOpen] = useState<CalEvent | null>(null);
   const c = calc(s);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayK = dayKey(today);
@@ -223,8 +227,9 @@ function Grid({ s }: { s: State }) {
         </div>
         {selDate < today
           ? <p className="pt-2 text-xs text-muted-foreground">Этот день уже прошёл. Траты за него — в истории операций на главной.</p>
-          : selEv.length ? <ul className="space-y-2 pt-2">{selEv.map((e) => <Row key={e.refId + e.kind} e={e} today={todayK} />)}</ul> : <p className="pt-2 text-xs text-muted-foreground">Платежей и поступлений в этот день нет</p>}
+          : selEv.length ? <ul className="space-y-2 pt-2">{selEv.map((e) => <Row key={e.refId + e.kind} e={e} today={todayK} onOpen={setOpen} />)}</ul> : <p className="pt-2 text-xs text-muted-foreground">Платежей и поступлений в этот день нет</p>}
       </section>
+      <PlanEventEditor s={s} e={open} onClose={() => setOpen(null)} />
     </div>
   );
 }
