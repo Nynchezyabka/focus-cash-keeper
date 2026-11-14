@@ -26,7 +26,7 @@ export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string; debtFee?: DebtFee; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; once?: string | undefined /* YYYY-MM-DD: one-off income */; skip?: string | undefined /* "YYYY-MM": not counted this month */ }
-export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; mode?: "auto" | "always" }
+export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; advisorApiKey?: string; mode?: "auto" | "always" }
 
 export interface State {
   version: 1;

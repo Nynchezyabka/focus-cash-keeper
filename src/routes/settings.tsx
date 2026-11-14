@@ -111,7 +111,7 @@ function Settings({ s }: { s: State }) {
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" onClick={() => {
             setState((x) => ({ ...x, lastBackup: new Date().toISOString() }));
-            const data = { ...getState(), ai: { ...getState().ai, apiKey: "" } };
+            const data = { ...getState(), ai: { ...getState().ai, apiKey: "", advisorApiKey: "" } };
             const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
             const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${new Date().toISOString().slice(0, 10)}.json`;
             document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);

@@ -9,17 +9,28 @@ export function AiModels({ ai, onChange }: { ai: AiSettings; onChange: (p: Parti
   const svc = detectService(ai.apiKey);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
-  useEffect(() => setResult(null), [ai.apiKey, ai.model, ai.advisorModel]);
+  useEffect(() => setResult(null), [ai.apiKey, ai.model, ai.advisorModel, ai.advisorApiKey]);
   if (!svc) return null;
   const options = MODEL_OPTIONS[svc.name];
+  const advSvc = detectService(ai.advisorApiKey ?? "");
+  const advOptions = advSvc ? MODEL_OPTIONS[advSvc.name] : options;
   return <div className="space-y-3 border-t border-border pt-3">
     <ModelField key={`${svc.name}-parse`} label="Модель для распознавания" value={ai.model} fallback={`Автоматически · ${svc.model}`} models={options?.models ?? []} onChange={(model) => onChange({ model })} />
-    <ModelField key={`${svc.name}-advisor`} label="Модель Помощника" value={ai.advisorModel ?? ""} fallback="Как для распознавания" models={options?.models ?? []} onChange={(advisorModel) => onChange({ advisorModel })} />
+    <div className="space-y-1 text-sm">
+      <span>Отдельный ключ для Помощника <span className="text-xs text-muted-foreground">(необязательно)</span></span>
+      <Input type="password" autoComplete="off" aria-label="Ключ Помощника" placeholder="Например, ключ Claude" value={ai.advisorApiKey ?? ""} onChange={(e) => {
+        const v = e.target.value;
+        const changed = detectService(v)?.name !== detectService(ai.advisorApiKey ?? "")?.name;
+        onChange({ advisorApiKey: v, ...(changed ? { advisorModel: "" } : {}) });
+      }} />
+      <p className="text-xs text-muted-foreground">{advSvc ? `✓ Помощник отвечает через ${advSvc.name}. Фото чеков тоже прочитает он, если основная модель не видит картинки.` : ai.advisorApiKey?.trim() ? "Не узнаю этот ключ." : "Пусто — Помощник работает от основного ключа."}</p>
+    </div>
+    <ModelField key={`${advSvc?.name ?? svc.name}-advisor`} label="Модель Помощника" value={ai.advisorModel ?? ""} fallback={advSvc ? `Автоматически · ${advSvc.model}` : "Как для распознавания"} models={advOptions?.models ?? []} onChange={(advisorModel) => onChange({ advisorModel })} />
     <Button variant="secondary" className="w-full whitespace-normal" disabled={checking} onClick={async () => {
       setChecking(true); setResult(null);
       try {
         await checkAiModel(ai, "parse");
-        if (selectedModel(ai, "advisor") !== selectedModel(ai)) await checkAiModel(ai, "advisor");
+        if (ai.advisorApiKey?.trim() || selectedModel(ai, "advisor") !== selectedModel(ai)) await checkAiModel(ai, "advisor");
         setResult({ ok: true, text: "Ключ и выбранные модели отвечают. Чтение изображений проверяется при загрузке фото." });
       } catch (e) {
         const text = e instanceof Error ? e.message : "Не удалось проверить подключение.";

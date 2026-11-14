@@ -53,11 +53,17 @@ export const MODEL_OPTIONS: Record<string, { models: string[]; keysUrl: string }
   "Google Gemini": { models: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"], keysUrl: "https://aistudio.google.com/apikey" },
   "xAI Grok": { models: ["grok-3-mini", "grok-3", "grok-4"], keysUrl: "https://console.x.ai" },
 };
+/** Settings for advisor calls: a separate advisor key (if set) replaces the main one. */
+export function advisorAi(ai: AiSettings): AiSettings {
+  const k = ai.advisorApiKey?.trim();
+  return k ? { ...ai, apiKey: k, model: "", advisorApiKey: "" } : ai;
+}
 export function selectedModel(ai: AiSettings, purpose: "parse" | "advisor" = "parse") {
+  if (purpose === "advisor" && ai.advisorApiKey?.trim()) return ai.advisorModel?.trim() || detectService(ai.advisorApiKey)?.model || "";
   return (purpose === "advisor" ? ai.advisorModel?.trim() || ai.model.trim() : ai.model.trim()) || detectService(ai.apiKey)?.model || "";
 }
 export async function checkAiModel(ai: AiSettings, purpose: "parse" | "advisor") {
-  const reply = await aiChat("Ответь одним словом: OK.", [{ role: "user", content: "Проверка подключения" }], { ...ai, advisorModel: selectedModel(ai, purpose) });
+  const reply = await aiChat("Ответь одним словом: OK.", [{ role: "user", content: "Проверка подключения" }], purpose === "parse" ? { ...ai, advisorApiKey: "", advisorModel: selectedModel(ai) } : ai);
   if (!reply.trim()) throw new Error("Модель ответила без текста. Попробуйте другую модель.");
 }
 export function detectService(key: string): Svc | null {
@@ -90,10 +96,16 @@ const IMG_PROMPT = () => `На картинке скриншот чека, за�
 Категорию выбирай по смыслу места, а НЕ по подписи банка (банк часто ошибается): «Городская ферма», парки, зоопарки, выставки, кино — развлечения; «Госуслуги»/«Gosuslugi» — сад, школа, кружки; Яндекс Такси, каршеринг — транспорт; кафе, фастфуд, бистро, пиццерии — кафе; Пятёрочка, ВкусВилл, супермаркеты — продукты; «Долями», «Сплит», рассрочки — кредиты.
 Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON {"items":[{"note":"Городская ферма","amount":2300,"category":"fun","currency":"RUB"}]}. currency — код ISO валюты списания, amount — в этой валюте.`;
 
-export async function parseImage(file: File, ai: AiSettings): Promise<Parsed[]> {
-  const svc = detectService(ai.apiKey);
+export async function parseImage(file: File, main: AiSettings): Promise<Parsed[]> {
+  let ai = main;
+  let svc = detectService(ai.apiKey);
+  const blind = (n?: string) => n === "Groq" || n === "DeepSeek";
+  // a text-only main model: read the photo with the advisor key, if it can see
+  if ((!svc || blind(svc.name)) && main.advisorApiKey?.trim() && !blind(detectService(main.advisorApiKey)?.name)) {
+    const a = advisorAi(main); ai = { ...a, model: selectedModel(main, "advisor") }; svc = detectService(ai.apiKey);
+  }
   if (!svc) throw new Error("Для скриншотов нужен ключ ИИ — добавьте его в Настройках.");
-  if (svc.name === "Groq" || svc.name === "DeepSeek") throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
+  if (blind(svc.name)) throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
   const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
   const b64 = dataUrl.split(",")[1] ?? "";
   let text = "";
@@ -164,7 +176,8 @@ export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> 
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 /** free conversation with the user's own AI key */
-export async function aiChat(system: string, messages: ChatMsg[], ai: AiSettings, image?: { dataUrl: string; type: string }): Promise<string> {
+export async function aiChat(system: string, messages: ChatMsg[], settings: AiSettings, image?: { dataUrl: string; type: string }): Promise<string> {
+  const ai = settings.advisorApiKey?.trim() ? { ...advisorAi(settings), advisorModel: selectedModel(settings, "advisor") } : settings;
   const svc = detectService(ai.apiKey);
   if (!svc) throw new Error("Для помощника нужен ключ ИИ — добавьте его в Настройках.");
   if (image && (svc.name === "Groq" || svc.name === "DeepSeek")) throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
