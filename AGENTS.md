@@ -30,3 +30,4 @@
 - Anonymous RPCs always validate input size; tables are REVOKEd from anon/authenticated and helper functions are not executable from outside — the publishable key is public.
 - Feedback owner key is set only in SQL Editor (`feedback_set_owner`); checks go through `_fb_check`, which never raises so the failure counter survives (5 fails → 15 min lock).
 - Fonts are bundled via @fontsource and a CSP meta tag is emitted in production builds only (dev needs Vite websockets) — no third-party origins besides DB, CBR and the AI provider.
+- Family/feedback DB endpoint resolves via src/lib/server.ts (`activeServer`: per-device own server in localStorage, else build-time env) — lets users detach from the author's backend without rebuilding.

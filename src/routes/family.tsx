@@ -10,7 +10,8 @@ import { getState, rub, useBudget } from "@/lib/budget";
 import { goalColor, sharedColor } from "@/lib/colors";
 import { contributions, dropFamilyGoals, goalSaved } from "@/lib/goals";
 import { familyConfigured } from "@/lib/family-api";
-import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, REMOVED, type FamilyLocal } from "@/lib/family";
+import { ownServer, setOwnServer, validServerUrl } from "@/lib/server";
+import { familyTotals, patchFamily, setFamily, snapshotOf, syncFamily, useFamily, getFamily, REMOVED, type FamilyLocal } from "@/lib/family";
 
 export const Route = createFileRoute("/family")({
   validateSearch: (s: Record<string, unknown>) => ({ join: typeof s["join"] === "string" ? (s["join"] as string) : undefined }),
@@ -76,7 +77,7 @@ function Setup({ initialCode }: { initialCode: string }) {
   };
   return (
     <div className="space-y-5">
-      {!familyConfigured() && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">На этом сайте семейный доступ ещё не настроен. Личный бюджет работает полностью. Чтобы включить семью, владельцу сайта нужно один раз подготовить базу и вписать два значения на хостинге — шаги в README.</p>}
+      {!familyConfigured() && <p className="rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">На этом сайте семейный доступ ещё не настроен. Личный бюджет работает полностью. Чтобы включить семью, подключите свой сервер внизу страницы — шаги в README.</p>}
       <p className="text-sm text-muted-foreground">Каждый ведёт свой бюджет на своём телефоне. Здесь будет общая картина двух бюджетов. Ничего не объединяется и не заменяется.</p>
       <Input placeholder="Как вас назвать?" value={name} onChange={(e) => setName(e.target.value)} />
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
@@ -196,7 +197,40 @@ function CloudCheck() {
         setR((await checkCloud()).text);
       }}><Wifi /> Проверить связь с облаком</Button>
       {r && <p className="text-xs text-muted-foreground">{r}</p>}
+      <ServerChoice />
     </div>
+  );
+}
+
+function ServerChoice() {
+  const [cur] = useState(() => ownServer());
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState(cur?.url ?? "");
+  const [key, setKey] = useState(cur?.key ?? "");
+  const inFamily = !!getFamily();
+  const save = () => {
+    if (!validServerUrl(url)) { toast("Адрес должен выглядеть так: https://xxxx.supabase.co"); return; }
+    if (key.trim().length < 20) { toast("Вставьте публичный ключ (anon / publishable)"); return; }
+    setOwnServer({ url, key });
+  };
+  return (
+    <section className="mt-3 space-y-2 rounded-2xl bg-card p-4 text-left shadow-soft">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-display text-lg">Где хранится семья</h2>
+        {!open && <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>Изменить</Button>}
+      </div>
+      <p className="text-xs text-muted-foreground">{cur ? `Ваш сервер: ${cur.url.replace("https://", "")}. Сайт приложения к нему отношения не имеет.` : "Сервер приложения. Можно подключить свой — тогда семья и отзывы идут только через него."} Личный бюджет всегда хранится только на этом устройстве.</p>
+      {open && (inFamily ? <p className="text-xs text-muted-foreground">Сначала выйдите из семьи — на новом сервере её нужно создать заново.</p> : <>
+        <Input placeholder="Адрес: https://xxxx.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
+        <Input placeholder="Публичный ключ (anon / publishable)" value={key} onChange={(e) => setKey(e.target.value)} />
+        <p className="text-xs text-muted-foreground">Бесплатный проект на supabase.com, затем выполнить файлы из папки supabase в репозитории — пошагово в README, раздел «Свой сервер». Секретный ключ сюда не вставляйте.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={save}>Подключить</Button>
+          {cur && <Button size="sm" variant="outline" onClick={() => setOwnServer(null)}>Вернуть сервер приложения</Button>}
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Отмена</Button>
+        </div>
+      </>)}
+    </section>
   );
 }
 

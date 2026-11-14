@@ -1,14 +1,16 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { activeServer } from "@/lib/server";
 
 // Family sharing talks to the database directly through protected functions (see supabase/family-setup.sql),
 // so it works on any hosting, even static. Only the public address and publishable key are needed at build time.
 
 let client: SupabaseClient | null = null;
-export const familyConfigured = () => !!(import.meta.env["VITE_SUPABASE_URL"] && import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"]);
+export const familyConfigured = () => !!activeServer();
 function db(): SupabaseClient {
   if (!client) {
     if (!familyConfigured()) throw new Error("not-configured");
-    client = createClient(import.meta.env["VITE_SUPABASE_URL"], import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"], {
+    const sv = activeServer()!;
+    client = createClient(sv.url, sv.key, {
       auth: { persistSession: false, autoRefreshToken: false, storageKey: "berezhny-family-noauth" },
     });
   }
@@ -37,13 +39,13 @@ export const api = {
 /** step-by-step check of the whole chain, answered in plain Russian */
 export async function checkCloud(): Promise<{ ok: boolean; text: string }> {
   if (typeof navigator !== "undefined" && !navigator.onLine) return { ok: false, text: "Нет интернета. Приложение работает и без него, семья обновится позже." };
-  if (!familyConfigured()) return { ok: false, text: "Не настроены адрес и ключ базы на хостинге. Как это сделать — в README, раздел «Как выложить своё приложение»." };
-  const url = import.meta.env["VITE_SUPABASE_URL"] as string;
+  if (!familyConfigured()) return { ok: false, text: "Сервер не подключён. Укажите свой сервер ниже или см. README." };
+  const { url, key } = activeServer()!;
   const t0 = performance.now();
   try {
     const r = await fetch(`${url}/rest/v1/rpc/family_ping`, {
       method: "POST",
-      headers: { apikey: import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"], "content-type": "application/json" },
+      headers: { apikey: key, "content-type": "application/json" },
       body: "{}",
     });
     const ms = Math.round(performance.now() - t0);

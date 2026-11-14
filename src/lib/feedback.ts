@@ -1,12 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { familyConfigured } from "@/lib/family-api";
+import { activeServer } from "@/lib/server";
 
 // Feedback goes to the same database through protected functions (supabase/feedback-setup.sql).
 let client: SupabaseClient | null = null;
 function db() {
   if (!client) {
     if (!familyConfigured()) throw new Error("not-configured");
-    client = createClient(import.meta.env["VITE_SUPABASE_URL"], import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"], {
+    const sv = activeServer()!;
+    client = createClient(sv.url, sv.key, {
       auth: { persistSession: false, autoRefreshToken: false, storageKey: "berezhny-feedback-noauth" },
     });
   }
