@@ -104,6 +104,8 @@ function Settings({ s }: { s: State }) {
         {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
 
+      <Link to="/devices" className="flex items-center justify-between gap-2 rounded-2xl bg-card p-4 shadow-soft"><span><span className="block text-base font-medium">Мои устройства</span><span className="text-xs text-muted-foreground">Один бюджет на телефоне и компьютере, зашифрованно</span></span><span aria-hidden>›</span></Link>
+
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
         <h2 className="text-base font-medium">Резервная копия</h2>
         <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Всё хранится только на этом устройстве. Ключ ИИ в копию не попадает.</p>

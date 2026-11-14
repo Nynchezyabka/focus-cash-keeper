@@ -79,7 +79,7 @@ export function precompute(s: State, q: string, now = new Date()): string | null
   const t = q.toLowerCase();
   const debts0 = s.obligations.filter((o) => o.debtFee);
   const namedDebt = debts0.some((o) => t.includes(o.name.toLowerCase().replace(/^вернуть:\s*/, "")));
-  if (debts0.length && (namedDebt || /(плат[ауы] за (долг|кредит|займ)|сколько набеж|процент|долг с плат|переплат|сколько (должна|вернуть)|кубыш)/.test(t))) {
+  if (debts0.length && (namedDebt || /(плат[ауы] за (долг|кредит|займ)|сколько набеж|процент|долг с плат|переплат|сколько (должна|должен|нужно вернуть|вернуть)|кубыш)/.test(t))) {
     const match = t.match(/\b(\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.\d{4})\b/);
     const raw = match?.[0];
     const parts = raw?.split('.');

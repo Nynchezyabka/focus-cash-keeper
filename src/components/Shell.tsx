@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, Users, Sun, CalendarDays, PieChart, Settings, MessageCircleHeart, HelpCircle, icons } from "lucide-react";
+import { ArrowLeft, Users, Sun, CalendarDays, PieChart, Settings, MessageCircleHeart, HelpCircle, MonitorSmartphone, icons } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { openerDue, trackOpen } from "@/lib/advisor-memory";
 import { rub, useBudget, type State } from "@/lib/budget";
@@ -72,6 +72,7 @@ export function Shell({ title, wide, children }: { title?: string; wide?: boolea
             <p>Версия {APP_VERSION} · клавиша N — трата</p>
           </div>}
           <Link to="/help" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><HelpCircle className="h-5 w-5" />Справка</Link>
+          <Link to="/devices" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><MonitorSmartphone className="h-5 w-5" />Мои устройства</Link>
           <Link to="/settings" className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary/60" activeProps={{ className: "bg-secondary text-primary" }}><Settings className="h-5 w-5" />Настройки</Link>
         </div>
       </aside>

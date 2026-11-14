@@ -36,7 +36,7 @@ function Payments({ s }: { s: State }) {
       <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> До дохода отложено {rub(c.reserve)}</p>
       <div className="grid grid-cols-2 gap-2">
         <Button className="h-12 rounded-2xl" onClick={() => setEdit({ id: "", name: "", amount: 0, day: 0, category: "home" })}><Plus /> Платёж</Button>
-        <Button variant="secondary" className="h-12 rounded-2xl" onClick={() => setLoan(true)}><HandCoins /> Взяла в долг</Button>
+        <Button variant="secondary" className="h-12 rounded-2xl" onClick={() => setLoan(true)}><HandCoins /> Взять в долг</Button>
       </div>
       {loan && <LoanDialog onClose={() => setLoan(false)} />}
       <Button variant="outline" className="w-full" onClick={() => setSchedule("new")}><CalendarClock /> График кредита</Button>
@@ -219,7 +219,7 @@ function LoanDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(x) => !x && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-sm overflow-y-auto">
-        <DialogHeader><DialogTitle>Взяла в долг или кредит</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Взять в долг или кредит</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">Деньги сразу появятся на карте или в наличных, а возврат — в плане платежей.</p>
         <Input autoFocus inputMode="decimal" placeholder="Сколько получили, ₽" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <MethodToggle value={method} onChange={setMethod} />

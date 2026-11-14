@@ -14,6 +14,7 @@ import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CategoriesRouteImport } from './routes/categories'
+import { Route as DevicesRouteImport } from './routes/devices'
 import { Route as FamilyRouteImport } from './routes/family'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as HelpRouteImport } from './routes/help'
@@ -44,6 +45,11 @@ const CalendarRoute = CalendarRouteImport.update({
 const CategoriesRoute = CategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevicesRoute = DevicesRouteImport.update({
+  id: '/devices',
+  path: '/devices',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FamilyRoute = FamilyRouteImport.update({
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
   '/categories': typeof CategoriesRoute
+  '/devices': typeof DevicesRoute
   '/family': typeof FamilyRoute
   '/feedback': typeof FeedbackRoute
   '/help': typeof HelpRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
   '/categories': typeof CategoriesRoute
+  '/devices': typeof DevicesRoute
   '/family': typeof FamilyRoute
   '/feedback': typeof FeedbackRoute
   '/help': typeof HelpRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
   '/categories': typeof CategoriesRoute
+  '/devices': typeof DevicesRoute
   '/family': typeof FamilyRoute
   '/feedback': typeof FeedbackRoute
   '/help': typeof HelpRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/calendar'
     | '/categories'
+    | '/devices'
     | '/family'
     | '/feedback'
     | '/help'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/calendar'
     | '/categories'
+    | '/devices'
     | '/family'
     | '/feedback'
     | '/help'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/calendar'
     | '/categories'
+    | '/devices'
     | '/family'
     | '/feedback'
     | '/help'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   CalendarRoute: typeof CalendarRoute
   CategoriesRoute: typeof CategoriesRoute
+  DevicesRoute: typeof DevicesRoute
   FamilyRoute: typeof FamilyRoute
   FeedbackRoute: typeof FeedbackRoute
   HelpRoute: typeof HelpRoute
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/categories'
       preLoaderRoute: typeof CategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/devices': {
+      id: '/devices'
+      path: '/devices'
+      fullPath: '/devices'
+      preLoaderRoute: typeof DevicesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/family': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   CalendarRoute: CalendarRoute,
   CategoriesRoute: CategoriesRoute,
+  DevicesRoute: DevicesRoute,
   FamilyRoute: FamilyRoute,
   FeedbackRoute: FeedbackRoute,
   HelpRoute: HelpRoute,

@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      device_pairings: {
+        Row: {
+          blob: string
+          code_hash: string
+          created_at: string
+        }
+        Insert: {
+          blob: string
+          code_hash: string
+          created_at?: string
+        }
+        Update: {
+          blob?: string
+          code_hash?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      device_vaults: {
+        Row: {
+          blob: string
+          id: string
+          rev: number
+          token_hash: string
+          updated_at: string
+        }
+        Insert: {
+          blob: string
+          id: string
+          rev?: number
+          token_hash: string
+          updated_at?: string
+        }
+        Update: {
+          blob?: string
+          id?: string
+          rev?: number
+          token_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       families: {
         Row: {
           code_hash: string
@@ -168,6 +210,23 @@ export type Database = {
         Returns: undefined
       }
       _fb_check: { Args: { p_key: string }; Returns: string }
+      device_pair_answer: {
+        Args: { p_blob: string; p_hash: string }
+        Returns: undefined
+      }
+      device_pair_poll: { Args: { p_hash: string }; Returns: string }
+      device_vault_delete: {
+        Args: { p_id: string; p_token: string }
+        Returns: undefined
+      }
+      device_vault_pull: {
+        Args: { p_id: string; p_token: string }
+        Returns: Json
+      }
+      device_vault_push: {
+        Args: { p_blob: string; p_id: string; p_rev: number; p_token: string }
+        Returns: number
+      }
       family_create: {
         Args: { p_name: string; p_snapshot: Json }
         Returns: Json

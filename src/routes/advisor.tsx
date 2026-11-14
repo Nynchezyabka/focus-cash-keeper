@@ -265,7 +265,7 @@ function Chat({ s }: { s: State }) {
         const before = s.advisorMemory?.length ?? 0;
         const after = forgetMemory(s.advisorMemory, cmd.forget!);
         setState((x) => ({ ...x, advisorMemory: after }));
-        reply = after.length < before ? "Забыла. Больше это не учитываю." : "Такого в памяти не нашла. Посмотрите «Память».";
+        reply = after.length < before ? "Стёрто из памяти. Больше это не учитываю." : "В памяти этого нет. Посмотрите «Память».";
       }
       grew.current = true;
       setMsgs([...base, { role: "user", content: q.trim() }, { role: "assistant", content: reply }]);

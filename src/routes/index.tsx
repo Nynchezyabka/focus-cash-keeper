@@ -731,7 +731,7 @@ function BorrowCard({ gap }: { gap: number }) {
         в платежи.
       </p>
       <Input
-        placeholder="Откуда: кредитка, заняла у мамы"
+        placeholder="Откуда: кредитка, долг у близких"
         value={from}
         onChange={(e) => setFrom(e.target.value)}
         className="bg-card"
