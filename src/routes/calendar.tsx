@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Check, List, CalendarDays } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Shell, meta } from "@/components/Shell";
 import { PlanTabs } from "@/components/PlanTabs";
 import { MethodBadge } from "@/components/Pickers";
@@ -18,11 +18,11 @@ const dm = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "
 
 function Calendar({ s }: { s: State }) {
   const [horizon, setHorizon] = useState(45);
-  const [view, setView] = useState<"list" | "grid">("list");
+  const [view, setView] = useState<"list" | "grid">("grid");
   useEffect(() => {
     const h = Number(localStorage.getItem(H_KEY));
     if (HORIZONS.includes(h as 30)) setHorizon(h);
-    if (localStorage.getItem(V_KEY) === "grid") setView("grid");
+    if (localStorage.getItem(V_KEY) === "list") setView("list");
   }, []);
   const pickH = (h: number) => { setHorizon(h); localStorage.setItem(H_KEY, String(h)); };
   const pickV = (v: "list" | "grid") => { setView(v); localStorage.setItem(V_KEY, v); };
@@ -31,17 +31,18 @@ function Calendar({ s }: { s: State }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-secondary p-1 text-sm" role="tablist" aria-label="Вид плана">
+        {([["grid", "Календарь"], ["list", "По выплатам"]] as const).map(([v, label]) => (
+          <button key={v} role="tab" aria-selected={view === v} onClick={() => pickV(v)} className={`rounded-full py-2 ${view === v ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{label}</button>
+        ))}
+      </div>
+      {view === "list" && (
         <label className="flex items-center gap-1 font-display text-lg">План на
           <select aria-label="Горизонт плана" value={horizon} onChange={(e) => pickH(Number(e.target.value))} className="rounded-lg bg-secondary px-1.5 py-0.5 font-display text-lg">
             {HORIZONS.map((h) => <option key={h} value={h}>{h}</option>)}
           </select> дней</label>
-        <div className="flex rounded-full bg-secondary p-1">
-          <button aria-label="Списком" onClick={() => pickV("list")} className={`grid h-9 w-9 place-items-center rounded-full ${view === "list" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}><List className="h-4 w-4" /></button>
-          <button aria-label="Календарём" onClick={() => pickV("grid")} className={`grid h-9 w-9 place-items-center rounded-full ${view === "grid" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}><CalendarDays className="h-4 w-4" /></button>
-        </div>
-      </div>
-      {view === "grid" ? <Grid s={s} horizon={horizon} /> : <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0"><Segments s={s} horizon={horizon} /></div>}
+      )}
+      {view === "grid" ? <Grid s={s} /> : <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0"><Segments s={s} horizon={horizon} /></div>}
     </div>
   );
 }
@@ -137,12 +138,26 @@ function Segments({ s, horizon }: { s: State; horizon: number }) {
 
 const WD = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-function Grid({ s, horizon }: { s: State; horizon: number }) {
+export function monthCells(year: number, month: number): (Date | null)[] {
+  const first = new Date(year, month, 1);
+  const n = new Date(year, month + 1, 0).getDate();
+  const cells: (Date | null)[] = Array((first.getDay() + 6) % 7).fill(null);
+  for (let d = 1; d <= n; d++) cells.push(new Date(year, month, d));
+  return cells;
+}
+
+const MAX_AHEAD = 2;
+
+function Grid({ s }: { s: State }) {
   const c = calc(s);
-  const segs = forecast(s, horizon);
-  const todayK = dayKey(new Date());
   const today = new Date(); today.setHours(0, 0, 0, 0);
+  const todayK = dayKey(today);
+  const [offset, setOffset] = useState(0);
   const [sel, setSel] = useState(todayK);
+  const ym = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const lastOfMonth = new Date(ym.getFullYear(), ym.getMonth() + 1, 0);
+  const horizon = Math.max(31, Math.round((+lastOfMonth - +today) / 86400000) + 2);
+  const segs = forecast(s, horizon);
   const byDay = new Map<string, CalEvent[]>();
   for (const g of segs) for (const e of [...g.incomes, ...g.events]) { const k = dayKey(e.date); byDay.set(k, [...(byDay.get(k) ?? []), e]); }
   const perDayOf = (d: Date) => {
@@ -151,38 +166,54 @@ function Grid({ s, horizon }: { s: State; horizon: number }) {
     if (!g || (g.open && i > 0)) return null;
     return i === 0 ? c.dailyNorm : g.perDay;
   };
-  const days: (Date | null)[] = Array((today.getDay() + 6) % 7).fill(null);
-  for (let i = 0; i < horizon; i++) days.push(new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
+  const days = monthCells(ym.getFullYear(), ym.getMonth());
   const selDate = days.find((d) => d && dayKey(d) === sel) ?? today;
   const selEv = byDay.get(sel) ?? [];
-  const pd = perDayOf(selDate);
+  const pd = selDate < today ? null : perDayOf(selDate);
+  const go = (n: number) => {
+    const o = offset + n;
+    setOffset(o);
+    setSel(o === 0 ? todayK : dayKey(new Date(today.getFullYear(), today.getMonth() + o, 1)));
+  };
+  const title = ym.toLocaleDateString("ru-RU", { month: "long", year: "numeric" }).replace(" г.", "");
   return (
     <div className="space-y-3 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start lg:gap-4 lg:space-y-0">
       <div className="rounded-2xl bg-card p-3 shadow-soft">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <button aria-label="Предыдущий месяц" disabled={offset <= 0} onClick={() => go(-1)} className="grid h-11 w-11 place-items-center rounded-full text-foreground disabled:opacity-30"><ChevronLeft className="h-5 w-5" /></button>
+          <div className="flex items-center gap-2">
+            <h2 className="font-display text-lg capitalize">{title}</h2>
+            {offset !== 0 && <button onClick={() => go(-offset)} className="rounded-full bg-secondary px-2.5 py-1 text-xs text-secondary-foreground">Сегодня</button>}
+          </div>
+          <button aria-label="Следующий месяц" disabled={offset >= MAX_AHEAD} onClick={() => go(1)} className="grid h-11 w-11 place-items-center rounded-full text-foreground disabled:opacity-30"><ChevronRight className="h-5 w-5" /></button>
+        </div>
         <div className="grid grid-cols-7 gap-1 pb-1 text-center text-[11px] text-muted-foreground">{WD.map((w) => <span key={w}>{w}</span>)}</div>
         <div className="grid grid-cols-7 gap-1">
           {days.map((d, i) => {
             if (!d) return <span key={"e" + i} />;
             const k = dayKey(d);
+            const past = d < today;
             const ev = byDay.get(k) ?? [];
             const hasInc = ev.some((e) => e.kind === "income");
             const hasPay = ev.some((e) => e.kind === "payment" && !e.paid);
-            const first = d.getDate() === 1 || i === days.findIndex(Boolean);
+            const hasPaid = ev.some((e) => e.kind === "payment" && e.paid);
+            const isSel = k === sel;
             return (
-              <button key={k} onClick={() => setSel(k)} className={`flex aspect-square flex-col items-center justify-center rounded-xl text-sm tabular-nums ${k === sel ? "bg-primary text-primary-foreground" : hasInc ? "bg-primary/10" : ""} ${k === todayK && k !== sel ? "ring-1 ring-primary" : ""}`}>
+              <button key={k} onClick={() => setSel(k)} aria-label={dm(d)} className={`flex aspect-square flex-col items-center justify-center rounded-xl text-sm tabular-nums ${isSel ? "bg-primary text-primary-foreground" : hasInc ? "bg-primary/10" : ""} ${k === todayK && !isSel ? "ring-1 ring-primary" : ""} ${past && !isSel ? "text-muted-foreground opacity-60" : ""}`}>
                 <span className="leading-none">{d.getDate()}</span>
-                {first && <span className="text-[9px] leading-none opacity-70">{d.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "")}</span>}
                 <span className="mt-1 flex h-1.5 gap-0.5">
-                  {hasInc && <span className={`h-1.5 w-1.5 rounded-full ${k === sel ? "bg-primary-foreground" : "bg-primary"}`} />}
-                  {hasPay && <span className={`h-1.5 w-1.5 rounded-full ${k === sel ? "bg-primary-foreground" : "bg-spend"}`} />}
+                  {hasInc && <span className={`h-1.5 w-1.5 rounded-full ${isSel ? "bg-primary-foreground" : "bg-primary"}`} />}
+                  {hasPay && <span className={`h-1.5 w-1.5 rounded-full ${isSel ? "bg-primary-foreground" : "bg-spend"}`} />}
+                  {hasPaid && !hasPay && <span className={`h-1.5 w-1.5 rounded-full ${isSel ? "bg-primary-foreground/60" : "bg-muted-foreground/50"}`} />}
                 </span>
               </button>
             );
           })}
         </div>
-        <div className="mt-2 flex justify-center gap-4 text-[11px] text-muted-foreground">
+        <div className="mt-2 flex flex-wrap justify-center gap-4 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> доход</span>
           <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-spend" /> платёж</span>
+          <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" /> оплачено</span>
         </div>
       </div>
       <section className="rounded-2xl bg-card p-4 shadow-soft lg:sticky lg:top-4">
@@ -190,7 +221,9 @@ function Grid({ s, horizon }: { s: State; horizon: number }) {
           <p className="text-sm">{sel === todayK ? "Сегодня" : dm(selDate)}</p>
           {pd !== null && <p className="text-sm"><span className="font-display text-lg tabular-nums">{rub(pd)}</span><span className="text-muted-foreground"> в день</span></p>}
         </div>
-        {selEv.length ? <ul className="space-y-2 pt-2">{selEv.map((e) => <Row key={e.refId} e={e} today={todayK} />)}</ul> : <p className="pt-2 text-xs text-muted-foreground">В этот день ничего не приходит и не списывается</p>}
+        {selDate < today
+          ? <p className="pt-2 text-xs text-muted-foreground">Этот день уже прошёл. Траты за него — в истории операций на главной.</p>
+          : selEv.length ? <ul className="space-y-2 pt-2">{selEv.map((e) => <Row key={e.refId + e.kind} e={e} today={todayK} />)}</ul> : <p className="pt-2 text-xs text-muted-foreground">Платежей и поступлений в этот день нет</p>}
       </section>
     </div>
   );
