@@ -106,6 +106,11 @@ function Today({ s }: { s: State }) {
             потрачено {rub(c.spentToday)} из {rub(c.dailyNorm)}
           </p>
         )}
+        {c.aheadHeld > 0 && c.shortfall === 0 && (
+          <button type="button" onClick={() => setDialog("reserve")} className="mt-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-4">
+            ещё {rub(c.aheadHeld)} придержано наперёд — дальше денег приходит меньше. Зачем?
+          </button>
+        )}
         <Link
           to="/calendar"
           className="mt-4 flex items-center gap-3 rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]"
@@ -324,8 +329,9 @@ function ReserveDialog({
           <DialogTitle>Что отложено</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Эти деньги лежат на карте или наличными, но уже «заняты» платежами из Плана платежей. В «Сегодня свободно» они
-          не входят.
+          Эти деньги лежат на карте или наличными, но уже «заняты»: платежами до дохода и тем, что понадобится позже,
+          когда доходы меньше. Так сумма на день остаётся ровной и не проваливается после следующей зарплаты. В «Сегодня
+          свободно» они не входят — и никуда не пропадают.
         </p>
         {c.reserved.length + c.saving.length === 0 && c.aheadEven === 0 && (
           <p className="text-sm">Сейчас ничего не отложено — до {dm(c.next.date)} платежей нет, а следующие доходы покрывают платежи позже.</p>
