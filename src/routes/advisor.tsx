@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator, Brain, Flag } from "lucide-react";
+import { ImagePlus, Send, Trash2, X, Settings2, Eye, Calculator, Brain, Flag, MoreHorizontal, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { applyAction, describeAction, parseActions, precompute, unverifiedSums, type AdvisorAction, freeUntilIncome } from "@/lib/advisor-calc";
 import { toast } from "sonner";
@@ -16,6 +16,8 @@ import { TONES, STARTERS, greeting, isNextStep, nameOf, personaRules, toneOf } f
 import { Shell, meta } from "@/components/Shell";
 import { HONEST_RULE, MEMORY_MAX, addMemory, extractRemember, forgetMemory, markOpener, memoryCommand, memoryOk, memoryPrompt, openerDue } from "@/lib/advisor-memory";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   calc,
@@ -318,6 +320,15 @@ function Chat({ s }: { s: State }) {
         <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("rules")}><Settings2 /> Мои правила</Button>
         <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("facts")}><Eye /> Что помощник видит</Button>
         <Button variant="secondary" size="sm" className="rounded-full lg:justify-start" onClick={() => setPanel("memory")}><Brain /> Что я помню{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}</Button>
+        {msgs.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="rounded-full text-muted-foreground lg:justify-start"><Trash2 /> Новый разговор</Button></AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader><AlertDialogTitle>Начать новый разговор?</AlertDialogTitle><AlertDialogDescription>Сообщения этого разговора исчезнут. Правила и память Помощника останутся.</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogFooter><AlertDialogCancel>Оставить</AlertDialogCancel><AlertDialogAction onClick={() => setMsgs([])}>Начать заново</AlertDialogAction></AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
       <Dialog open={panel === "memory"} onOpenChange={(o) => !o && setPanel("")}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
@@ -367,7 +378,14 @@ function Chat({ s }: { s: State }) {
           const { clean, actions } = parseActions(m.content);
           return (
             <div key={i} className="mr-4 space-y-2">
-              <div className="md overflow-x-auto rounded-2xl bg-card p-3 text-sm">
+              <div className="md relative overflow-x-auto rounded-2xl bg-card p-3 pr-9 text-sm">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><button aria-label="Действия с ответом" className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-full text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => { void navigator.clipboard?.writeText(clean).then(() => toast("Скопировано")); }}><Copy /> Скопировать</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setReport({ q: (msgs[i - 1]?.role === "user" ? msgs[i - 1]!.content : ""), a: clean })}><Flag /> Ошибка в ответе</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} disallowedElements={["img"]} unwrapDisallowed={false} components={{ a: (p) => <a {...p} target="_blank" rel="noreferrer" /> }}>{clean}</ReactMarkdown>
               </div>
               {m.unverified && (
@@ -383,9 +401,6 @@ function Chat({ s }: { s: State }) {
                   <Button size="sm" variant="ghost" className="h-7" onClick={() => setMsgs((all) => all.map((x, j) => (j === i ? { ...x, remember: undefined } : x)) as Msg[])}>Не нужно</Button>
                 </div>
               )}
-              <div className="flex justify-end">
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setReport({ q: (msgs[i - 1]?.role === "user" ? msgs[i - 1]!.content : ""), a: clean })}><Flag className="h-3.5 w-3.5" /> Ошибка в ответе</Button>
-              </div>
               {actions.map((a, k) => (
                 <ActionCard key={k} a={a} s={s} done={m.done?.includes(k)} onDone={() => setMsgs((all) => all.map((x, j) => (j === i ? { ...x, done: [...(x.done ?? []), k] } : x)))} />
               ))}
@@ -413,7 +428,7 @@ function Chat({ s }: { s: State }) {
             </div>
           )}
           <div className="flex items-end gap-2">
-            <label aria-label="Прикрепить скриншот" className="grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-md border border-input text-muted-foreground">
+            <label aria-label="Прикрепить скриншот" className="grid h-10 w-10 rounded-full shrink-0 cursor-pointer place-items-center border border-input text-muted-foreground">
               <ImagePlus className="h-4 w-4" />
               <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -424,11 +439,10 @@ function Chat({ s }: { s: State }) {
                 r.readAsDataURL(f);
               }} />
             </label>
-            <Textarea rows={1} className="min-h-10" value={text} onChange={(e) => setText(e.target.value)} placeholder="Спросите о покупке или планах" onKeyDown={(e) => {
+            <Textarea rows={1} className="max-h-32 min-h-10 min-w-0 flex-1 resize-none rounded-2xl [field-sizing:content]" value={text} onChange={(e) => setText(e.target.value)} placeholder="Спросите о покупке или планах" onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(text); }
             }} />
-            <Button size="icon" aria-label="Отправить" disabled={busy || (!text.trim() && !img)} onClick={() => send(text)}><Send /></Button>
-            {msgs.length > 0 && <Button size="icon" variant="ghost" aria-label="Новый разговор" title="Новый разговор" onClick={() => setMsgs([])}><Trash2 /></Button>}
+            <Button size="icon" className="h-10 w-10 shrink-0 rounded-full" aria-label="Отправить" disabled={busy || (!text.trim() && !img)} onClick={() => send(text)}><Send /></Button>
           </div>
         </div>
       </div>
