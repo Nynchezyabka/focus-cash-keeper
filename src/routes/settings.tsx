@@ -28,33 +28,55 @@ function Settings({ s }: { s: State }) {
   const setAi = (p: Partial<AiSettings>) => setState((x) => ({ ...x, ai: { ...x.ai, ...p } }));
   return (
     <div className="space-y-4">
+      <h2 className="px-1 pt-2 font-display text-lg text-foreground">Данные и устройства</h2>
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
-        <h2 className="text-base font-medium">Минимум на жизнь</h2>
-        <p className="text-sm text-muted-foreground">Сколько в день оставлять на жизнь, даже если денег на платежи не хватает. По умолчанию {MIN_DAILY} ₽.</p>
-        <Input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          placeholder={String(MIN_DAILY)}
-          value={s.minDaily ?? ""}
-          onChange={(e) => {
-            const v = e.target.value;
-            setState((x) => ({ ...x, minDaily: v === "" ? undefined : Math.max(0, Number(v)) }));
-          }}
-        />
+        <h2 className="text-base font-medium">Резервная копия</h2>
+        <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Всё хранится только на этом устройстве. Ключ ИИ в копию не попадает.</p>
+        <p className="text-xs text-muted-foreground">{s.lastBackup ? `Последняя копия: ${new Date(s.lastBackup).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}.` : "Копию ещё не делали."} Раз в месяц приложение напомнит.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={() => {
+            setState((x) => ({ ...x, lastBackup: new Date().toISOString() }));
+            const data = { ...getState(), ai: { ...getState().ai, apiKey: "", advisorApiKey: "", connections: getState().ai.connections?.map((c) => ({ ...c, apiKey: "" })) } };
+            const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+            const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+          }}><Upload /> Экспорт</Button>
+          <Button variant="secondary" onClick={() => file.current?.click()}><Download /> Импорт</Button>
+        </div>
+        <input ref={file} type="file" accept="application/json" className="hidden" onChange={async (e) => {
+          const f = e.target.files?.[0]; if (!f) return;
+          try {
+            const data = JSON.parse(await f.text()) as State;
+            const arr = (v: unknown) => v === undefined || Array.isArray(v);
+            const num = (v: unknown) => v === undefined || (typeof v === "number" && Number.isFinite(v));
+            if (!data || typeof data !== "object" || !Array.isArray(data.txs)) throw new Error();
+            if (!data.txs.every((t) => t && typeof t === "object" && typeof t.amount === "number" && Number.isFinite(t.amount))) throw new Error();
+            const d = data as unknown as Record<string, unknown>;
+            if (!num(d["balance"]) || !num(d["cash"]) || !arr(d["incomes"]) || !arr(d["obligations"]) || !arr(d["categories"])) throw new Error();
+             if (data.obligations?.some((o) => o.schedule !== undefined && (!Array.isArray(o.schedule) || !validSchedule(o.schedule)))) throw new Error();
+            if (data.obligations?.some((o) => o.debtFee !== undefined && !validDebtFee(o.debtFee))) throw new Error();
+            const prev = getState();
+            try { localStorage.setItem("budget-backup-before-import", JSON.stringify(prev)); } catch { /* нет места — отмена всё равно есть */ }
+            replaceState({ ...data, ai: prev.ai });
+            undoable("Данные загружены", () => replaceState(prev));
+          } catch { toast("Не получилось прочитать файл"); }
+          e.target.value = "";
+        }} />
       </section>
-
+      <Link to="/devices" className="flex items-center justify-between gap-2 rounded-2xl bg-card p-4 shadow-soft"><span><span className="block text-base font-medium">Мои устройства</span><span className="text-xs text-muted-foreground">Один бюджет на телефоне и компьютере, зашифрованно</span></span><span aria-hidden>›</span></Link>
+      <Link to="/family" search={{ join: undefined }} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
+        <span><span className="block text-base font-medium">Семейный доступ</span><span className="text-xs text-muted-foreground">Общая картина бюджетов по коду</span></span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Link>
+      <h2 className="px-1 pt-2 font-display text-lg text-foreground">Внешний вид и категории</h2>
       <Appearance />
       <Link to="/categories" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
         <span><span className="block text-base font-medium">Категории</span><span className="text-xs text-muted-foreground">Свои названия, иконки и цвета</span></span>
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </Link>
-      <Link to="/family" search={{ join: undefined }} className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
-        <span><span className="block text-base font-medium">Семейный доступ</span><span className="text-xs text-muted-foreground">Общая картина бюджетов по коду</span></span>
-        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-      </Link>
+      <h2 className="px-1 pt-2 font-display text-lg text-foreground">Помощник и ИИ</h2>
       <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
-        <h2 className="text-base font-medium">Ключ ИИ и выбор моделей</h2>
+        <h2 className="text-base font-medium">Распознавание трат и Помощник</h2>
         <p className="text-sm text-muted-foreground">Когда вы пишете «такси 450, кофе 380», приложение раскладывает это на отдельные траты.</p>
         <Input type="password" autoComplete="off" placeholder="Вставьте ваш API-ключ (необязательно)" value={s.ai.apiKey} onChange={(e) => {
           const apiKey = e.target.value;
@@ -104,44 +126,23 @@ function Settings({ s }: { s: State }) {
         <AiModels ai={s.ai} onChange={setAi} />
         {s.ai.apiKey && <Button variant="ghost" size="sm" onClick={() => setAi({ apiKey: "" })}>Убрать ключ</Button>}
       </section>
-
-      <Link to="/devices" className="flex items-center justify-between gap-2 rounded-2xl bg-card p-4 shadow-soft"><span><span className="block text-base font-medium">Мои устройства</span><span className="text-xs text-muted-foreground">Один бюджет на телефоне и компьютере, зашифрованно</span></span><span aria-hidden>›</span></Link>
-
+      <h2 className="px-1 pt-2 font-display text-lg text-foreground">Правила расчёта</h2>
       <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
-        <h2 className="text-base font-medium">Резервная копия</h2>
-        <p className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4" /> Всё хранится только на этом устройстве. Ключ ИИ в копию не попадает.</p>
-        <p className="text-xs text-muted-foreground">{s.lastBackup ? `Последняя копия: ${new Date(s.lastBackup).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}.` : "Копию ещё не делали."} Раз в месяц приложение напомнит.</p>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={() => {
-            setState((x) => ({ ...x, lastBackup: new Date().toISOString() }));
-            const data = { ...getState(), ai: { ...getState().ai, apiKey: "", advisorApiKey: "", connections: getState().ai.connections?.map((c) => ({ ...c, apiKey: "" })) } };
-            const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-            const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${new Date().toISOString().slice(0, 10)}.json`;
-            document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
-          }}><Upload /> Экспорт</Button>
-          <Button variant="secondary" onClick={() => file.current?.click()}><Download /> Импорт</Button>
-        </div>
-        <input ref={file} type="file" accept="application/json" className="hidden" onChange={async (e) => {
-          const f = e.target.files?.[0]; if (!f) return;
-          try {
-            const data = JSON.parse(await f.text()) as State;
-            const arr = (v: unknown) => v === undefined || Array.isArray(v);
-            const num = (v: unknown) => v === undefined || (typeof v === "number" && Number.isFinite(v));
-            if (!data || typeof data !== "object" || !Array.isArray(data.txs)) throw new Error();
-            if (!data.txs.every((t) => t && typeof t === "object" && typeof t.amount === "number" && Number.isFinite(t.amount))) throw new Error();
-            const d = data as unknown as Record<string, unknown>;
-            if (!num(d["balance"]) || !num(d["cash"]) || !arr(d["incomes"]) || !arr(d["obligations"]) || !arr(d["categories"])) throw new Error();
-             if (data.obligations?.some((o) => o.schedule !== undefined && (!Array.isArray(o.schedule) || !validSchedule(o.schedule)))) throw new Error();
-            if (data.obligations?.some((o) => o.debtFee !== undefined && !validDebtFee(o.debtFee))) throw new Error();
-            const prev = getState();
-            try { localStorage.setItem("budget-backup-before-import", JSON.stringify(prev)); } catch { /* нет места — отмена всё равно есть */ }
-            replaceState({ ...data, ai: prev.ai });
-            undoable("Данные загружены", () => replaceState(prev));
-          } catch { toast("Не получилось прочитать файл"); }
-          e.target.value = "";
-        }} />
+        <h2 className="text-base font-medium">Минимум на жизнь</h2>
+        <p className="text-sm text-muted-foreground">Сколько рублей в день оставлять на еду и базовые нужды, даже если на ближайшие платежи не хватает. По умолчанию {MIN_DAILY} ₽.</p>
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          placeholder={String(MIN_DAILY)}
+          value={s.minDaily ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            setState((x) => ({ ...x, minDaily: v === "" ? undefined : Math.max(0, Number(v)) }));
+          }}
+        />
       </section>
-
+      <h2 className="px-1 pt-2 font-display text-lg text-foreground">О приложении</h2>
       <Updates />
 
       <Link to="/feedback" className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-soft">
