@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getState } from "@/lib/budget";
 import { familyConfigured } from "@/lib/family-api";
-import { answerPairing, pollPairing, syncDevices, unlink, useLink } from "@/lib/device-sync";
+import { answerPairing, pollPairing, setPairing, syncDevices, syncErrorText, unlink, useLink, type PairStage } from "@/lib/device-sync";
 import { newPairCode, normCode, showCode } from "@/lib/vault-crypto";
 
 export const Route = createFileRoute("/devices")({
@@ -39,12 +39,16 @@ function Devices() {
 
 function Linked() {
   const l = useLink()!;
+  const [busy, setBusy] = useState(false);
+  const fmt = (d: string) => new Date(d).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
   return (
     <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
       <h2 className="text-base font-medium">Синхронизация включена</h2>
       <p className="text-xs text-muted-foreground">{l.dirty ? "Есть изменения, отправятся при связи." : l.lastSync ? `Сверено: ${new Date(l.lastSync).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : "Ещё не сверялось."}</p>
+      {l.lastError && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-foreground">Последняя ошибка{l.lastErrorAt ? ` (${fmt(l.lastErrorAt)})` : ""}: {l.lastError}</p>}
+      {l.noAccess && <p className="text-sm text-foreground">Связь с другим устройством потеряна. Отключите это устройство и подключите заново по QR-коду.</p>}
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="secondary" onClick={() => void syncDevices().then(() => toast("Сверено"))}><RefreshCw /> Сверить сейчас</Button>
+        <Button variant="secondary" disabled={busy} onClick={() => { setBusy(true); void syncDevices().then((r) => toast(r.ok ? "Сверено" : r.error)).finally(() => setBusy(false)); }}><RefreshCw className={busy ? "animate-spin" : ""} /> {busy ? "Сверяю…" : "Сверить сейчас"}</Button>
         <Button variant="outline" onClick={() => { if (confirm("Отключить это устройство? Бюджет на нём останется, но перестанет обновляться. Копия в сети удалится, остальные устройства тоже отключатся.")) void unlink(true).then(() => toast("Устройство отключено")).catch(() => toast("Нет связи. Попробуйте позже")); }}><Unlink /> Отключить</Button>
       </div>
     </section>
@@ -54,19 +58,28 @@ function Linked() {
 function ShowCode() {
   const [code, setCode] = useState<string | null>(null);
   const [left, setLeft] = useState(600);
+  const [stage, setStage] = useState<PairStage>("waiting");
+  const [err, setErr] = useState<string | null>(null);
   const hasData = getState().txs.length > 0;
   useEffect(() => {
     if (!code) return;
     let stop = false; const t0 = Date.now();
+    setStage("waiting"); setErr(null); setPairing(true);
     const tick = async () => {
       if (stop) return;
       const s = Math.max(0, 600 - Math.round((Date.now() - t0) / 1000)); setLeft(s);
       if (s === 0) { setCode(null); return; }
-      try { if (await pollPairing(code)) { toast("Телефон подключён — бюджет здесь"); setCode(null); return; } } catch { /* retry */ }
+      try {
+        if (await pollPairing(code, setStage)) { toast("Готово! Устройства связаны — бюджет здесь"); setPairing(false); setCode(null); return; }
+        setErr(null);
+      } catch (e) {
+        const m = syncErrorText(e); setErr(m);
+        if (String(e).includes("vault-missing")) { setStage("waiting"); }
+      }
       setTimeout(() => void tick(), 2000);
     };
     void tick();
-    return () => { stop = true; };
+    return () => { stop = true; setPairing(false); };
   }, [code]);
   if (!code) return (
     <section className="space-y-3 rounded-2xl bg-card p-4 shadow-soft">
@@ -81,7 +94,9 @@ function ShowCode() {
       <div className="mx-auto w-fit rounded-2xl bg-background p-4"><QRCodeSVG value={PREFIX + code} size={220} /></div>
       <p className="text-sm text-muted-foreground">Или введите на телефоне код:</p>
       <p className="font-mono text-xl tracking-wider tabular-nums">{showCode(code)}</p>
-      <p className="text-xs text-muted-foreground">Ждём телефон… код действует ещё {Math.ceil(left / 60)} мин.</p>
+      <p className="text-sm text-foreground" aria-live="polite">{stage === "receiving" ? "Телефон ответил, получаем бюджет…" : stage === "done" ? "Готово" : "Ждём телефон…"}</p>
+      <p className="text-xs text-muted-foreground">Код действует ещё {Math.ceil(left / 60)} мин.</p>
+      {err && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-foreground">{err}. Пробуем ещё раз…</p>}
       <Button variant="ghost" size="sm" onClick={() => setCode(null)}>Отменить</Button>
     </section>
   );
@@ -97,7 +112,7 @@ function Scan() {
     if (c.length !== 16) { toast("Код из 16 знаков — проверьте его"); return; }
     setBusy(true);
     try { await answerPairing(c); toast("Готово: компьютер получает бюджет"); setCode(""); }
-    catch { toast("Не получилось. Проверьте интернет и попробуйте ещё раз"); }
+    catch (e) { toast(`Не получилось: ${syncErrorText(e)}. Компьютеру ничего не отправлено`); }
     finally { setBusy(false); }
   };
   useEffect(() => {
