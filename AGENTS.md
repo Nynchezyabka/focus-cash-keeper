@@ -34,3 +34,4 @@
 - Own-device sync (src/lib/device-sync.ts, vault-crypto.ts, supabase/device-sync.sql): computer shows a pairing code/QR, phone answers; budget is AES-GCM encrypted on device, the DB stores only ciphertext via token-checked RPCs, last write wins, AI keys never leave a device — keeps privacy without accounts.
 - Keep the original auditor passport as a dated snapshot below a current correction summary in docs/passport.md — preserves audit provenance without presenting resolved issues as current defects.
 - Exclude managed generated integration files from project ESLint checks — regeneration must not require hand-editing platform-owned code.
+- Shell owns the shared back control for secondary pages, including Family; primary navigation and Plan tabs omit it to keep navigation consistent.

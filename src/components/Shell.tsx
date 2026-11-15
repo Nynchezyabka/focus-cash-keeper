@@ -16,6 +16,7 @@ import { openerDue, trackOpen } from "@/lib/advisor-memory";
 import { rub, useBudget, type State } from "@/lib/budget";
 import { APP_VERSION } from "@/lib/pwa";
 import { useFamily } from "@/lib/family";
+import { Button } from "@/components/ui/button";
 
 const PLAN_PATHS = ["/calendar", "/payments", "/incomes"];
 
@@ -157,19 +158,20 @@ export function Shell({
         <div className="relative flex min-h-11 items-center justify-between gap-3 px-[max(1.25rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
           {title ? (
             <div className="flex min-w-0 items-center gap-1">
-              {!NAV.some((n) => n.to === path) &&
-                !PLAN_PATHS.includes(path) &&
-                path !== "/family" && (
-                  <button
+              {!NAV.some((n) => n.to === path) && !PLAN_PATHS.includes(path) && (
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     aria-label="Назад"
+                    title="Назад"
                     onClick={() =>
                       window.history.length > 1 ? window.history.back() : void navigate({ to: "/" })
                     }
-                    className="-ml-2 grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground"
+                    className="-ml-2 h-10 w-10 shrink-0 rounded-full text-muted-foreground [&_svg]:size-5"
                   >
-                    <ArrowLeft className="h-5 w-5" />
-                  </button>
+                    <ArrowLeft aria-hidden />
+                  </Button>
                 )}
               {path !== "/help" && (
                 <Link
