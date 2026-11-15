@@ -144,7 +144,7 @@ async function post(ep: Endpoint, body: Record<string, unknown>): Promise<string
   try {
     r = await fetch(ep.url, {
       method: "POST",
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(120000),
       headers:
         ep.kind === "anthropic"
           ? {
@@ -158,7 +158,7 @@ async function post(ep: Endpoint, body: Record<string, unknown>): Promise<string
     });
   } catch (e) {
     if (e instanceof Error && /timeout|abort/i.test(e.name + e.message))
-      throw new Error(`${ep.name} не ответил за 30 секунд (timeout).`);
+      throw new Error(`${ep.name} не ответил за 2 минуты (timeout).`);
     throw new Error(
       `Нет связи с ${ep.name} (fetch): сервер недоступен или не разрешает запросы из браузера (CORS). Проверьте адрес и интернет.`,
     );

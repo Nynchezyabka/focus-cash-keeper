@@ -732,7 +732,7 @@ function Chat({ s }: { s: State }) {
         })}
         <ReportDialog data={report} onClose={() => setReport(null)} />
         {busy && (
-          <div className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground">Думаю…</div>
+          <ThinkingNote />
         )}
         {err && <p className="rounded-2xl bg-accent p-3 text-sm text-accent-foreground">{err}</p>}
         <div ref={end} />
@@ -1008,5 +1008,19 @@ function ReportDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ThinkingNote() {
+  const [sec, setSec] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSec((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div role="status" aria-live="polite" className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground">
+      <span className="animate-pulse">Думаю…</span> {sec} сек.
+      {sec >= 10 && <div className="mt-1 text-xs">Сложный вопрос может занять до пары минут — ответ придёт, можно подождать.</div>}
+    </div>
   );
 }
