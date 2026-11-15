@@ -15,6 +15,7 @@ _«Сколько я могу потратить сегодня со споко�
 ![Без аккаунта](https://img.shields.io/badge/аккаунт-не_нужен-8aa68e)
 ![E2EE](https://img.shields.io/badge/синхронизация-E2EE_AES--GCM-8aa68e)
 ![Стек](https://img.shields.io/badge/React_19-TypeScript-3b5b44)
+[![Лицензия: MIT](https://img.shields.io/badge/лицензия-MIT-3b5b44)](LICENSE)
 
 **[Открыть приложение →](https://calm-cash.layero.app)**
 
@@ -228,7 +229,11 @@ npm run build    # сборка
 - Local-first: бюджет живёт в `localStorage`, бэкенд и вход не нужны. Облако только для семейных снимков и необязательно.
 - Без регистрации и без красных предупреждений: мягкий, спокойный интерфейс.
 - Каждое изменение для пользователя: поднять `APP_VERSION` в `src/lib/pwa.ts` и добавить запись в `src/lib/whatsnew.ts`.
-- Планы и идеи: [`roadmap.md`](roadmap.md).
+- Планы и идеи: [`roadmap.md`](roadmap.md). История версий: [`CHANGELOG.md`](CHANGELOG.md).
+
+## Лицензия
+
+[MIT](LICENSE) — код можно свободно использовать и менять, сохранив упоминание автора.
 
 ---
 
