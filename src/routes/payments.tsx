@@ -172,7 +172,7 @@ export function Editor({ o, onClose, onMove, onPart }: { o: Obligation; onClose:
           )}
           <Button className="flex-1" disabled={!valid} onClick={() => {
             const item: Obligation = {
-              id: o.id || uid(), name: name.trim(), amount: a, category, method, from: o.from ?? new Date().toISOString().slice(0, 10),
+              id: o.id || uid(), name: name.trim(), amount: a, category, method, from: o.from ?? dayKey(new Date()),
               day: once ? Number(date.slice(8, 10)) : d, ...(once ? { once: date } : {}), ...(!once && o.nextOn ? { nextOn: o.nextOn } : {}), ...(o.loanTx ? { loanTx: o.loanTx } : {}),
               ...(category === "savings" && goal ? { goal } : {}),
               ...(once && category === "loan" && debtFee ? { debtFee } : {}),

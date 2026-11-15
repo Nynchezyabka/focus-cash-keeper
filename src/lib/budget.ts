@@ -107,19 +107,35 @@ const initial = (): State => ({
   ai: { provider: "none", apiKey: "", model: "" }, createdAt: new Date().toISOString(),
 });
 
+export const FUTURE_SCHEMA_ERROR = "future-schema";
+/** Bring a stored/imported/synced budget to the schema this app understands. */
+export function migrateState(data: unknown): State {
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("invalid-state");
+  const source = data as Partial<State>;
+  const version = source.version ?? 1;
+  if (typeof version !== "number" || !Number.isInteger(version) || version < 1) throw new Error("invalid-state");
+  if (version > 1) throw new Error(FUTURE_SCHEMA_ERROR);
+  return { ...initial(), ...source, version: 1 };
+}
+
 let state: State | null = null;
+let futureRaw: string | null = null;
 const listeners = new Set<() => void>();
 function load(): State {
   if (state) return state;
   let raw: string | null = null;
   try { raw = localStorage.getItem(KEY); } catch { /* storage unavailable */ }
   try {
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (raw && (!parsed || typeof parsed !== "object" || Array.isArray(parsed))) throw new Error("not an object");
-    state = parsed ? { ...initial(), ...parsed } : initial();
-  } catch {
-    // never silently overwrite unreadable data: keep the original text aside for recovery
-    try { localStorage.setItem(`${CORRUPT_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}`, raw ?? ""); } catch { saveBlocked = true; }
+    state = raw ? migrateState(JSON.parse(raw)) : initial();
+  } catch (e) {
+    if (e instanceof Error && e.message === FUTURE_SCHEMA_ERROR) {
+      // A newer app may understand fields this version would destroy. Keep its data untouched.
+      futureRaw = raw;
+      saveBlocked = true;
+    } else {
+      // never silently overwrite unreadable data: keep the original text aside for recovery
+      try { localStorage.setItem(`${CORRUPT_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}`, raw ?? ""); } catch { saveBlocked = true; }
+    }
     state = initial();
   }
   return state!;
@@ -130,21 +146,23 @@ const corruptKeys = () => { const out: string[] = []; for (let i = 0; i < localS
 let saveBlocked = false;
 /** text of the budget that could not be read at launch, or null */
 export function unreadableBackup(): string | null {
+  if (futureRaw !== null) return futureRaw;
   try { const k = corruptKeys().at(-1); return k ? localStorage.getItem(k) : null; } catch { return null; }
 }
+export const newerBackup = () => futureRaw !== null;
 export function dismissUnreadableBackup() {
   try { corruptKeys().forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
 }
 export function getState() { return load(); }
 /** test hook: forget the in-memory copy so the next read goes to storage */
-export function resetLoadedState() { state = null; saveBlocked = false; }
+export function resetLoadedState() { state = null; futureRaw = null; saveBlocked = false; }
 export function setState(fn: (s: State) => State) {
   state = fn(load());
   try { if (saveBlocked) throw new Error("blocked"); localStorage.setItem(KEY, JSON.stringify(state)); }
   catch { if (typeof window !== "undefined") window.dispatchEvent(new Event("budget-save-failed")); }
   listeners.forEach((l) => l());
 }
-export function replaceState(s: State) { setState(() => ({ ...initial(), ...s })); }
+export function replaceState(s: State) { setState(() => migrateState(s)); }
 export function subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; }
 export function useBudget(): State | null {
   return useSyncExternalStore(

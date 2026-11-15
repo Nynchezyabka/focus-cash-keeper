@@ -10,7 +10,7 @@ import { Shell, meta } from "@/components/Shell";
 import { undoable } from "@/components/Undo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MIN_DAILY, getState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
+import { FUTURE_SCHEMA_ERROR, MIN_DAILY, dayKey, getState, migrateState, replaceState, setState, type AiSettings, type State } from "@/lib/budget";
 import { Switch } from "@/components/ui/switch";
 import { getFamily } from "@/lib/family";
 import { AiModels } from "@/components/AiModels";
@@ -38,7 +38,7 @@ function Settings({ s }: { s: State }) {
             setState((x) => ({ ...x, lastBackup: new Date().toISOString() }));
             const data = { ...getState(), ai: { ...getState().ai, apiKey: "", advisorApiKey: "", connections: getState().ai.connections?.map((c) => ({ ...c, apiKey: "" })) } };
             const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-            const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${new Date().toISOString().slice(0, 10)}.json`;
+            const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${dayKey(new Date())}.json`;
             document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);
           }}><Upload /> Экспорт</Button>
           <Button variant="secondary" onClick={() => file.current?.click()}><Download /> Импорт</Button>
@@ -46,7 +46,7 @@ function Settings({ s }: { s: State }) {
         <input ref={file} type="file" accept="application/json" className="hidden" onChange={async (e) => {
           const f = e.target.files?.[0]; if (!f) return;
           try {
-            const data = JSON.parse(await f.text()) as State;
+            const data = migrateState(JSON.parse(await f.text()));
             const arr = (v: unknown) => v === undefined || Array.isArray(v);
             const num = (v: unknown) => v === undefined || (typeof v === "number" && Number.isFinite(v));
             if (!data || typeof data !== "object" || !Array.isArray(data.txs)) throw new Error();
@@ -59,7 +59,11 @@ function Settings({ s }: { s: State }) {
             try { localStorage.setItem("budget-backup-before-import", JSON.stringify(prev)); } catch { /* нет места — отмена всё равно есть */ }
             replaceState({ ...data, ai: prev.ai });
             undoable("Данные загружены", () => replaceState(prev));
-          } catch { toast("Не получилось прочитать файл"); }
+          } catch (error) {
+            toast(error instanceof Error && error.message === FUTURE_SCHEMA_ERROR
+              ? "Эта копия сделана более новой версией приложения. Обновите приложение"
+              : "Не получилось прочитать файл");
+          }
           e.target.value = "";
         }} />
       </section>

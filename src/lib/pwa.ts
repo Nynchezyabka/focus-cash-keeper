@@ -1,5 +1,5 @@
 // Обновления приложения: автоматическая проверка при запуске, ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.57.1";
+export const APP_VERSION = "1.57.2";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -12,6 +12,38 @@ async function unregister() {
   if (!("serviceWorker" in navigator)) return;
   const regs = await navigator.serviceWorker.getRegistrations();
   await Promise.allSettled(regs.map((r) => r.unregister()));
+}
+
+function hasText(el: Element): boolean {
+  if (el instanceof HTMLTextAreaElement) return !!el.value.trim() && !el.disabled && !el.readOnly;
+  if (el instanceof HTMLInputElement) {
+    const textual = !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(el.type);
+    return textual && !!el.value.trim() && !el.disabled && !el.readOnly;
+  }
+  return el instanceof HTMLElement && el.isContentEditable && !!el.textContent?.trim();
+}
+
+/** True while a person is writing, or an open form already contains text. */
+export function hasPendingInput(): boolean {
+  if (typeof document === "undefined") return false;
+  if (document.querySelector('[data-unsaved="true"]')) return true;
+  const active = document.activeElement;
+  if (active && hasText(active)) return true;
+  return [...document.querySelectorAll('[role="dialog"], dialog[open]')].some((dialog) => [...dialog.querySelectorAll("input, textarea, [contenteditable]")].some(hasText));
+}
+
+function offerUpdate() {
+  void import("sonner").then(({ toast }) => toast("Есть новая версия. Обновить?", {
+    id: "app-update",
+    duration: Infinity,
+    action: { label: "Обновить", onClick: () => window.location.reload() },
+  }));
+}
+
+function reloadForUpdate() {
+  if (hasPendingInput()) { offerUpdate(); return; }
+  void import("sonner").then(({ toast }) => toast("Загружаю новую версию…"));
+  setTimeout(() => window.location.reload(), 800);
 }
 
 export function initPwa() {
@@ -30,7 +62,7 @@ export function initPwa() {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (!hadController || reloaded) return;
     reloaded = true;
-    window.location.reload();
+    reloadForUpdate();
   });
   navigator.serviceWorker.register("/sw.js?v=" + APP_VERSION, { updateViaCache: "none" }).then((reg) => {
     const check = () => { reg.update().catch(() => {}); void checkForUpdates(); };
@@ -57,8 +89,7 @@ export async function checkForUpdates(): Promise<"current" | "updating" | "offli
       if ("caches" in window) { const n = await caches.keys(); await Promise.allSettled(n.filter((k) => k.startsWith("bb-runtime-")).map((k) => caches.delete(k))); }
       if (sessionStorage.getItem("bb-upd") === fresh) return "current"; // защита от петли
       sessionStorage.setItem("bb-upd", fresh);
-      import("sonner").then(({ toast }) => toast("Загружаю новую версию…"));
-      setTimeout(() => window.location.reload(), 800);
+      reloadForUpdate();
       return "updating";
     }
     return "current";

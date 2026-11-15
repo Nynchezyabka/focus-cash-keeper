@@ -9,6 +9,7 @@ export interface Link { id: string; token: string; key: string; rev: number; dir
 /** Human-readable reason for a failed sync/pairing step. */
 export function syncErrorText(e: unknown): string {
   const m = String(e instanceof Error ? e.message : e);
+  if (m.includes("future-schema")) return "Эта копия сделана более новой версией приложения. Обновите приложение";
   if (m.includes("not-configured")) return "Сервер не подключён";
   if (m.includes("vaults-full") || m.includes("pairings-full")) return "Сервер синхронизации переполнен — попробуйте позже или подключите свой сервер";
   if (m.includes("too-big")) return "Данных слишком много для синхронизации (больше 3 МБ) — сделайте экспорт в файл и перенесите его вручную";
