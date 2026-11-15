@@ -4,7 +4,7 @@ import { activeServer } from "@/lib/server";
 import { importKey, newToken, newVaultKey, open, pairHash, pairKey, seal } from "@/lib/vault-crypto";
 
 // Sync between one person's own devices. The budget is encrypted on the device; the database stores only the sealed blob.
-export interface Link { id: string; token: string; key: string; rev: number; dirty: boolean; dirtyAt?: number; lastSync?: string; lastError?: string; lastErrorAt?: string; noAccess?: boolean }
+export interface Link { id: string; token: string; key: string; rev: number; dirty: boolean; dirtyAt?: number; lastSync?: string; lastError?: string | undefined; lastErrorAt?: string | undefined; noAccess?: boolean }
 
 /** Human-readable reason for a failed sync/pairing step. */
 export function syncErrorText(e: unknown): string {

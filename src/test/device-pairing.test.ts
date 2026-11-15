@@ -54,7 +54,7 @@ describe("device pairing", () => {
     replaceState(st(7000)); await answerPairing(CODE);
     const id = getLink()!.id, saved = vault[id];
     delete vault[id]; await unlink(false); replaceState(st(1)); pushes = 0;
-    setTimeout(() => { vault[id] = saved; }, 30);
+    setTimeout(() => { vault[id] = saved!; }, 30);
     expect(await pollPairing(CODE, undefined, 10, 20)).toBe(true);
     expect(getState().balance).toBe(7000);
     expect(pushes).toBe(0);
