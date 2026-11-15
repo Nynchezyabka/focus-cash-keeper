@@ -4,7 +4,9 @@ import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight } from "l
 import { Shell, meta } from "@/components/Shell";
 import { PlanTabs } from "@/components/PlanTabs";
 import { MethodBadge } from "@/components/Pickers";
-import { PlanEventEditor } from "./incomes";
+import { NewIncomeOn, PlanEventEditor } from "./incomes";
+import { NewPaymentOn } from "./payments";
+import { Plus } from "lucide-react";
 import { calc, dayKey, forecast, rub, type CalEvent, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/calendar")({
@@ -158,6 +160,7 @@ function Grid({ s }: { s: State }) {
   const todayK = dayKey(today);
   const [offset, setOffset] = useState(0);
   const [sel, setSel] = useState(todayK);
+  const [adding, setAdding] = useState<null | "income" | "payment">(null);
   const ym = new Date(today.getFullYear(), today.getMonth() + offset, 1);
   const lastOfMonth = new Date(ym.getFullYear(), ym.getMonth() + 1, 0);
   const horizon = Math.max(31, Math.round((+lastOfMonth - +today) / 86400000) + 2);
@@ -228,8 +231,16 @@ function Grid({ s }: { s: State }) {
         {selDate < today
           ? <p className="pt-2 text-xs text-muted-foreground">Этот день уже прошёл. Траты за него — в истории операций на главной.</p>
           : selEv.length ? <ul className="space-y-2 pt-2">{selEv.map((e) => <Row key={e.refId + e.kind} e={e} today={todayK} onOpen={setOpen} />)}</ul> : <p className="pt-2 text-xs text-muted-foreground">Платежей и поступлений в этот день нет</p>}
+        {selDate >= today && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setAdding("payment")} className="flex items-center justify-center gap-1 rounded-xl bg-secondary py-2 text-xs text-secondary-foreground"><Plus className="h-4 w-4" /> Платёж</button>
+            <button type="button" onClick={() => setAdding("income")} className="flex items-center justify-center gap-1 rounded-xl bg-secondary py-2 text-xs text-secondary-foreground"><Plus className="h-4 w-4" /> Доход</button>
+          </div>
+        )}
       </section>
       <PlanEventEditor s={s} e={open} onClose={() => setOpen(null)} />
+      {adding === "payment" && <NewPaymentOn date={sel} onClose={() => setAdding(null)} />}
+      {adding === "income" && <NewIncomeOn date={sel} onClose={() => setAdding(null)} />}
     </div>
   );
 }

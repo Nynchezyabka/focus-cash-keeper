@@ -192,6 +192,11 @@ export function IncomeEditFlow({ s, id, onClose }: { s: State; id: string; onClo
   return <IncomeEditor draft={{ id: i.id, name: i.name, amount: String(i.amount), day: String(i.day), method: i.method ?? "card", once: i.once ?? null, start: i.start ?? "", end: i.end ?? "" }} onClose={onClose} />;
 }
 
+/** a new one-off income with the date already chosen (from the calendar) */
+export function NewIncomeOn({ date, onClose }: { date: string; onClose: () => void }) {
+  return <IncomeEditor draft={{ ...empty, once: date }} onClose={onClose} />;
+}
+
 export function PlanEventEditor({ s, e, onClose }: { s: State; e: { kind: "income" | "payment"; refId: string } | null; onClose: () => void }) {
   if (!e) return null;
   return e.kind === "income" ? <IncomeEditFlow s={s} id={e.refId} onClose={onClose} /> : <PaymentEditFlow s={s} id={e.refId} onClose={onClose} />;

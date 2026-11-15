@@ -300,11 +300,14 @@ export function calc(s: State, now = new Date()) {
   // the rest evens the daily amount with smaller incomes later — still shown, never hidden
   const aheadEven = Math.max(0, ahead);
   const aheadHeld = saving.reduce((a, x) => a + x.part, 0) + aheadEven;
+  // what is shown as «Отложено»: never more than the money actually on the card and in cash right now
+  const setAside = Math.min(held + aheadHeld, Math.max(0, total));
+  const setAsideShort = Math.max(0, reserve - setAside);
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
   const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm * days - spentToday, rest - held) / (days - 1)) : 0;
-  return { next, days, reserve, held, reserved, saving, aheadHeld, aheadEven, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, payGap, minDaily, todayKey: tk };
+  return { next, days, reserve, held, reserved, saving, aheadHeld, aheadEven, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, payGap, minDaily, setAside, setAsideShort, todayKey: tk };
 }
 
 // ---------- actions ----------

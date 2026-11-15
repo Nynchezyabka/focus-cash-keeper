@@ -32,14 +32,14 @@ function Payments({ s }: { s: State }) {
   const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">Что и когда нужно оплатить: каждый месяц или один раз. Эти деньги заранее откладываются и не входят в «Сегодня свободно».</p>
-      <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> До дохода отложено {rub(c.reserve)}</p>
       <div className="grid grid-cols-2 gap-2">
         <Button className="h-12 rounded-2xl" onClick={() => setEdit({ id: "", name: "", amount: 0, day: 0, category: "home" })}><Plus /> Платёж</Button>
         <Button variant="secondary" className="h-12 rounded-2xl" onClick={() => setLoan(true)}><HandCoins /> Взять в долг</Button>
       </div>
       {loan && <LoanDialog onClose={() => setLoan(false)} />}
       <Button variant="outline" className="w-full" onClick={() => setSchedule("new")}><CalendarClock /> График кредита</Button>
+      <p className="text-sm text-muted-foreground">Что и когда нужно оплатить: каждый месяц или один раз. Эти деньги заранее откладываются и не входят в «Сегодня свободно».</p>
+      <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> До дохода отложено {rub(Math.min(c.reserve, c.setAside))}{c.setAsideShort > 0 ? ` из ${rub(c.reserve)}` : ""}</p>
       {schedule && <LoanScheduleEditor o={schedule === "new" ? undefined : schedule} onClose={() => setSchedule(null)} />}
       <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
         {list.map(({ o, due }) => {
@@ -243,6 +243,11 @@ function LoanDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** opens the same payment editor (with move / part flows) from the calendar or the 30-day strip */
+/** a new payment with the date already chosen (from the calendar) */
+export function NewPaymentOn({ date, onClose }: { date: string; onClose: () => void }) {
+  return <Editor o={{ id: "", name: "", amount: 0, day: Number(date.slice(8, 10)), category: "home", once: date }} onClose={onClose} />;
+}
+
 export function PaymentEditFlow({ s, id, onClose }: { s: State; id: string; onClose: () => void }) {
   const o0 = s.obligations.find((o) => o.id === id) ?? s.obligations.find((o) => o.schedule && paymentObligations({ ...s, obligations: [o] }).some((p) => p.id === id));
   const [mode, setMode] = useState<"edit" | "move" | "part" | "schedule">(o0?.schedule ? "schedule" : "edit");

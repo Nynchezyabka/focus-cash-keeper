@@ -219,8 +219,8 @@ function Today({ s }: { s: State }) {
           <Stat
             label="Отложено на платежи"
             Icon={Lock}
-            value={c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve + c.aheadHeld)}
-            progress={c.shortfall > 0 && c.reserve > 0 ? c.held / c.reserve : undefined}
+            value={c.setAsideShort > 0 ? `${rub(c.setAside)} из ${rub(c.reserve)}` : rub(c.setAside)}
+            progress={c.setAsideShort > 0 && c.reserve > 0 ? c.setAside / c.reserve : undefined}
             onClick={() => setDialog("reserve")}
           />
           <Stat label="Накопления" Icon={PiggyBank} value={rub(s.cushion)} onClick={() => setDialog("savings")} />
@@ -380,7 +380,7 @@ function ReserveDialog({
         <p className="flex justify-between border-t border-border pt-2 text-sm">
           <span>Всего отложено</span>
           <span className="tabular-nums">
-            {c.shortfall > 0 ? `${rub(c.held)} из ${rub(c.reserve)}` : rub(c.reserve + c.aheadHeld)}
+            {c.setAsideShort > 0 ? `${rub(c.setAside)} из ${rub(c.reserve)}` : rub(c.setAside)}
           </span>
         </p>
         <p className="text-xs text-muted-foreground">Накопления лежат отдельно: {rub(cushion)}</p>
