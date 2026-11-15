@@ -390,7 +390,7 @@ export function borrow(amount: number, from: string, returnOn: string, method: M
   const ob: Obligation = monthly
     ? { id: uid(), name: `Вернуть: ${from}`, amount: monthly, day: parseKey(returnOn).getDate(), category: "loan", method, from: dayKey(new Date()) }
     : { id: uid(), name: `Вернуть: ${from}`, amount, day: parseKey(returnOn).getDate(), category: "loan", once: returnOn, method, from: dayKey(new Date()) };
-  const t = addTx({ kind: "adjust", amount, category: "adjust", note: `Взяла: ${from}`, method });
+  const t = addTx({ kind: "adjust", amount, category: "adjust", note: `В долг: ${from}`, method });
   if (t) ob.loanTx = t.id;
   setState((s) => ({ ...s, obligations: [...s.obligations, ob] }));
   return { t, ob };
@@ -400,7 +400,7 @@ export function loanTxOf(o: Obligation, s: State = getState()) {
   if (o.category !== "loan") return undefined;
   if (o.loanTx) return s.txs.find((t) => t.id === o.loanTx);
   const who = o.name.replace(/^Вернуть:\s*/, "");
-  return s.txs.find((t) => t.kind === "adjust" && t.note === `Взяла: ${who}`);
+  return s.txs.find((t) => t.kind === "adjust" && (t.note === `В долг: ${who}` || t.note === `Взяла: ${who}`));
 }
 /** editing a debt keeps the wallets right: changed card/cash moves the money, a changed one-off sum fixes the difference */
 export function syncLoanMoney(old: Obligation, next: Obligation) {
@@ -410,7 +410,7 @@ export function syncLoanMoney(old: Obligation, next: Obligation) {
   if ((next.method ?? "card") !== (t.method ?? "card")) patch.method = next.method ?? "card";
   if (next.once && old.once && next.amount !== old.amount) patch.amount = t.amount + (next.amount - old.amount);
   const who = next.name.replace(/^Вернуть:\s*/, "");
-  if (next.name !== old.name && next.name.startsWith("Вернуть:")) patch.note = `Взяла: ${who}`;
+  if (next.name !== old.name && next.name.startsWith("Вернуть:")) patch.note = `В долг: ${who}`;
   if (!Object.keys(patch).length) return null;
   const before = { ...t };
   updateTx(t.id, patch);
