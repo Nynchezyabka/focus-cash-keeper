@@ -160,7 +160,7 @@ function Settings({ s }: { s: State }) {
             Один бюджет на телефоне и компьютере, зашифрованно
           </span>
         </span>
-        <span aria-hidden>›</span>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden />
       </Link>
       <Link
         to="/family"
