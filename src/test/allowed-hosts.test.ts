@@ -14,3 +14,12 @@ describe("разрешённые адреса ИИ", () => {
     expect(aiHostAllowed("http://api.openai.com")).toBe(false);
   });
 });
+
+import { detectService as _ds } from "@/lib/parse";
+describe("claude-n-codex key detection", () => {
+  it("sk-myapi_ keys go to claude-n-codex via Anthropic format", () => {
+    const s = _ds("sk-myapi_abc123");
+    expect(s?.url).toBe("https://claude-n-codex.com:8443/v1/messages");
+    expect(s?.kind).toBe("anthropic");
+  });
+});

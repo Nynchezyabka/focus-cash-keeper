@@ -1,5 +1,5 @@
 // Обновления приложения: автоматическая проверка при запуске, ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.57.5";
+export const APP_VERSION = "1.57.6";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;

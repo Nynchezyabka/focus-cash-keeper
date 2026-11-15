@@ -88,6 +88,10 @@ export const MODEL_OPTIONS: Record<string, { models: string[]; keysUrl: string }
     models: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
     keysUrl: "https://aistudio.google.com/apikey",
   },
+  "Claude n Codex": {
+    models: ["claude-sonnet-5", "claude-sonnet-4-6", "claude-opus-5.5"],
+    keysUrl: "https://claude-n-codex.com/",
+  },
   "xAI Grok": { models: ["grok-3-mini", "grok-3", "grok-4"], keysUrl: "https://console.x.ai" },
 };
 /** Settings for advisor calls: a separate advisor key (if set) replaces the main one. */
@@ -166,7 +170,15 @@ async function post(ep: Endpoint, body: Record<string, unknown>): Promise<string
       `Нет связи с ${ep.name} (fetch): сервер недоступен или не разрешает запросы из браузера (CORS). Проверьте адрес и интернет.`,
     );
   }
-  if (!r.ok) throw new Error(`${ep.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
+  if (!r.ok) {
+    const detail = await Promise.resolve()
+      .then(() => r.json())
+      .then((j) => String(j?.error?.message ?? j?.message ?? "").slice(0, 200))
+      .catch(() => "");
+    throw new Error(
+      `${ep.name} ответил ошибкой ${r.status}${detail ? `: ${detail}` : ". Проверьте ключ."}`,
+    );
+  }
   const j = await r.json().catch(() => {
     throw new Error(`${ep.name} прислал ответ не в том формате. Проверьте формат API.`);
   });
@@ -205,6 +217,13 @@ export async function checkAiModel(ai: AiSettings, purpose: "parse" | "advisor")
 export function detectService(key: string): Svc | null {
   const k = key.trim();
   if (!k) return null;
+  if (k.startsWith("sk-myapi_"))
+    return {
+      name: "Claude n Codex",
+      url: "https://claude-n-codex.com:8443/v1/messages",
+      model: "claude-sonnet-5",
+      kind: "anthropic",
+    };
   if (k.startsWith("sk-or-"))
     return {
       name: "OpenRouter",

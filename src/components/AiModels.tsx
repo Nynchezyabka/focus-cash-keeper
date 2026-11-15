@@ -37,25 +37,6 @@ export function AiModels({
   const builtIn = svc ? svc.name : "встроенный разбор без ИИ";
   return (
     <div className="space-y-3 border-t border-border pt-3">
-      <Connections ai={ai} onChange={onChange} />
-      {conns.length > 0 && (
-        <>
-          <ConnSelect
-            label="Распознавание расходов через"
-            value={ai.connId ?? ""}
-            builtIn={`Основной ключ · ${builtIn}`}
-            conns={conns}
-            onChange={(connId) => onChange({ connId: connId || undefined })}
-          />
-          <ConnSelect
-            label="Помощник через"
-            value={ai.advisorConnId ?? ""}
-            builtIn="Как распознавание или отдельный ключ ниже"
-            conns={conns}
-            onChange={(advisorConnId) => onChange({ advisorConnId: advisorConnId || undefined })}
-          />
-        </>
-      )}
       {(parseEp || advEp) && (
         <Check2
           ai={ai}
@@ -68,61 +49,93 @@ export function AiModels({
       {svc && !ai.connId && (
         <ModelField
           key={`${svc.name}-parse`}
-          label="Модель для распознавания"
+          label="Модель"
           value={ai.model}
-          fallback={`Автоматически · ${svc.model}`}
-          models={options?.models ?? []}
+          fallback={`Рекомендуемая · ${svc.model}`}
+          models={(options?.models ?? []).filter((m) => m !== svc.model)}
           onChange={(model) => onChange({ model })}
         />
       )}
-      {svc && !ai.advisorConnId && (
-        <>
-          <div className="space-y-1 text-sm">
-            <span>
-              Отдельный ключ для Помощника{" "}
-              <span className="text-xs text-muted-foreground">(необязательно)</span>
-            </span>
-            <Input
-              type="password"
-              autoComplete="off"
-              aria-label="Ключ Помощника"
-              placeholder="Например, ключ Claude"
-              value={ai.advisorApiKey ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                const changed =
-                  detectService(v)?.name !== detectService(ai.advisorApiKey ?? "")?.name;
-                onChange({ advisorApiKey: v, ...(changed ? { advisorModel: "" } : {}) });
-              }}
-            />
-            <p className="text-xs text-muted-foreground">
-              {advSvc
-                ? `✓ Помощник отвечает через ${advSvc.name}. Фото чеков тоже прочитает он, если основная модель не видит картинки.`
-                : ai.advisorApiKey?.trim()
-                  ? "Не узнаю этот ключ."
-                  : "Пусто — Помощник работает от основного ключа."}
-            </p>
-          </div>
-          <ModelField
-            key={`${advSvc?.name ?? svc.name}-advisor`}
-            label="Модель Помощника"
-            value={ai.advisorModel ?? ""}
-            fallback={advSvc ? `Автоматически · ${advSvc.model}` : "Как для распознавания"}
-            models={advOptions?.models ?? []}
-            onChange={(advisorModel) => onChange({ advisorModel })}
-          />
-          {options && (
-            <a
-              className="inline-block text-xs text-primary underline"
-              href={options.keysUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Получить ключ {svc.name}
-            </a>
-          )}
-        </>
+      {options && svc && (
+        <a
+          className="inline-block text-xs text-primary underline"
+          href={options.keysUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Получить ключ {svc.name}
+        </a>
       )}
+      <details
+        className="rounded-xl border border-border p-3"
+        open={conns.length > 0 || !!ai.advisorApiKey?.trim() || undefined}
+      >
+        <summary className="cursor-pointer text-sm font-medium">Дополнительно</summary>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Обычно не нужно: один ключ работает и для распознавания трат, и для Помощника.
+        </p>
+        <div className="mt-3 space-y-3">
+          <Connections ai={ai} onChange={onChange} />
+          {conns.length > 0 && (
+            <>
+              <ConnSelect
+                label="Распознавание расходов через"
+                value={ai.connId ?? ""}
+                builtIn={`Основной ключ · ${builtIn}`}
+                conns={conns}
+                onChange={(connId) => onChange({ connId: connId || undefined })}
+              />
+              <ConnSelect
+                label="Помощник через"
+                value={ai.advisorConnId ?? ""}
+                builtIn="Как распознавание или отдельный ключ ниже"
+                conns={conns}
+                onChange={(advisorConnId) =>
+                  onChange({ advisorConnId: advisorConnId || undefined })
+                }
+              />
+            </>
+          )}
+          {svc && !ai.advisorConnId && (
+            <>
+              <div className="space-y-1 text-sm">
+                <span>
+                  Отдельный ключ для Помощника{" "}
+                  <span className="text-xs text-muted-foreground">(необязательно)</span>
+                </span>
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  aria-label="Ключ Помощника"
+                  placeholder="Например, ключ Claude"
+                  value={ai.advisorApiKey ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const changed =
+                      detectService(v)?.name !== detectService(ai.advisorApiKey ?? "")?.name;
+                    onChange({ advisorApiKey: v, ...(changed ? { advisorModel: "" } : {}) });
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {advSvc
+                    ? `✓ Помощник отвечает через ${advSvc.name}. Фото чеков тоже прочитает он, если основная модель не видит картинки.`
+                    : ai.advisorApiKey?.trim()
+                      ? "Не узнаю этот ключ."
+                      : "Пусто — Помощник работает от основного ключа."}
+                </p>
+              </div>
+              <ModelField
+                key={`${advSvc?.name ?? svc.name}-advisor`}
+                label="Модель Помощника"
+                value={ai.advisorModel ?? ""}
+                fallback={advSvc ? `Автоматически · ${advSvc.model}` : "Как для распознавания"}
+                models={advOptions?.models ?? []}
+                onChange={(advisorModel) => onChange({ advisorModel })}
+              />
+            </>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
