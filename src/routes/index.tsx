@@ -295,10 +295,11 @@ function Stat({
   onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} className="rounded-xl p-3 text-left active:scale-[0.98] active:bg-secondary">
+    <button onClick={onClick} className="group rounded-xl p-3 text-left transition-colors hover:bg-secondary/70 active:scale-[0.98] active:bg-secondary">
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
+        <ChevronRight aria-hidden className="ml-auto h-3.5 w-3.5 opacity-50 group-hover:opacity-100" />
       </p>
       <p className="mt-1 break-words text-base leading-snug text-foreground tabular-nums">{value}</p>
       {progress !== undefined && (
