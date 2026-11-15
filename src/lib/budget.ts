@@ -78,6 +78,11 @@ export interface AiSettings {
   model: string;
   advisorModel?: string;
   advisorApiKey?: string;
+  /** Optional own server address overriding the detected service. */
+  baseUrl?: string;
+  advisorBaseUrl?: string;
+  /** User chose a separate advisor key. */
+  advisorSeparate?: boolean;
   mode?: "auto" | "always";
   connections?: AiConn[];
   connId?: string | undefined;

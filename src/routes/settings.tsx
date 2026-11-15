@@ -203,8 +203,6 @@ function Settings({ s }: { s: State }) {
           }}
         />
         {(() => {
-          if (s.ai.connId && aiName(s.ai))
-            return <p className="text-sm text-primary">✓ Распознаёт через «{aiName(s.ai)}».</p>;
           const svc = detectService(s.ai.apiKey);
           if (svc)
             return (
@@ -216,7 +214,7 @@ function Settings({ s }: { s: State }) {
             return (
               <p className="text-sm text-muted-foreground">
                 Не узнаю этот ключ. Подходят ключи OpenAI, OpenRouter, Google Gemini, Groq,
-                Anthropic, DeepSeek, xAI. Для другого сервиса добавьте «Своё подключение» ниже.
+                Anthropic, DeepSeek, xAI. Также Claude n Codex.
               </p>
             );
           return (

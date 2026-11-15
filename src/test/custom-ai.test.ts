@@ -27,14 +27,24 @@ describe("custom AI connections", () => {
       "https://x.io/v1/chat/completions",
     );
   });
-  it("uses separate connections for parsing and advisor", () => {
-    const ai = { ...base, advisorConnId: "c1" };
+  it("advisor uses its own key and server address", () => {
+    const ai = {
+      ...base,
+      advisorApiKey: "sk-myapi_x",
+      advisorBaseUrl: "https://claude-n-codex.com:9000",
+    };
     expect(endpoint(ai, "parse")?.name).toBe("OpenAI");
     const a = endpoint(ai, "advisor")!;
-    expect([a.kind, a.key, a.model]).toEqual(["anthropic", "k1", "claude-sonnet-4-5"]);
+    expect([a.kind, a.url, a.model]).toEqual([
+      "anthropic",
+      "https://claude-n-codex.com:9000/v1/messages",
+      "claude-sonnet-5",
+    ]);
   });
-  it("advisor follows the parsing connection when none chosen", () => {
-    expect(endpoint({ ...base, connId: "c1" }, "advisor")?.name).toBe("Claude n Codex");
+  it("advisor follows the main key when no own key", () => {
+    expect(endpoint({ ...base, apiKey: "sk-myapi_x" }, "advisor")?.url).toBe(
+      "https://claude-n-codex.com:8443/v1/messages",
+    );
   });
   it("deleted connection falls back to the main key", () => {
     expect(endpoint({ ...base, connections: [], connId: "c1" }, "parse")?.name).toBe("OpenAI");

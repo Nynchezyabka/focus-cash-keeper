@@ -97,7 +97,15 @@ export const MODEL_OPTIONS: Record<string, { models: string[]; keysUrl: string }
 /** Settings for advisor calls: a separate advisor key (if set) replaces the main one. */
 export function advisorAi(ai: AiSettings): AiSettings {
   const k = ai.advisorApiKey?.trim();
-  return k ? { ...ai, apiKey: k, model: "", advisorApiKey: "", connId: undefined } : ai;
+  return k
+    ? {
+        ...ai,
+        apiKey: k,
+        model: ai.advisorModel ?? "",
+        baseUrl: ai.advisorBaseUrl ?? "",
+        advisorApiKey: "",
+      }
+    : ai;
 }
 export function selectedModel(ai: AiSettings, purpose: "parse" | "advisor" = "parse") {
   return endpoint(ai, purpose)?.model ?? "";
@@ -115,33 +123,18 @@ export function apiUrl(base: string, format: "openai" | "anthropic") {
 export type Endpoint = Svc & { key: string };
 /** One place decides which service, key and model answer for parsing or for the advisor. */
 export function endpoint(ai: AiSettings, purpose: "parse" | "advisor" = "parse"): Endpoint | null {
-  const conns = ai.connections ?? [];
   const advKey = ai.advisorApiKey?.trim();
-  const ownAdv = purpose === "advisor" && (!!ai.advisorConnId || !!advKey);
-  const id = purpose === "advisor" ? ai.advisorConnId || (advKey ? "" : ai.connId) : ai.connId;
-  const c = id ? conns.find((x) => x.id === id) : undefined;
-  if (c) {
-    if (!c.apiKey.trim() || !c.baseUrl.trim()) return null;
-    const model =
-      (purpose === "advisor" && !ownAdv ? ai.advisorModel?.trim() : "") || c.model.trim();
-    return {
-      name: c.name.trim() || "Своё подключение",
-      url: apiUrl(c.baseUrl, c.format),
-      model,
-      kind: c.format,
-      key: c.apiKey.trim(),
-    };
-  }
-  if (purpose === "advisor" && advKey) {
-    const svc = detectService(advKey);
-    return svc && { ...svc, key: advKey, model: ai.advisorModel?.trim() || svc.model };
-  }
-  const svc = detectService(ai.apiKey);
+  const own = purpose === "advisor" && !!advKey;
+  const key = own ? advKey! : ai.apiKey.trim();
+  const svc = detectService(key);
   if (!svc) return null;
-  const model =
-    (purpose === "advisor" ? ai.advisorModel?.trim() || ai.model.trim() : ai.model.trim()) ||
-    svc.model;
-  return { ...svc, key: ai.apiKey.trim(), model };
+  const base = (own ? ai.advisorBaseUrl : ai.baseUrl)?.trim();
+  const url = base && svc.kind !== "google" ? apiUrl(base, svc.kind) : svc.url;
+  const model = own
+    ? ai.advisorModel?.trim() || svc.model
+    : (purpose === "advisor" ? ai.advisorModel?.trim() || ai.model.trim() : ai.model.trim()) ||
+      svc.model;
+  return { ...svc, url, key, model };
 }
 /** Name of the AI that parses spending, or "" when only the built-in parser works. */
 export const aiName = (ai: AiSettings) => endpoint(ai, "parse")?.name ?? "";
