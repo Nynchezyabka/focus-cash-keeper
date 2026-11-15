@@ -1,6 +1,11 @@
 // История версий. При каждом изменении для пользователя: поднять APP_VERSION в pwa.ts и добавить запись сверху.
 export const CHANGELOG: { version: string; date: string; items: string[] }[] = [
   {
+    version: "1.57.5",
+    date: "15 ноября 2026",
+    items: ["В «Своих подключениях» можно подключить сервис claude-n-codex.com."],
+  },
+  {
     version: "1.57.4",
     date: "15 ноября 2026",
     items: [

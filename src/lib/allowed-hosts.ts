@@ -8,6 +8,7 @@ export const AI_HOSTS = [
   "api.groq.com",
   "api.x.ai",
   "api.deepseek.com",
+  "claude-n-codex.com:8443",
 ] as const;
 export const OTHER_HOSTS = ["*.supabase.co", "www.cbr-xml-daily.ru"] as const;
 
@@ -24,8 +25,9 @@ export function aiHostAllowed(url: string) {
   } catch {
     return false;
   }
-  if (u.protocol !== "https:" || (u.port && u.port !== "443")) return false;
-  return (AI_HOSTS as readonly string[]).includes(u.hostname.toLowerCase());
+  if (u.protocol !== "https:") return false;
+  // u.host drops the default 443 port, so plain hosts match as before; custom ports must be listed.
+  return (AI_HOSTS as readonly string[]).includes(u.host.toLowerCase());
 }
 export const blockedHostText = () =>
   `Этот адрес не разрешён политикой безопасности приложения. Подключиться можно только к сервисам из списка: ${AI_HOSTS.join(", ")}. Чтобы добавить свой, нужно добавить его в список разрешённых адресов в коде (src/lib/allowed-hosts.ts).`;

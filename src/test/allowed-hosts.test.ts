@@ -7,7 +7,9 @@ describe("разрешённые адреса ИИ", () => {
     expect(CONNECT_SRC).toContain("https://openrouter.ai");
   });
   it("чужой домен, порт или http — нельзя", () => {
-    expect(aiHostAllowed("https://claude-n-codex.com:8443")).toBe(false);
+    expect(aiHostAllowed("https://claude-n-codex.com:8443")).toBe(true);
+    expect(aiHostAllowed("https://claude-n-codex.com")).toBe(false);
+    expect(aiHostAllowed("https://claude-n-codex.com:9999")).toBe(false);
     expect(aiHostAllowed("https://api.openai.com:8443")).toBe(false);
     expect(aiHostAllowed("http://api.openai.com")).toBe(false);
   });
