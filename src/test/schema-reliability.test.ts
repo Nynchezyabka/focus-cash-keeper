@@ -1,20 +1,60 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { FUTURE_SCHEMA_ERROR, dayKey, getState, migrateState, newerBackup, replaceState, resetLoadedState, setState, unreadableBackup, type State } from "@/lib/budget";
+import {
+  FUTURE_SCHEMA_ERROR,
+  dayKey,
+  getState,
+  migrateState,
+  newerBackup,
+  replaceState,
+  resetLoadedState,
+  setState,
+  unreadableBackup,
+  type State,
+} from "@/lib/budget";
 import { hasPendingInput } from "@/lib/pwa";
 
 const KEY = "berezhny-budget-v1";
 const base = (): State => ({
-  version: 1, balance: 1200, cushion: 0, txs: [], obligations: [], incomes: [], incomeAck: {},
-  ai: { provider: "none", apiKey: "", model: "" }, createdAt: "2026-11-01T00:00:00.000Z",
+  version: 1,
+  balance: 1200,
+  cushion: 0,
+  txs: [],
+  obligations: [],
+  incomes: [],
+  incomeAck: {},
+  ai: { provider: "none", apiKey: "", model: "" },
+  createdAt: "2026-11-01T00:00:00.000Z",
 });
 
-beforeEach(() => { localStorage.clear(); resetLoadedState(); document.body.innerHTML = ""; });
-afterEach(() => { localStorage.clear(); resetLoadedState(); document.body.innerHTML = ""; });
+beforeEach(() => {
+  localStorage.clear();
+  resetLoadedState();
+  document.body.innerHTML = "";
+});
+afterEach(() => {
+  localStorage.clear();
+  resetLoadedState();
+  document.body.innerHTML = "";
+});
 
 describe("schema migration", () => {
   it("accepts old data without a version and fills current defaults", () => {
-    const old = { balance: 500, cushion: 0, txs: [], obligations: [], incomes: [], incomeAck: {}, ai: { provider: "none", apiKey: "", model: "" }, createdAt: "2026-01-01" };
-    expect(migrateState(old)).toMatchObject({ version: 1, balance: 500, createdAt: "2026-01-01", txs: [] });
+    const old = {
+      balance: 500,
+      cushion: 0,
+      txs: [],
+      obligations: [],
+      incomes: [],
+      incomeAck: {},
+      ai: { provider: "none", apiKey: "", model: "" },
+      createdAt: "2026-01-01",
+    };
+    expect(migrateState(old)).toMatchObject({
+      version: 1,
+      balance: 500,
+      createdAt: "2026-01-01",
+      txs: [],
+    });
   });
 
   it("keeps version 1 data", () => {
@@ -38,7 +78,9 @@ describe("schema migration", () => {
 
   it("does not replace the current budget with a future import", () => {
     replaceState(base());
-    expect(() => replaceState({ ...base(), version: 2 } as unknown as State)).toThrow(FUTURE_SCHEMA_ERROR);
+    expect(() => replaceState({ ...base(), version: 2 } as unknown as State)).toThrow(
+      FUTURE_SCHEMA_ERROR,
+    );
     expect(getState().balance).toBe(1200);
   });
 });

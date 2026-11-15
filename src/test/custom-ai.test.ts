@@ -2,14 +2,30 @@ import { describe, it, expect } from "vitest";
 import { apiUrl, endpoint } from "@/lib/parse";
 import type { AiSettings } from "@/lib/budget";
 
-const conn = { id: "c1", name: "Claude n Codex", baseUrl: "https://claude-n-codex.com:8443/", format: "anthropic" as const, apiKey: "k1", model: "claude-sonnet-4-5" };
-const base: AiSettings = { provider: "none", apiKey: "sk-proj-abc", model: "", connections: [conn] };
+const conn = {
+  id: "c1",
+  name: "Claude n Codex",
+  baseUrl: "https://claude-n-codex.com:8443/",
+  format: "anthropic" as const,
+  apiKey: "k1",
+  model: "claude-sonnet-4-5",
+};
+const base: AiSettings = {
+  provider: "none",
+  apiKey: "sk-proj-abc",
+  model: "",
+  connections: [conn],
+};
 
 describe("custom AI connections", () => {
   it("normalises any pasted base URL", () => {
-    expect(apiUrl("https://claude-n-codex.com:8443", "anthropic")).toBe("https://claude-n-codex.com:8443/v1/messages");
+    expect(apiUrl("https://claude-n-codex.com:8443", "anthropic")).toBe(
+      "https://claude-n-codex.com:8443/v1/messages",
+    );
     expect(apiUrl("https://x.io/v1/", "openai")).toBe("https://x.io/v1/chat/completions");
-    expect(apiUrl("https://x.io/v1/chat/completions", "openai")).toBe("https://x.io/v1/chat/completions");
+    expect(apiUrl("https://x.io/v1/chat/completions", "openai")).toBe(
+      "https://x.io/v1/chat/completions",
+    );
   });
   it("uses separate connections for parsing and advisor", () => {
     const ai = { ...base, advisorConnId: "c1" };

@@ -83,7 +83,10 @@ function Today({ s }: { s: State }) {
   }, []);
   useEffect(() => {
     const open = () => setDialog("expense");
-    if (sessionStorage.getItem("quick-expense")) { sessionStorage.removeItem("quick-expense"); open(); }
+    if (sessionStorage.getItem("quick-expense")) {
+      sessionStorage.removeItem("quick-expense");
+      open();
+    }
     window.addEventListener("quick-expense", open);
     return () => window.removeEventListener("quick-expense", open);
   }, []);
@@ -95,156 +98,198 @@ function Today({ s }: { s: State }) {
 
   return (
     <div className="space-y-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
-    <div className="space-y-5">
-      <section className="text-center">
-        <p className="text-sm text-muted-foreground">Сегодня свободно</p>
-        <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
-          {rub(Math.max(0, c.freeToday))}
-        </p>
-        {c.spentToday > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            потрачено {rub(c.spentToday)} из {rub(c.dailyNorm)}
+      <h1 className="sr-only">Бережный бюджет — сегодня свободно</h1>
+      <div className="space-y-5">
+        <section className="text-center">
+          <p className="text-sm text-muted-foreground">Сегодня свободно</p>
+          <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
+            {rub(Math.max(0, c.freeToday))}
           </p>
-        )}
-        {c.aheadHeld > 0 && c.shortfall === 0 && (
-          <button type="button" onClick={() => setDialog("reserve")} className="mt-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-4">
-            ещё {rub(c.aheadHeld)} придержано наперёд — дальше денег приходит меньше. Зачем?
-          </button>
-        )}
-        <Link
-          to="/calendar"
-          className="mt-4 flex items-center gap-3 rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]"
-        >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
-            <CalendarDays className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm text-foreground">
-              {c.days} {plural(c.days, "день", "дня", "дней")} до дохода ·{" "}
-              {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-            </span>
-            <span className="block text-xs text-muted-foreground">
-              {c.days > 1 ? <>с завтрашнего дня — по {rub(c.afterSpread)} в день</> : <>завтра придёт доход</>}
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-        </Link>
-      </section>
-      {pending && <IncomeArrived p={pending} />}
-
-      {s.demo && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl bg-secondary p-3 text-sm text-secondary-foreground">
-          <span>Вы смотрите пример</span>
-          <Button size="sm" variant="outline" onClick={clearDemo}>Стереть пример</Button>
-        </div>
-      )}
-
-      {empty && (
-        <div className="space-y-3 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
-          <p className="font-medium">С чего начать</p>
-          <ol className="list-decimal space-y-1 pl-5">
-            <li>Нажмите на «Карта» ниже и впишите, сколько там сейчас.</li>
-            <li>Добавьте доходы с датами в <Link to="/incomes" className="underline">«План» → «Доходы»</Link>.</li>
-            <li>Добавьте обязательные платежи: аренда, связь, кредиты.</li>
-          </ol>
-          <Button variant="outline" className="w-full" onClick={startDemo}>Посмотреть на примере</Button>
-        </div>
-      )}
-
-      {showOver && (
-        <div className="rounded-2xl bg-accent p-4 text-accent-foreground">
-          <p className="text-sm">Сегодня вышло на {rub(c.overspend)} больше ориентира. Бывает. Как поступим?</p>
-          <div className="mt-3 grid gap-2">
-            <Button
-              variant="secondary"
-              className="h-auto whitespace-normal py-2"
-              onClick={() => setState((x) => ({ ...x, overspendHandled: c.todayKey }))}
+          {c.spentToday > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              потрачено {rub(c.spentToday)} из {rub(c.dailyNorm)}
+            </p>
+          )}
+          {c.aheadHeld > 0 && c.shortfall === 0 && (
+            <button
+              type="button"
+              onClick={() => setDialog("reserve")}
+              className="mt-2 text-xs text-muted-foreground underline decoration-dotted underline-offset-4"
             >
-              Распределить на оставшиеся дни {c.days > 1 && `(≈ ${rub(c.afterSpread)} в день)`}
-            </Button>
-            <Button
-              variant="secondary"
-              className="h-auto whitespace-normal py-2"
-              disabled={s.cushion <= 0}
-              onClick={() => {
-                const t = coverFromCushion(c.overspend);
-                setState((x) => ({ ...x, overspendHandled: c.todayKey }));
-                addedToast(t, "Взяли из накоплений");
-              }}
-            >
-              Взять из накоплений {s.cushion > 0 ? `(есть ${rub(s.cushion)})` : "(пока пуста)"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button size="lg" className="h-16 rounded-2xl text-base" onClick={() => setDialog("expense")}>
-          <Minus /> Трата
-        </Button>
-        <Button
-          size="lg"
-          variant="secondary"
-          className="h-16 rounded-2xl text-base"
-          onClick={() => setDialog("income")}
-        >
-          <Plus /> Доход
-        </Button>
-      </div>
-
-      <section className="rounded-2xl bg-card p-1 shadow-soft">
-        <div className="grid grid-cols-2">
-          <Stat
-            label="Карта"
-            Icon={CreditCard}
-            value={rub(s.balance)}
-            onClick={() => {
-              setRecMethod("card");
-              setDialog("reconcile");
-            }}
-          />
-          <Stat
-            label="Наличные"
-            Icon={Banknote}
-            value={rub(s.cash ?? 0)}
-            onClick={() => {
-              setRecMethod("cash");
-              setDialog("reconcile");
-            }}
-          />
-        </div>
-        <TransferButton card={s.balance} cash={s.cash ?? 0} />
-        <div className="mx-3 border-t border-border" />
-        <div className="grid grid-cols-2">
-          <Stat
-            label="Отложено на платежи"
-            Icon={Lock}
-            value={c.setAsideShort > 0 ? `${rub(c.setAside)} из ${rub(c.reserve)}` : rub(c.setAside)}
-            progress={c.setAsideShort > 0 && c.reserve > 0 ? c.setAside / c.reserve : undefined}
-            onClick={() => setDialog("reserve")}
-          />
-          <Stat label="Накопления" Icon={PiggyBank} value={rub(s.cushion)} onClick={() => setDialog("savings")} />
-        </div>
-      </section>
-      {c.total < 0 && <BorrowCard gap={-c.total} />}
-      {c.total >= 0 && c.shortfall > 0 && <ShortfallCard gap={c.shortfall} payGap={c.payGap} minDaily={c.minDaily} cushion={s.cushion} />}
-
-    </div>
-    <div className="space-y-5">
-      <WeekSummary s={s} />
-      {s.txs.length > 0 && (
-        <section>
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-sm text-muted-foreground">Только что записано</h2>
-            <Link to="/analytics" className="text-sm text-muted-foreground">
-              Все операции
-            </Link>
-          </div>
-          <div className="lg:hidden"><TxList txs={s.txs.slice(0, 4)} /></div>
-          <div className="hidden lg:block"><TxList txs={s.txs.slice(0, 10)} /></div>
+              ещё {rub(c.aheadHeld)} придержано наперёд — дальше денег приходит меньше. Зачем?
+            </button>
+          )}
+          <Link
+            to="/calendar"
+            className="mt-4 flex items-center gap-3 rounded-2xl bg-card p-3 text-left shadow-soft active:scale-[0.99]"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+              <CalendarDays className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm text-foreground">
+                {c.days} {plural(c.days, "день", "дня", "дней")} до дохода ·{" "}
+                {c.next.date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {c.days > 1 ? (
+                  <>с завтрашнего дня — по {rub(c.afterSpread)} в день</>
+                ) : (
+                  <>завтра придёт доход</>
+                )}
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+          </Link>
         </section>
-      )}
-    </div>
+        {pending && <IncomeArrived p={pending} />}
+
+        {s.demo && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-secondary p-3 text-sm text-secondary-foreground">
+            <span>Вы смотрите пример</span>
+            <Button size="sm" variant="outline" onClick={clearDemo}>
+              Стереть пример
+            </Button>
+          </div>
+        )}
+
+        {empty && (
+          <div className="space-y-3 rounded-2xl bg-secondary p-4 text-sm text-secondary-foreground">
+            <p className="font-medium">С чего начать</p>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Нажмите на «Карта» ниже и впишите, сколько там сейчас.</li>
+              <li>
+                Добавьте доходы с датами в{" "}
+                <Link to="/incomes" className="underline">
+                  «План» → «Доходы»
+                </Link>
+                .
+              </li>
+              <li>Добавьте обязательные платежи: аренда, связь, кредиты.</li>
+            </ol>
+            <Button variant="outline" className="w-full" onClick={startDemo}>
+              Посмотреть на примере
+            </Button>
+          </div>
+        )}
+
+        {showOver && (
+          <div className="rounded-2xl bg-accent p-4 text-accent-foreground">
+            <p className="text-sm">
+              Сегодня вышло на {rub(c.overspend)} больше ориентира. Бывает. Как поступим?
+            </p>
+            <div className="mt-3 grid gap-2">
+              <Button
+                variant="secondary"
+                className="h-auto whitespace-normal py-2"
+                onClick={() => setState((x) => ({ ...x, overspendHandled: c.todayKey }))}
+              >
+                Распределить на оставшиеся дни {c.days > 1 && `(≈ ${rub(c.afterSpread)} в день)`}
+              </Button>
+              <Button
+                variant="secondary"
+                className="h-auto whitespace-normal py-2"
+                disabled={s.cushion <= 0}
+                onClick={() => {
+                  const t = coverFromCushion(c.overspend);
+                  setState((x) => ({ ...x, overspendHandled: c.todayKey }));
+                  addedToast(t, "Взяли из накоплений");
+                }}
+              >
+                Взять из накоплений {s.cushion > 0 ? `(есть ${rub(s.cushion)})` : "(пока пуста)"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            size="lg"
+            className="h-16 rounded-2xl text-base"
+            onClick={() => setDialog("expense")}
+          >
+            <Minus /> Трата
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="h-16 rounded-2xl text-base"
+            onClick={() => setDialog("income")}
+          >
+            <Plus /> Доход
+          </Button>
+        </div>
+
+        <section className="rounded-2xl bg-card p-1 shadow-soft">
+          <div className="grid grid-cols-2">
+            <Stat
+              label="Карта"
+              Icon={CreditCard}
+              value={rub(s.balance)}
+              onClick={() => {
+                setRecMethod("card");
+                setDialog("reconcile");
+              }}
+            />
+            <Stat
+              label="Наличные"
+              Icon={Banknote}
+              value={rub(s.cash ?? 0)}
+              onClick={() => {
+                setRecMethod("cash");
+                setDialog("reconcile");
+              }}
+            />
+          </div>
+          <TransferButton card={s.balance} cash={s.cash ?? 0} />
+          <div className="mx-3 border-t border-border" />
+          <div className="grid grid-cols-2">
+            <Stat
+              label="Отложено на платежи"
+              Icon={Lock}
+              value={
+                c.setAsideShort > 0 ? `${rub(c.setAside)} из ${rub(c.reserve)}` : rub(c.setAside)
+              }
+              progress={c.setAsideShort > 0 && c.reserve > 0 ? c.setAside / c.reserve : undefined}
+              onClick={() => setDialog("reserve")}
+            />
+            <Stat
+              label="Накопления"
+              Icon={PiggyBank}
+              value={rub(s.cushion)}
+              onClick={() => setDialog("savings")}
+            />
+          </div>
+        </section>
+        {c.total < 0 && <BorrowCard gap={-c.total} />}
+        {c.total >= 0 && c.shortfall > 0 && (
+          <ShortfallCard
+            gap={c.shortfall}
+            payGap={c.payGap}
+            minDaily={c.minDaily}
+            cushion={s.cushion}
+          />
+        )}
+      </div>
+      <div className="space-y-5">
+        <WeekSummary s={s} />
+        {s.txs.length > 0 && (
+          <section>
+            <div className="mb-2 flex items-baseline justify-between">
+              <h2 className="text-sm text-muted-foreground">Только что записано</h2>
+              <Link to="/analytics" className="text-sm text-muted-foreground">
+                Все операции
+              </Link>
+            </div>
+            <div className="lg:hidden">
+              <TxList txs={s.txs.slice(0, 4)} />
+            </div>
+            <div className="hidden lg:block">
+              <TxList txs={s.txs.slice(0, 10)} />
+            </div>
+          </section>
+        )}
+      </div>
 
       <BuyDialog open={dialog === "buy"} onClose={() => setDialog(null)} />
       <ExpenseDialog
@@ -264,7 +309,12 @@ function Today({ s }: { s: State }) {
         onClose={() => setDialog(null)}
         balance={s.balance}
       />
-      <ReserveDialog open={dialog === "reserve"} onClose={() => setDialog(null)} c={c} cushion={s.cushion} />
+      <ReserveDialog
+        open={dialog === "reserve"}
+        onClose={() => setDialog(null)}
+        c={c}
+        cushion={s.cushion}
+      />
       <PocketDialog
         open={dialog === "pocket"}
         onClose={() => {
@@ -279,7 +329,11 @@ function Today({ s }: { s: State }) {
 }
 
 const plural = (n: number, a: string, b: string, c: string) =>
-  n % 10 === 1 && n % 100 !== 11 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c;
+  n % 10 === 1 && n % 100 !== 11
+    ? a
+    : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)
+      ? b
+      : c;
 
 function Stat({
   label,
@@ -295,23 +349,35 @@ function Stat({
   onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} className="group rounded-xl p-3 text-left transition-colors hover:bg-secondary/70 active:scale-[0.98] active:bg-secondary">
+    <button
+      onClick={onClick}
+      className="group rounded-xl p-3 text-left transition-colors hover:bg-secondary/70 active:scale-[0.98] active:bg-secondary"
+    >
       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
-        <ChevronRight aria-hidden className="ml-auto h-3.5 w-3.5 opacity-50 group-hover:opacity-100" />
+        <ChevronRight
+          aria-hidden
+          className="ml-auto h-3.5 w-3.5 opacity-50 group-hover:opacity-100"
+        />
       </p>
-      <p className="mt-1 break-words text-base leading-snug text-foreground tabular-nums">{value}</p>
+      <p className="mt-1 break-words text-base leading-snug text-foreground tabular-nums">
+        {value}
+      </p>
       {progress !== undefined && (
         <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-secondary">
-          <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }} />
+          <span
+            className="block h-full rounded-full bg-primary"
+            style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }}
+          />
         </span>
       )}
     </button>
   );
 }
 
-const dm = (d: Date) => Number.isNaN(+d) ? "без даты" : d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+const dm = (d: Date) =>
+  Number.isNaN(+d) ? "без даты" : d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 function ReserveDialog({
   open,
   onClose,
@@ -330,16 +396,22 @@ function ReserveDialog({
           <DialogTitle>Что отложено</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Эти деньги лежат на карте или наличными, но уже «заняты»: платежами до дохода и тем, что понадобится позже,
-          когда доходы меньше. Так сумма на день остаётся ровной и не проваливается после следующей зарплаты. В «Сегодня
-          свободно» они не входят — и никуда не пропадают.
+          Эти деньги лежат на карте или наличными, но уже «заняты»: платежами до дохода и тем, что
+          понадобится позже, когда доходы меньше. Так сумма на день остаётся ровной и не
+          проваливается после следующей зарплаты. В «Сегодня свободно» они не входят — и никуда не
+          пропадают.
         </p>
         {c.reserved.length + c.saving.length === 0 && c.aheadEven === 0 && (
-          <p className="text-sm">Сейчас ничего не отложено — до {dm(c.next.date)} платежей нет, а следующие доходы покрывают платежи позже.</p>
+          <p className="text-sm">
+            Сейчас ничего не отложено — до {dm(c.next.date)} платежей нет, а следующие доходы
+            покрывают платежи позже.
+          </p>
         )}
         {c.reserved.length > 0 && (
           <div>
-            <p className="mb-1 text-xs text-muted-foreground">Платежи до {dm(c.next.date)} — целиком</p>
+            <p className="mb-1 text-xs text-muted-foreground">
+              Платежи до {dm(c.next.date)} — целиком
+            </p>
             <ul className="divide-y divide-border rounded-xl bg-secondary text-sm">
               {c.reserved.map(({ o, due }) => (
                 <li key={o.id} className="flex justify-between gap-2 px-3 py-2">
@@ -354,7 +426,10 @@ function ReserveDialog({
         )}
         {c.saving.length > 0 && (
           <div>
-            <p className="mb-1 text-xs text-muted-foreground">Откладываю заранее на платежи после {dm(c.next.date)} — следующий доход их целиком не покроет</p>
+            <p className="mb-1 text-xs text-muted-foreground">
+              Откладываю заранее на платежи после {dm(c.next.date)} — следующий доход их целиком не
+              покроет
+            </p>
             <ul className="divide-y divide-border rounded-xl bg-secondary text-sm">
               {c.saving.map(({ o, due, part }) => (
                 <li key={o.id} className="flex justify-between gap-2 px-3 py-2">
@@ -371,7 +446,10 @@ function ReserveDialog({
         )}
         {c.aheadEven > 0 && (
           <div>
-            <p className="mb-1 text-xs text-muted-foreground">Оставляю на дни после {dm(c.next.date)} — дальше доходы меньше, так ориентир на день остаётся ровным</p>
+            <p className="mb-1 text-xs text-muted-foreground">
+              Оставляю на дни после {dm(c.next.date)} — дальше доходы меньше, так ориентир на день
+              остаётся ровным
+            </p>
             <p className="flex justify-between gap-2 rounded-xl bg-secondary px-3 py-2 text-sm">
               <span>На следующие недели</span>
               <span className="tabular-nums">{rub(c.aheadEven)}</span>
@@ -406,7 +484,10 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
         «{p.income.name}» ({rub(p.income.amount)}) уже пришёл?
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => addedToast(confirmIncome(getState(), p.income), "Доход учтён")}>
+        <Button
+          size="sm"
+          onClick={() => addedToast(confirmIncome(getState(), p.income), "Доход учтён")}
+        >
           Да, пришёл
         </Button>
         <Button size="sm" variant="outline" onClick={() => shift(2)}>
@@ -471,7 +552,10 @@ function ExpenseDialog({
       ...(note.trim() ? { note: note.trim() } : {}),
       ...(family ? { family: true } : {}),
       ...(cur !== "RUB"
-        ? { orig: { amount: raw, currency: cur, rate: r }, note: `${label} · ${raw} ${currency(cur).sign}` }
+        ? {
+            orig: { amount: raw, currency: cur, rate: r },
+            note: `${label} · ${raw} ${currency(cur).sign}`,
+          }
         : {}),
     });
     setFam(false);
@@ -522,10 +606,8 @@ function ExpenseDialog({
             >
               <MicIcon className="h-5 w-5" />
             </button>
-            <label
-              aria-label="Чек или скриншот"
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-muted-foreground active:scale-95"
-            >
+            <label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-muted-foreground active:scale-95">
+              <span className="sr-only">Чек или скриншот</span>
               <ImageUp className="h-5 w-5" />
               <input
                 type="file"
@@ -540,6 +622,9 @@ function ExpenseDialog({
             </label>
           </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Изображение отправится в выбранный вами сервис ИИ.
+        </p>
         {cur !== "RUB" && (
           <Input
             inputMode="decimal"
@@ -549,12 +634,14 @@ function ExpenseDialog({
             onChange={(e) => setRate(e.target.value)}
           />
         )}
-        {cur !== "RUB" && Number(rate.replace(",", ".")) > 0 && Number(amount.replace(",", ".")) > 0 && (
-          <p className="text-center text-xs text-muted-foreground">
-            ≈ {rub(toRub(Number(amount.replace(",", ".")), Number(rate.replace(",", "."))))} по курсу ЦБ. Можно
-            поправить на курс банка.
-          </p>
-        )}
+        {cur !== "RUB" &&
+          Number(rate.replace(",", ".")) > 0 &&
+          Number(amount.replace(",", ".")) > 0 && (
+            <p className="text-center text-xs text-muted-foreground">
+              ≈ {rub(toRub(Number(amount.replace(",", ".")), Number(rate.replace(",", "."))))} по
+              курсу ЦБ. Можно поправить на курс банка.
+            </p>
+          )}
         <MethodToggle value={method} onChange={setMethod} />
         {fam && <FamilyToggle value={family} onChange={setFam} />}
         <Input
@@ -607,8 +694,15 @@ function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void
         {fam && <FamilyToggle value={family} onChange={setFam} />}
         {planned && !family && (
           <label className="flex items-start gap-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
-            <input type="checkbox" className="mt-1" checked={mark} onChange={(e) => setMark(e.target.checked)} />
-            <span>Это «{planned.name}» из плана — отметить пришедшей, чтобы не считать её дважды</span>
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={mark}
+              onChange={(e) => setMark(e.target.checked)}
+            />
+            <span>
+              Это «{planned.name}» из плана — отметить пришедшей, чтобы не считать её дважды
+            </span>
           </label>
         )}
         <Button
@@ -658,10 +752,13 @@ function ReconcileDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{method === "cash" ? "Сколько наличных сейчас?" : "Сколько на карте сейчас?"}</DialogTitle>
+          <DialogTitle>
+            {method === "cash" ? "Сколько наличных сейчас?" : "Сколько на карте сейчас?"}
+          </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Старые траты вспоминать не нужно. Впишите, сколько есть сейчас, — дальше посчитаю от этой суммы.
+          Старые траты вспоминать не нужно. Впишите, сколько есть сейчас, — дальше посчитаю от этой
+          суммы.
         </p>
         <MethodToggle value={method} onChange={setMethod} />
         <Input
@@ -690,31 +787,70 @@ function ReconcileDialog({
   );
 }
 
-function ShortfallCard({ gap, payGap, minDaily, cushion }: { gap: number; payGap: number; minDaily: number; cushion: number }) {
+function ShortfallCard({
+  gap,
+  payGap,
+  minDaily,
+  cushion,
+}: {
+  gap: number;
+  payGap: number;
+  minDaily: number;
+  cushion: number;
+}) {
   const [mode, setMode] = useState<null | "borrow">(null);
   const [more, setMore] = useState(false);
   if (mode === "borrow") return <BorrowCard gap={gap} />;
   const take = Math.min(gap, cushion);
   const btn = "h-auto whitespace-normal py-2";
-  const move = <Button asChild variant="secondary" className={btn}><Link to="/payments">Перенести или оплатить частично</Link></Button>;
+  const move = (
+    <Button asChild variant="secondary" className={btn}>
+      <Link to="/payments">Перенести или оплатить частично</Link>
+    </Button>
+  );
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        {payGap > 0
-          ? <>До дохода на платежи не хватает {rub(payGap)}{gap > payGap && <> (вместе с минимумом на жизнь {rub(minDaily)} в день — {rub(gap)})</>}.</>
-          : <>На платежи денег хватает, но вместе с минимумом на жизнь {rub(minDaily)} в день не хватает {rub(gap)}.</>}{" "}
+        {payGap > 0 ? (
+          <>
+            До дохода на платежи не хватает {rub(payGap)}
+            {gap > payGap && (
+              <>
+                {" "}
+                (вместе с минимумом на жизнь {rub(minDaily)} в день — {rub(gap)})
+              </>
+            )}
+            .
+          </>
+        ) : (
+          <>
+            На платежи денег хватает, но вместе с минимумом на жизнь {rub(minDaily)} в день не
+            хватает {rub(gap)}.
+          </>
+        )}{" "}
         Можно спокойно выбрать, как быть.
       </p>
       <div className="grid gap-2">
-        {cushion > 0
-          ? <Button className={btn} onClick={() => addedToast(coverFromCushion(take), "Взяли из накоплений")}>Взять из накоплений ({rub(take)})</Button>
-          : move}
+        {cushion > 0 ? (
+          <Button
+            className={btn}
+            onClick={() => addedToast(coverFromCushion(take), "Взяли из накоплений")}
+          >
+            Взять из накоплений ({rub(take)})
+          </Button>
+        ) : (
+          move
+        )}
         {!more ? (
-          <Button variant="ghost" className={btn} onClick={() => setMore(true)}>Другие варианты</Button>
+          <Button variant="ghost" className={btn} onClick={() => setMore(true)}>
+            Другие варианты
+          </Button>
         ) : (
           <>
             {cushion > 0 && move}
-            <Button variant="secondary" className={btn} onClick={() => setMode("borrow")}>Уже оплачено в долг — записать, когда вернуть</Button>
+            <Button variant="secondary" className={btn} onClick={() => setMode("borrow")}>
+              Уже оплачено в долг — записать, когда вернуть
+            </Button>
           </>
         )}
       </div>
@@ -728,8 +864,8 @@ function BorrowCard({ gap }: { gap: number }) {
   return (
     <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="text-sm">
-        Потрачено на {rub(gap)} больше, чем было. Если это кредитка или заём — запишите, когда вернуть, и я добавлю это
-        в платежи.
+        Потрачено на {rub(gap)} больше, чем было. Если это кредитка или заём — запишите, когда
+        вернуть, и я добавлю это в платежи.
       </p>
       <Input
         placeholder="Откуда: кредитка, долг у близких"
@@ -737,7 +873,12 @@ function BorrowCard({ gap }: { gap: number }) {
         onChange={(e) => setFrom(e.target.value)}
         className="bg-card"
       />
-      <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="bg-card" />
+      <Input
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        className="bg-card"
+      />
       <Button
         className="w-full"
         disabled={!from.trim() || !date}
@@ -751,7 +892,9 @@ function BorrowCard({ gap }: { gap: number }) {
       >
         Записать
       </Button>
-      <p className="text-xs">Если просто ошиблись в сумме — нажмите на «Карта» и впишите, сколько есть.</p>
+      <p className="text-xs">
+        Если просто ошиблись в сумме — нажмите на «Карта» и впишите, сколько есть.
+      </p>
     </div>
   );
 }
@@ -815,7 +958,8 @@ function PocketDialog({
           <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
             {busy ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Читаю скриншот… Переводы между своими счетами пропускаю.
+                <Loader2 className="h-4 w-4 animate-spin" /> Читаю скриншот… Переводы между своими
+                счетами пропускаю.
               </>
             ) : (
               "Не получилось прочитать. Попробуйте другой скриншот."
@@ -824,7 +968,8 @@ function PocketDialog({
         ) : !items ? (
           <>
             <p className="text-sm text-muted-foreground">
-              Вставьте скопированный текст, напишите или надиктуйте — приложение само разложит по категориям.
+              Вставьте скопированный текст, напишите или надиктуйте — приложение само разложит по
+              категориям.
             </p>
             <div className="relative">
               <Textarea
@@ -878,20 +1023,27 @@ function PocketDialog({
                 {busy ? <Loader2 className="animate-spin" /> : <Wand2 />} Разобрать
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Изображение отправится в выбранный вами сервис ИИ.
+            </p>
           </>
         ) : (
           <>
             {items.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                {via === "device" ? "Разобрано на телефоне, без ИИ." : `Разобрал ${via}.`} Нажмите на категорию, чтобы
-                поменять.
+                {via === "device" ? "Разобрано на телефоне, без ИИ." : `Разобрал ${via}.`} Нажмите
+                на категорию, чтобы поменять.
               </p>
             )}
             {items.length === 0 && (
-              <p className="text-sm text-muted-foreground">Не нашла сумм. Попробуйте «кофе 200, такси 450».</p>
+              <p className="text-sm text-muted-foreground">
+                Не нашла сумм. Попробуйте «кофе 200, такси 450».
+              </p>
             )}
             {items.length > 1 && (
-              <p className="text-xs text-muted-foreground">Снимите галочку с лишних или старых трат.</p>
+              <p className="text-xs text-muted-foreground">
+                Снимите галочку с лишних или старых трат.
+              </p>
             )}
             <ul className="max-h-[50vh] space-y-2 overflow-y-auto">
               {items.map((it, i) => (
@@ -908,7 +1060,9 @@ function PocketDialog({
                   </button>
                   <CategoryChip
                     value={it.category}
-                    onChange={(id) => setItems(items.map((x, j) => (j === i ? { ...x, category: id } : x)))}
+                    onChange={(id) =>
+                      setItems(items.map((x, j) => (j === i ? { ...x, category: id } : x)))
+                    }
                   />
                   <span className="flex-1 truncate">{it.note}</span>
                   <input
@@ -918,7 +1072,9 @@ function PocketDialog({
                     onChange={(e) =>
                       setItems(
                         items.map((x, j) =>
-                          j === i ? { ...x, amount: Number(e.target.value.replace(/\D/g, "")) || 0 } : x,
+                          j === i
+                            ? { ...x, amount: Number(e.target.value.replace(/\D/g, "")) || 0 }
+                            : x,
                         ),
                       )
                     }
@@ -928,7 +1084,11 @@ function PocketDialog({
               ))}
             </ul>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => (photo ? close() : setItems(null))}>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => (photo ? close() : setItems(null))}
+              >
                 Назад
               </Button>
               <Button
@@ -989,12 +1149,15 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
           <DialogTitle>Накопления</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Сейчас {rub(s.cushion)}: на карте {rub(cardNow)}, наличными {rub(cashNow)}. В «Сегодня свободно» не входят.
+          Сейчас {rub(s.cushion)}: на карте {rub(cardNow)}, наличными {rub(cashNow)}. В «Сегодня
+          свободно» не входят.
         </p>
         <GoalsSection s={s} />
         <div className="space-y-2 rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
           <p className="font-medium">Просто указать сумму</p>
-          <p className="text-xs">Сколько накоплено на самом деле. Остаток на карте и наличные не меняются.</p>
+          <p className="text-xs">
+            Сколько накоплено на самом деле. Остаток на карте и наличные не меняются.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             <Input
               inputMode="decimal"
@@ -1013,71 +1176,126 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
             className="w-full"
             disabled={!card.trim() && !cash.trim()}
             onClick={() => {
-              const nc = card.trim() ? num(card) : cardNow, nh = cash.trim() ? num(cash) : cashNow;
+              const nc = card.trim() ? num(card) : cardNow,
+                nh = cash.trim() ? num(cash) : cashNow;
               const over = overGoals(s, nc + nh);
               if (over > 0 && !cut) {
                 const gs = activeGoals(s).filter((g) => goalSaved(s, g.id) > 0);
                 const held = gs.reduce((a, g) => a + goalSaved(s, g.id), 0);
-                setCut(Object.fromEntries(gs.map((g) => [g.id, String(Math.round((goalSaved(s, g.id) / held) * over))])));
+                setCut(
+                  Object.fromEntries(
+                    gs.map((g) => [g.id, String(Math.round((goalSaved(s, g.id) / held) * over))]),
+                  ),
+                );
                 return;
               }
-              const cuts = cut ? Object.fromEntries(Object.entries(cut).map(([k, v]) => [k, num(v) || 0])) : {};
+              const cuts = cut
+                ? Object.fromEntries(Object.entries(cut).map(([k, v]) => [k, num(v) || 0]))
+                : {};
               const gt = cutGoals(cuts);
               const list = [...gt, ...setCushion(nc, nh)];
-              if (list.length) undoable("Накопления обновлены", () => list.forEach((t) => removeTx(t.id)));
+              if (list.length)
+                undoable("Накопления обновлены", () => list.forEach((t) => removeTx(t.id)));
               close();
             }}
           >
             {cut ? "Убрать и сохранить" : "Сохранить"}
           </Button>
-          {cut && (() => {
-            const over = overGoals(s, (card.trim() ? num(card) : cardNow) + (cash.trim() ? num(cash) : cashNow));
-            const sum = Object.values(cut).reduce((a, v) => a + (num(v) || 0), 0);
-            return (
-              <div className="space-y-2 rounded-lg bg-background p-2">
-                <p className="text-xs">На целях лежит больше, чем накоплено. Из каких целей убрать {rub(over)}?</p>
-                {Object.keys(cut).map((id) => {
-                  const g = s.goals?.find((x) => x.id === id);
-                  return (
-                    <label key={id} className="flex items-center gap-2 text-xs">
-                      <span className="flex-1 truncate">{g?.name} ({rub(goalSaved(s, id))})</span>
-                      <Input className="h-8 w-24" inputMode="decimal" value={cut[id]} onChange={(e) => setCut({ ...cut, [id]: e.target.value })} />
-                    </label>
-                  );
-                })}
-                {sum < over && <p className="text-xs text-muted-foreground">Осталось распределить {rub(over - sum)}.</p>}
-              </div>
-            );
-          })()}
+          {cut &&
+            (() => {
+              const over = overGoals(
+                s,
+                (card.trim() ? num(card) : cardNow) + (cash.trim() ? num(cash) : cashNow),
+              );
+              const sum = Object.values(cut).reduce((a, v) => a + (num(v) || 0), 0);
+              return (
+                <div className="space-y-2 rounded-lg bg-background p-2">
+                  <p className="text-xs">
+                    На целях лежит больше, чем накоплено. Из каких целей убрать {rub(over)}?
+                  </p>
+                  {Object.keys(cut).map((id) => {
+                    const g = s.goals?.find((x) => x.id === id);
+                    return (
+                      <label key={id} className="flex items-center gap-2 text-xs">
+                        <span className="flex-1 truncate">
+                          {g?.name} ({rub(goalSaved(s, id))})
+                        </span>
+                        <Input
+                          className="h-8 w-24"
+                          inputMode="decimal"
+                          value={cut[id]}
+                          onChange={(e) => setCut({ ...cut, [id]: e.target.value })}
+                        />
+                      </label>
+                    );
+                  })}
+                  {sum < over && (
+                    <p className="text-xs text-muted-foreground">
+                      Осталось распределить {rub(over - sum)}.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
         </div>
         <div className="space-y-2 rounded-xl bg-muted p-3 text-sm">
           <p className="font-medium">Взять из накоплений</p>
           <p className="text-xs text-muted-foreground">
             Например, из «Кубышки». Деньги прибавятся к карте или наличным и к «Сегодня свободно».
           </p>
-          <Input inputMode="decimal" placeholder="Сколько, ₽" value={take} onChange={(e) => setTake(e.target.value)} />
+          <Input
+            inputMode="decimal"
+            placeholder="Сколько, ₽"
+            value={take}
+            onChange={(e) => setTake(e.target.value)}
+          />
           <MethodToggle value={to} onChange={setTo} />
           {activeGoals(s).length > 0 && (
-            <select value={takeGoal} onChange={(e) => setTakeGoal(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+            <select
+              value={takeGoal}
+              onChange={(e) => setTakeGoal(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+            >
               <option value="">Без цели ({rub(unassigned(s))})</option>
-              {activeGoals(s).map((g) => <option key={g.id} value={g.id}>Из цели «{g.name}» ({rub(goalSaved(s, g.id))})</option>)}
+              {activeGoals(s).map((g) => (
+                <option key={g.id} value={g.id}>
+                  Из цели «{g.name}» ({rub(goalSaved(s, g.id))})
+                </option>
+              ))}
             </select>
           )}
           <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={back} onChange={(e) => setBack(e.target.checked)} /> Хочу вернуть до даты
-            (появится в Плане платежей)
+            <input type="checkbox" checked={back} onChange={(e) => setBack(e.target.checked)} />{" "}
+            Хочу вернуть до даты (появится в Плане платежей)
           </label>
           {back && <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />}
           <Button
             variant="secondary"
             className="w-full"
-            disabled={!(num(take) > 0) || (back && !date) || (!!takeGoal && num(take) > goalSaved(s, takeGoal))}
+            disabled={
+              !(num(take) > 0) ||
+              (back && !date) ||
+              (!!takeGoal && num(take) > goalSaved(s, takeGoal))
+            }
             onClick={() => {
-              const a = Math.min(num(take), s.cushion > 0 ? s.cushion : num(take), takeGoal ? goalSaved(s, takeGoal) : Infinity);
-              const { t, ob } = takeFromCushion(a, to, back ? date : undefined, takeGoal || undefined);
+              const a = Math.min(
+                num(take),
+                s.cushion > 0 ? s.cushion : num(take),
+                takeGoal ? goalSaved(s, takeGoal) : Infinity,
+              );
+              const { t, ob } = takeFromCushion(
+                a,
+                to,
+                back ? date : undefined,
+                takeGoal || undefined,
+              );
               undoable(`Из накоплений: ${rub(a)}`, () => {
                 removeTx(t.id);
-                if (ob) setState((x) => ({ ...x, obligations: x.obligations.filter((o) => o.id !== ob.id) }));
+                if (ob)
+                  setState((x) => ({
+                    ...x,
+                    obligations: x.obligations.filter((o) => o.id !== ob.id),
+                  }));
               });
               close();
             }}
@@ -1086,7 +1304,8 @@ function SavingsDialog({ open, onClose, s }: { open: boolean; onClose: () => voi
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          <b>Отложили с карты</b> — запишите трату в категории «Накопления» или нажмите «Отложить» у цели.
+          <b>Отложили с карты</b> — запишите трату в категории «Накопления» или нажмите «Отложить» у
+          цели.
         </p>
       </DialogContent>
     </Dialog>
@@ -1098,7 +1317,9 @@ function FamilyToggle({ value, onChange }: { value: boolean; onChange: (v: boole
     <label className="flex items-center justify-between gap-2 rounded-xl bg-muted px-3 py-2 text-sm">
       <span>
         Перевод внутри семьи
-        <span className="block text-xs text-muted-foreground">Остаток меняется, но в семейных итогах не считается</span>
+        <span className="block text-xs text-muted-foreground">
+          Остаток меняется, но в семейных итогах не считается
+        </span>
       </span>
       <Switch checked={value} onCheckedChange={onChange} />
     </label>
@@ -1138,14 +1359,20 @@ function BuyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
-        <Input placeholder="Что это (необязательно)" value={what} onChange={(e) => setWhat(e.target.value)} />
+        <Input
+          placeholder="Что это (необязательно)"
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+        />
         <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-input p-2 text-sm text-muted-foreground">
           {img ? (
             <img src={img.dataUrl} alt="" className="h-10 w-10 rounded object-cover" />
           ) : (
             <ImageUp className="h-4 w-4" />
           )}
-          <span className="flex-1 truncate">{img ? img.name : "Добавить фото или скриншот товара"}</span>
+          <span className="flex-1 truncate">
+            {img ? img.name : "Добавить фото или скриншот товара"}
+          </span>
           <input
             type="file"
             accept="image/*"
@@ -1160,8 +1387,13 @@ function BuyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
             }}
           />
         </label>
+        <p className="text-xs text-muted-foreground">
+          Изображение отправится в выбранный вами сервис ИИ.
+        </p>
         {!aiName(getState().ai) && (
-          <p className="text-xs text-muted-foreground">Для оценки нужен ключ ИИ — его можно добавить в Настройках.</p>
+          <p className="text-xs text-muted-foreground">
+            Для оценки нужен ключ ИИ — его можно добавить в Настройках.
+          </p>
         )}
         <Button disabled={!ok} onClick={go}>
           Оценить

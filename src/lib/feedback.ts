@@ -9,7 +9,11 @@ function db() {
     if (!familyConfigured()) throw new Error("not-configured");
     const sv = activeServer()!;
     client = createClient(sv.url, sv.key, {
-      auth: { persistSession: false, autoRefreshToken: false, storageKey: "berezhny-feedback-noauth" },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        storageKey: "berezhny-feedback-noauth",
+      },
     });
   }
   return client;
@@ -21,19 +25,44 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
 }
 
 export type FbKind = "idea" | "bug" | "question";
-export const KIND_LABEL: Record<FbKind, string> = { idea: "Идея", bug: "Неудобно / ошибка", question: "Вопрос" };
-export type FbItem = { id: string; kind: FbKind; text: string; author: string; version: string; done: boolean; at: string };
+export const KIND_LABEL: Record<FbKind, string> = {
+  idea: "Идея",
+  bug: "Неудобно / ошибка",
+  question: "Вопрос",
+};
+export type FbItem = {
+  id: string;
+  kind: FbKind;
+  text: string;
+  author: string;
+  version: string;
+  done: boolean;
+  at: string;
+};
 
 const KEY = "berezhny-feedback-owner";
-export const ownerKey = () => (typeof localStorage === "undefined" ? null : localStorage.getItem(KEY));
-export const setOwnerKey = (k: string | null) => (k ? localStorage.setItem(KEY, k) : localStorage.removeItem(KEY));
+export const ownerKey = () =>
+  typeof localStorage === "undefined" ? null : localStorage.getItem(KEY);
+export const setOwnerKey = (k: string | null) =>
+  k ? localStorage.setItem(KEY, k) : localStorage.removeItem(KEY);
 
 export const feedbackApi = {
   send: (kind: FbKind, text: string, author: string, version: string) =>
-    rpc<void>("feedback_send", { p_kind: kind, p_text: text, p_author: author, p_version: version }),
-  login: (key: string) => rpc<"ok" | "bad" | "locked" | "no-owner">("feedback_login", { p_key: key }),
-  list: async (key: string) => { const r = await rpc<FbItem[] | null>("feedback_list", { p_key: key }); if (!r) throw new Error("not-owner"); return r; },
-  mark: (key: string, id: string, done: boolean) => rpc<void>("feedback_mark", { p_key: key, p_id: id, p_done: done }),
+    rpc<void>("feedback_send", {
+      p_kind: kind,
+      p_text: text,
+      p_author: author,
+      p_version: version,
+    }),
+  login: (key: string) =>
+    rpc<"ok" | "bad" | "locked" | "no-owner">("feedback_login", { p_key: key }),
+  list: async (key: string) => {
+    const r = await rpc<FbItem[] | null>("feedback_list", { p_key: key });
+    if (!r) throw new Error("not-owner");
+    return r;
+  },
+  mark: (key: string, id: string, done: boolean) =>
+    rpc<void>("feedback_mark", { p_key: key, p_id: id, p_done: done }),
   remove: (key: string, id: string) => rpc<void>("feedback_delete", { p_key: key, p_id: id }),
 };
 
@@ -41,6 +70,9 @@ export const feedbackApi = {
 export function report(items: FbItem[]) {
   return items
     .filter((i) => !i.done)
-    .map((i, n) => `${n + 1}. [${KIND_LABEL[i.kind]}] ${i.text}${i.author ? ` — ${i.author}` : ""} (v${i.version}, ${new Date(i.at).toLocaleDateString("ru-RU")})`)
+    .map(
+      (i, n) =>
+        `${n + 1}. [${KIND_LABEL[i.kind]}] ${i.text}${i.author ? ` — ${i.author}` : ""} (v${i.version}, ${new Date(i.at).toLocaleDateString("ru-RU")})`,
+    )
     .join("\n");
 }

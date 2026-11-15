@@ -6,13 +6,28 @@ const CACHE = "bb-runtime-" + VERSION;
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>
   e.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("bb-runtime-") && k !== CACHE).map((k) => caches.delete(k))))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith("bb-runtime-") && k !== CACHE)
+            .map((k) => caches.delete(k)),
+        ),
+      )
       .then(() => self.clients.claim()),
   ),
 );
-self.addEventListener("message", (e) => { if (e.data?.type === "SKIP_WAITING") self.skipWaiting(); });
-const put = (req, res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return res; };
+self.addEventListener("message", (e) => {
+  if (e.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+const put = (req, res) => {
+  if (res.ok) {
+    const copy = res.clone();
+    caches.open(CACHE).then((c) => c.put(req, copy));
+  }
+  return res;
+};
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   const url = new URL(req.url);
@@ -21,10 +36,18 @@ self.addEventListener("fetch", (e) => {
   const isPage = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
   if (isPage) {
     const net = fetch(req, { cache: "no-store" }).then((r) => put(req, r));
-    const slow = new Promise((r) => setTimeout(r, 2500)).then(() => caches.match(req).then((h) => h || caches.match("/")));
+    const slow = new Promise((r) => setTimeout(r, 2500)).then(() =>
+      caches.match(req).then((h) => h || caches.match("/")),
+    );
     e.respondWith(
-      Promise.race([net.catch(() => null), slow]).then((r) => r || net)
-        .catch(() => caches.match(req).then((h) => h || caches.match("/")).then((h) => h || Response.error())),
+      Promise.race([net.catch(() => null), slow])
+        .then((r) => r || net)
+        .catch(() =>
+          caches
+            .match(req)
+            .then((h) => h || caches.match("/"))
+            .then((h) => h || Response.error()),
+        ),
     );
     e.waitUntil(net.catch(() => {}));
     return;
@@ -34,5 +57,13 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   const fresh = fetch(req, { cache: "no-cache" }).then((r) => put(req, r));
-  e.respondWith(caches.match(req).then((hit) => { if (hit) { e.waitUntil(fresh.catch(() => {})); return hit; } return fresh; }));
+  e.respondWith(
+    caches.match(req).then((hit) => {
+      if (hit) {
+        e.waitUntil(fresh.catch(() => {}));
+        return hit;
+      }
+      return fresh;
+    }),
+  );
 });

@@ -3,8 +3,16 @@ import { calc, getState, removeTx, replaceState, transfer, type State } from "@/
 
 const NOW = new Date(2026, 9, 16);
 const base = (): State => ({
-  version: 1, balance: 10000, cash: 2000, cushion: 0, txs: [], obligations: [], incomes: [{ id: "z", name: "З", amount: 1, day: 26 }], incomeAck: {},
-  ai: { provider: "none", apiKey: "", model: "" }, createdAt: new Date(2026, 9, 1).toISOString(),
+  version: 1,
+  balance: 10000,
+  cash: 2000,
+  cushion: 0,
+  txs: [],
+  obligations: [],
+  incomes: [{ id: "z", name: "З", amount: 1, day: 26 }],
+  incomeAck: {},
+  ai: { provider: "none", apiKey: "", model: "" },
+  createdAt: new Date(2026, 9, 1).toISOString(),
 });
 
 describe("card ↔ cash transfer", () => {

@@ -1,11 +1,36 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { calc, getState, replaceState, setCushion, type State } from "@/lib/budget";
-import { buyGoal, cutGoals, overGoals, goalSaved, mergeGoals, putToGoal, saveGoal, sharedGoals, unassigned } from "@/lib/goals";
+import {
+  buyGoal,
+  cutGoals,
+  overGoals,
+  goalSaved,
+  mergeGoals,
+  putToGoal,
+  saveGoal,
+  sharedGoals,
+  unassigned,
+} from "@/lib/goals";
 
-const base = (): State => ({ version: 1, balance: 100000, cash: 0, cushion: 0, txs: [], obligations: [], incomes: [], incomeAck: {}, ai: { provider: "none", apiKey: "", model: "" }, createdAt: "2026-10-01T00:00:00Z" });
+const base = (): State => ({
+  version: 1,
+  balance: 100000,
+  cash: 0,
+  cushion: 0,
+  txs: [],
+  obligations: [],
+  incomes: [],
+  incomeAck: {},
+  ai: { provider: "none", apiKey: "", model: "" },
+  createdAt: "2026-10-01T00:00:00Z",
+});
 
 describe("savings goals", () => {
-  beforeEach(() => { localStorage.clear(); replaceState(base()); setCushion(50000); });
+  beforeEach(() => {
+    localStorage.clear();
+    replaceState(base());
+    setCushion(50000);
+  });
 
   it("creating a goal changes neither free today nor savings", () => {
     const before = calc(getState()).freeToday;
@@ -69,7 +94,11 @@ describe("savings goals", () => {
 });
 
 describe("family goals", () => {
-  beforeEach(() => { localStorage.clear(); replaceState(base()); setCushion(50000); });
+  beforeEach(() => {
+    localStorage.clear();
+    replaceState(base());
+    setCushion(50000);
+  });
 
   it("only family goals leave the phone, with my own part", () => {
     saveGoal({ name: "Личное", target: 1000 });
@@ -82,7 +111,9 @@ describe("family goals", () => {
 
   it("partner's newer edit is taken, money untouched", () => {
     const id = saveGoal({ name: "Отпуск", target: 100000, family: true });
-    const merged = mergeGoals(getState(), [[{ id, name: "Отпуск", target: 120000, updatedAt: "2999-01-01", saved: 15000 }]]);
+    const merged = mergeGoals(getState(), [
+      [{ id, name: "Отпуск", target: 120000, updatedAt: "2999-01-01", saved: 15000 }],
+    ]);
     expect(merged?.[0]?.target).toBe(120000);
     expect(getState().cushion).toBe(50000);
   });

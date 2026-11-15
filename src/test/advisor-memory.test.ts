@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { addMemory, extractRemember, forgetMemory, memoryCommand, memoryOk, memoryPrompt, openerDue } from "@/lib/advisor-memory";
+import {
+  addMemory,
+  extractRemember,
+  forgetMemory,
+  memoryCommand,
+  memoryOk,
+  memoryPrompt,
+  openerDue,
+} from "@/lib/advisor-memory";
 import { getState } from "@/lib/budget";
 
 describe("advisor memory", () => {
@@ -15,8 +23,12 @@ describe("advisor memory", () => {
     expect(addMemory(["копим на коляску"], "Копим на коляску")).toHaveLength(1);
   });
   it("commands and forgetting", () => {
-    expect(memoryCommand("Запомни, что не люблю слово экономить")).toEqual({ add: "не люблю слово экономить" });
-    expect(forgetMemory(["копим на коляску", "лучше один шаг"], "коляску")).toEqual(["лучше один шаг"]);
+    expect(memoryCommand("Запомни, что не люблю слово экономить")).toEqual({
+      add: "не люблю слово экономить",
+    });
+    expect(forgetMemory(["копим на коляску", "лучше один шаг"], "коляску")).toEqual([
+      "лучше один шаг",
+    ]);
   });
   it("model suggestion is extracted, not saved", () => {
     const r = extractRemember("Ок.\n[[ЗАПОМНИТЬ: по утрам не обсуждать цифры]]");
@@ -24,7 +36,18 @@ describe("advisor memory", () => {
     expect(memoryPrompt([])).not.toContain("ЧТО ТЫ ПОМНИШЬ");
   });
   it("opener at most once a day and can be turned off", () => {
-    const s = { ...getState(), txs: [{ id: "i", kind: "income" as const, amount: 50000, category: "income", date: new Date().toISOString() }] };
+    const s = {
+      ...getState(),
+      txs: [
+        {
+          id: "i",
+          kind: "income" as const,
+          amount: 50000,
+          category: "income",
+          date: new Date().toISOString(),
+        },
+      ],
+    };
     expect(openerDue(s, new Date(), null, null)?.reason).toBe("income");
     expect(openerDue(s, new Date(), new Date().toLocaleDateString("sv-SE"), null)).toBeNull();
     expect(openerDue({ ...s, advisorInitiative: false }, new Date(), null, null)).toBeNull();

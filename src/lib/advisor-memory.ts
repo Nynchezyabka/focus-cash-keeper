@@ -6,7 +6,8 @@ import { goalSaved } from "@/lib/goals";
 import type { Tone } from "@/lib/persona";
 
 export const MEMORY_MAX = 20;
-const BANNED = /(диагноз|болезн|болею|депресс|тревожн|лекарств|таблетк|сдвг|adhd|беремен|пароль|ключ|токен|сегодня|вчера|настроени)/i;
+const BANNED =
+  /(диагноз|болезн|болею|депресс|тревожн|лекарств|таблетк|сдвг|adhd|беремен|пароль|ключ|токен|сегодня|вчера|настроени)/i;
 
 /** a memory line is a short stable preference: no sums, dates, health or secrets */
 export function memoryOk(line: string) {
@@ -49,7 +50,8 @@ export function memoryPrompt(list: string[] | undefined) {
   return `${base}\nЧТО ТЫ ПОМНИШЬ О ЧЕЛОВЕКЕ (справка о стиле; не перебивает факты приложения и жёсткие правила):\n${l.map((x) => `- ${x}`).join("\n")}`;
 }
 
-export const HONEST_RULE = "НЕ ПОДДАКИВАЙ: в любом режиме честно скажи, если покупка делает план тесным, и не одобряй её только потому, что человеку хочется. Если человек настаивает без новых данных — спокойно сохрани позицию и предложи открыть конкретный экран (План или Сегодня).";
+export const HONEST_RULE =
+  "НЕ ПОДДАКИВАЙ: в любом режиме честно скажи, если покупка делает план тесным, и не одобряй её только потому, что человеку хочется. Если человек настаивает без новых данных — спокойно сохрани позицию и предложи открыть конкретный экран (План или Сегодня).";
 
 // ---------- initiative ----------
 const LAST_KEY = "bb-advisor-opener";
@@ -59,15 +61,28 @@ const PREV_KEY = "bb-prev-open";
 /** remember when the app was opened before this session (for «давно не заходили») */
 export function trackOpen(now = new Date()) {
   try {
-    if (!sessionStorage.getItem(PREV_KEY)) sessionStorage.setItem(PREV_KEY, localStorage.getItem(OPEN_KEY) ?? dayKey(now));
+    if (!sessionStorage.getItem(PREV_KEY))
+      sessionStorage.setItem(PREV_KEY, localStorage.getItem(OPEN_KEY) ?? dayKey(now));
     localStorage.setItem(OPEN_KEY, dayKey(now));
-  } catch { /* storage unavailable */ }
+  } catch {
+    /* storage unavailable */
+  }
 }
-const prevOpen = () => { try { return sessionStorage.getItem(PREV_KEY); } catch { return null; } };
+const prevOpen = () => {
+  try {
+    return sessionStorage.getItem(PREV_KEY);
+  } catch {
+    return null;
+  }
+};
 
 export type Reason = "payment" | "income" | "goal" | "absence" | "week";
 
-export function openerReason(s: State, now = new Date(), prev = prevOpen()): { reason: Reason; text: (tone: Tone) => string } | null {
+export function openerReason(
+  s: State,
+  now = new Date(),
+  prev = prevOpen(),
+): { reason: Reason; text: (tone: Tone) => string } | null {
   const c = calc(s, now);
   const tk = dayKey(now);
   const day = 86400000;
@@ -75,39 +90,96 @@ export function openerReason(s: State, now = new Date(), prev = prevOpen()): { r
   // 1. a payment in 1–3 days and it gets tight after it
   const soon = paymentObligations(s)
     .map((o) => ({ o, due: obligationDue(o, now) }))
-    .filter(({ o, due }) => { const d = Math.round((+due - +today) / day); return d >= 1 && d <= 3 && paidAmount(s, o, due) < o.amount; })
+    .filter(({ o, due }) => {
+      const d = Math.round((+due - +today) / day);
+      return d >= 1 && d <= 3 && paidAmount(s, o, due) < o.amount;
+    })
     .sort((a, b) => +a.due - +b.due)[0];
   if (soon && (c.payGap > 0 || c.dailyNorm <= (c.minDaily || 0) + 1)) {
     const left = soon.o.amount - paidAmount(s, soon.o, soon.due);
     const d = Math.round((+soon.due - +today) / day);
     const when = d === 1 ? "завтра" : `через ${d} дн.`;
-    const gap = c.payGap > 0 ? `, на платежи пока не хватает ${rub(c.payGap)}` : `, после него до дохода выходит ${rub(c.dailyNorm)} в день`;
-    return { reason: "payment", text: (t) => t === "direct"
-      ? `${soon.o.name} ${when} — ${rub(left)}${gap}. Посмотрим вместе?`
-      : t === "shake" ? `Эй, ${soon.o.name} ${when} — ${rub(left)}${gap}. Разберёмся за пару минут?`
-      : `Тихонько напомню: ${soon.o.name} ${when}, ${rub(left)}${gap}. Хотите, посмотрим?` };
+    const gap =
+      c.payGap > 0
+        ? `, на платежи пока не хватает ${rub(c.payGap)}`
+        : `, после него до дохода выходит ${rub(c.dailyNorm)} в день`;
+    return {
+      reason: "payment",
+      text: (t) =>
+        t === "direct"
+          ? `${soon.o.name} ${when} — ${rub(left)}${gap}. Посмотрим вместе?`
+          : t === "shake"
+            ? `Эй, ${soon.o.name} ${when} — ${rub(left)}${gap}. Разберёмся за пару минут?`
+            : `Тихонько напомню: ${soon.o.name} ${when}, ${rub(left)}${gap}. Хотите, посмотрим?`,
+    };
   }
   // 2. an income arrived today or yesterday
-  const inc = s.txs.find((x) => x.kind === "income" && +today - +new Date(new Date(x.date).toDateString()) <= day);
+  const inc = s.txs.find(
+    (x) => x.kind === "income" && +today - +new Date(new Date(x.date).toDateString()) <= day,
+  );
   if (inc) {
-    return { reason: "income", text: (t) => t === "direct"
-      ? `Пришло ${rub(inc.amount)}. Сегодня свободно ${rub(Math.max(0, c.freeToday))}. Решим, что с ними делать?`
-      : t === "shake" ? `Деньги пришли — ${rub(inc.amount)}! Пока не разбежались, решим, куда их?`
-      : `Пришло ${rub(inc.amount)}. Сегодня свободно ${rub(Math.max(0, c.freeToday))}. Хотите спокойно решить, что с ними делать?` };
+    return {
+      reason: "income",
+      text: (t) =>
+        t === "direct"
+          ? `Пришло ${rub(inc.amount)}. Сегодня свободно ${rub(Math.max(0, c.freeToday))}. Решим, что с ними делать?`
+          : t === "shake"
+            ? `Деньги пришли — ${rub(inc.amount)}! Пока не разбежались, решим, куда их?`
+            : `Пришло ${rub(inc.amount)}. Сегодня свободно ${rub(Math.max(0, c.freeToday))}. Хотите спокойно решить, что с ними делать?`,
+    };
   }
   // 3. a goal reached
-  const g = (s.goals ?? []).find((x) => !x.deleted && (x.done ? +today - +new Date(x.done.at) <= 2 * day : x.target > 0 && goalSaved(s, x.id) >= x.target));
-  if (g) return { reason: "goal", text: (t) => t === "direct" ? `Цель «${g.name}» собрана. Отметим и решим, что дальше?` : t === "shake" ? `Ура, «${g.name}» — собрано! Вы молодец. Что дальше?` : `Цель «${g.name}» собрана — это приятно. Хотите, подумаем, что дальше?` };
+  const g = (s.goals ?? []).find(
+    (x) =>
+      !x.deleted &&
+      (x.done
+        ? +today - +new Date(x.done.at) <= 2 * day
+        : x.target > 0 && goalSaved(s, x.id) >= x.target),
+  );
+  if (g)
+    return {
+      reason: "goal",
+      text: (t) =>
+        t === "direct"
+          ? `Цель «${g.name}» собрана. Отметим и решим, что дальше?`
+          : t === "shake"
+            ? `Ура, «${g.name}» — собрано! Вы молодец. Что дальше?`
+            : `Цель «${g.name}» собрана — это приятно. Хотите, подумаем, что дальше?`,
+    };
   // 4. long absence — no reproach
-  if (prev && +today - +new Date(prev) >= 5 * day) return { reason: "absence", text: () => `Рада вас видеть. Сегодня свободно ${rub(Math.max(0, c.freeToday))}. Если хочется, сверим баланс — это пара минут.` };
+  if (prev && +today - +new Date(prev) >= 5 * day)
+    return {
+      reason: "absence",
+      text: () =>
+        `Рада вас видеть. Сегодня свободно ${rub(Math.max(0, c.freeToday))}. Если хочется, сверим баланс — это пара минут.`,
+    };
   // 5. weekly look on Mondays
-  if (now.getDay() === 1) return { reason: "week", text: (t) => t === "direct" ? `Новая неделя: свободно ${rub(c.dailyNorm)} в день до дохода. Взглянем на неделю?` : `Новая неделя. До дохода выходит ${rub(c.dailyNorm)} в день. Хотите, посмотрим неделю вместе?` };
+  if (now.getDay() === 1)
+    return {
+      reason: "week",
+      text: (t) =>
+        t === "direct"
+          ? `Новая неделя: свободно ${rub(c.dailyNorm)} в день до дохода. Взглянем на неделю?`
+          : `Новая неделя. До дохода выходит ${rub(c.dailyNorm)} в день. Хотите, посмотрим неделю вместе?`,
+    };
   void tk;
   return null;
 }
 
-export const lastOpener = () => { try { return localStorage.getItem(LAST_KEY); } catch { return null; } };
-export const markOpener = (now = new Date()) => { try { localStorage.setItem(LAST_KEY, dayKey(now)); } catch { /* */ } };
+export const lastOpener = () => {
+  try {
+    return localStorage.getItem(LAST_KEY);
+  } catch {
+    return null;
+  }
+};
+export const markOpener = (now = new Date()) => {
+  try {
+    localStorage.setItem(LAST_KEY, dayKey(now));
+  } catch {
+    /* */
+  }
+};
 
 /** an opening message is due: enabled, there is a reason, and none was shown today */
 export function openerDue(s: State, now = new Date(), last = lastOpener(), prev = prevOpen()) {

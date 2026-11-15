@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { importKey, newPairCode, newVaultKey, normCode, open, pairKey, seal, showCode } from "@/lib/vault-crypto";
+import {
+  importKey,
+  newPairCode,
+  newVaultKey,
+  normCode,
+  open,
+  pairKey,
+  seal,
+  showCode,
+} from "@/lib/vault-crypto";
 
 describe("device sync encryption", () => {
   it("the budget opens only with the same key", async () => {

@@ -11,12 +11,19 @@ export const AI_HOSTS = [
 ] as const;
 export const OTHER_HOSTS = ["*.supabase.co", "www.cbr-xml-daily.ru"] as const;
 
-export const CONNECT_SRC = ["'self'", ...[...OTHER_HOSTS, ...AI_HOSTS].map((h) => `https://${h}`)].join(" ");
+export const CONNECT_SRC = [
+  "'self'",
+  ...[...OTHER_HOSTS, ...AI_HOSTS].map((h) => `https://${h}`),
+].join(" ");
 
 /** true when the browser policy lets the app send requests to this AI address */
 export function aiHostAllowed(url: string) {
   let u: URL;
-  try { u = new URL(url.trim()); } catch { return false; }
+  try {
+    u = new URL(url.trim());
+  } catch {
+    return false;
+  }
   if (u.protocol !== "https:" || (u.port && u.port !== "443")) return false;
   return (AI_HOSTS as readonly string[]).includes(u.hostname.toLowerCase());
 }

@@ -21,14 +21,68 @@ export interface Tx {
   goal?: string; // savings goal this money belongs to (kind "goal" = move inside savings, nothing else changes)
 }
 /** a savings goal is only a label on part of the savings: no separate account */
-export interface Goal { id: string; name: string; target: number; color?: string | undefined; date?: string | undefined; done?: { at: string; price: number; by?: string } | undefined; family?: boolean; updatedAt?: string; deleted?: boolean | undefined; settled?: "spent" | "kept" }
+export interface Goal {
+  id: string;
+  name: string;
+  target: number;
+  color?: string | undefined;
+  date?: string | undefined;
+  done?: { at: string; price: number; by?: string } | undefined;
+  family?: boolean;
+  updatedAt?: string;
+  deleted?: boolean | undefined;
+  settled?: "spent" | "kept";
+}
 export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
-export interface Obligation { id: string; name: string; amount: number; day: number; category: string; debtFee?: DebtFee; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
-export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; once?: string | undefined /* YYYY-MM-DD: one-off income */; skip?: string | undefined /* "YYYY-MM": not counted this month */; start?: string | undefined /* YYYY-MM-DD: regular income begins */; end?: string | undefined /* YYYY-MM-DD: last possible date */ }
+export interface Obligation {
+  id: string;
+  name: string;
+  amount: number;
+  day: number;
+  category: string;
+  debtFee?: DebtFee;
+  schedule?: ScheduleRow[];
+  once?: string;
+  nextOn?: string | undefined;
+  method?: Method;
+  from?: string;
+  loanTx?: string;
+  goal?: string | undefined;
+}
+export interface Income {
+  id: string;
+  name: string;
+  amount: number;
+  day: number;
+  method?: Method;
+  nextOn?: string | undefined;
+  period?: "monthly" | "biweekly";
+  once?: string | undefined /* YYYY-MM-DD: one-off income */;
+  skip?: string | undefined /* "YYYY-MM": not counted this month */;
+  start?: string | undefined /* YYYY-MM-DD: regular income begins */;
+  end?: string | undefined; /* YYYY-MM-DD: last possible date */
+}
 /** A user-defined AI service: any Base URL speaking OpenAI-compatible or Anthropic Messages API. Key stays on this device. */
-export interface AiConn { id: string; name: string; baseUrl: string; format: "openai" | "anthropic"; apiKey: string; model: string }
-export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; advisorApiKey?: string; mode?: "auto" | "always"; connections?: AiConn[]; connId?: string | undefined; advisorConnId?: string | undefined }
+export interface AiConn {
+  id: string;
+  name: string;
+  baseUrl: string;
+  format: "openai" | "anthropic";
+  apiKey: string;
+  model: string;
+}
+export interface AiSettings {
+  provider: "none" | "openai" | "openrouter" | "anthropic";
+  apiKey: string;
+  model: string;
+  advisorModel?: string;
+  advisorApiKey?: string;
+  mode?: "auto" | "always";
+  connections?: AiConn[];
+  connId?: string | undefined;
+  advisorConnId?: string | undefined;
+}
 
 export interface State {
   version: 1;
@@ -59,23 +113,156 @@ export interface State {
   createdAt: string;
 }
 
-export interface Category { id: string; name: string; group: Group; icon: string; keys: string[]; color?: string | undefined }
-export const COLORS = ["#7fb89a", "#e0a96d", "#6fa8dc", "#b49ad9", "#e48aa6", "#e07a5f", "#d4c46a", "#5fb7c4", "#8d8fd9", "#9cc56f", "#c79a7a", "#9aa5b1"];
-export const DEFAULT_CATEGORIES: Category[] = [
-  { id: "food", name: "Еда", group: "life", icon: "ShoppingBasket", keys: ["продукт", "магазин", "еда", "пятёроч", "пятероч", "перекрест", "лента", "вкусвилл", "хлеб", "молоко"] },
-  { id: "cafe", name: "Кафе и кофе", group: "life", icon: "Coffee", keys: ["кофе", "кафе", "круассан", "обед", "ресторан", "бар", "пицц", "шаурм", "доставк", "бистро", "bistro", "фастфуд"] },
-  { id: "taxi", name: "Транспорт", group: "life", icon: "Car", keys: ["такси", "taxi", "метро", "автобус", "бензин", "проезд", "каршер"] },
-  { id: "shop", name: "Покупки", group: "life", icon: "ShoppingBag", keys: ["одежд", "озон", "ozon", "wb", "вайлдб", "покуп", "обув"] },
-  { id: "fun", name: "Хобби и радости", group: "life", icon: "Sparkles", keys: ["кино", "книг", "игр", "хобби", "подарок", "цвет", "концерт", "ферм", "зоопарк", "парк", "музей", "выставк"] },
-  { id: "health", name: "Лекарства", group: "must", icon: "Pill", keys: ["аптек", "лекарств", "врач", "анализ"] },
-  { id: "home", name: "ЖКУ и аренда", group: "must", icon: "House", keys: ["жку", "аренд", "квартплат", "свет", "газ"] },
-  { id: "phone", name: "Связь и подписки", group: "must", icon: "Smartphone", keys: ["связь", "телефон", "интернет", "подписк"] },
-  { id: "loan", name: "Кредиты и рассрочки", group: "must", icon: "Landmark", keys: ["кредит", "рассроч", "долг", "долями", "сплит"] },
-  { id: "kids", name: "Сад и школа", group: "must", icon: "School", keys: ["сад", "школ", "кружок", "госуслуг", "gosuslugi"] },
-  { id: "savings", name: "Накопления", group: "safe", icon: "PiggyBank", keys: ["накоп", "копилк", "вклад"] },
-  { id: "unexpected", name: "Непредвиденное", group: "safe", icon: "Umbrella", keys: ["ремонт", "штраф", "сломал"] },
+export interface Category {
+  id: string;
+  name: string;
+  group: Group;
+  icon: string;
+  keys: string[];
+  color?: string | undefined;
+}
+export const COLORS = [
+  "#7fb89a",
+  "#e0a96d",
+  "#6fa8dc",
+  "#b49ad9",
+  "#e48aa6",
+  "#e07a5f",
+  "#d4c46a",
+  "#5fb7c4",
+  "#8d8fd9",
+  "#9cc56f",
+  "#c79a7a",
+  "#9aa5b1",
 ];
-export const GROUPS: Record<Group, string> = { must: "Обязательное", safe: "Безопасность", life: "Жизнь и радости" };
+export const DEFAULT_CATEGORIES: Category[] = [
+  {
+    id: "food",
+    name: "Еда",
+    group: "life",
+    icon: "ShoppingBasket",
+    keys: [
+      "продукт",
+      "магазин",
+      "еда",
+      "пятёроч",
+      "пятероч",
+      "перекрест",
+      "лента",
+      "вкусвилл",
+      "хлеб",
+      "молоко",
+    ],
+  },
+  {
+    id: "cafe",
+    name: "Кафе и кофе",
+    group: "life",
+    icon: "Coffee",
+    keys: [
+      "кофе",
+      "кафе",
+      "круассан",
+      "обед",
+      "ресторан",
+      "бар",
+      "пицц",
+      "шаурм",
+      "доставк",
+      "бистро",
+      "bistro",
+      "фастфуд",
+    ],
+  },
+  {
+    id: "taxi",
+    name: "Транспорт",
+    group: "life",
+    icon: "Car",
+    keys: ["такси", "taxi", "метро", "автобус", "бензин", "проезд", "каршер"],
+  },
+  {
+    id: "shop",
+    name: "Покупки",
+    group: "life",
+    icon: "ShoppingBag",
+    keys: ["одежд", "озон", "ozon", "wb", "вайлдб", "покуп", "обув"],
+  },
+  {
+    id: "fun",
+    name: "Хобби и радости",
+    group: "life",
+    icon: "Sparkles",
+    keys: [
+      "кино",
+      "книг",
+      "игр",
+      "хобби",
+      "подарок",
+      "цвет",
+      "концерт",
+      "ферм",
+      "зоопарк",
+      "парк",
+      "музей",
+      "выставк",
+    ],
+  },
+  {
+    id: "health",
+    name: "Лекарства",
+    group: "must",
+    icon: "Pill",
+    keys: ["аптек", "лекарств", "врач", "анализ"],
+  },
+  {
+    id: "home",
+    name: "ЖКУ и аренда",
+    group: "must",
+    icon: "House",
+    keys: ["жку", "аренд", "квартплат", "свет", "газ"],
+  },
+  {
+    id: "phone",
+    name: "Связь и подписки",
+    group: "must",
+    icon: "Smartphone",
+    keys: ["связь", "телефон", "интернет", "подписк"],
+  },
+  {
+    id: "loan",
+    name: "Кредиты и рассрочки",
+    group: "must",
+    icon: "Landmark",
+    keys: ["кредит", "рассроч", "долг", "долями", "сплит"],
+  },
+  {
+    id: "kids",
+    name: "Сад и школа",
+    group: "must",
+    icon: "School",
+    keys: ["сад", "школ", "кружок", "госуслуг", "gosuslugi"],
+  },
+  {
+    id: "savings",
+    name: "Накопления",
+    group: "safe",
+    icon: "PiggyBank",
+    keys: ["накоп", "копилк", "вклад"],
+  },
+  {
+    id: "unexpected",
+    name: "Непредвиденное",
+    group: "safe",
+    icon: "Umbrella",
+    keys: ["ремонт", "штраф", "сломал"],
+  },
+];
+export const GROUPS: Record<Group, string> = {
+  must: "Обязательное",
+  safe: "Безопасность",
+  life: "Жизнь и радости",
+};
 export const cats = (s: State = getState()): Category[] => s.categories ?? DEFAULT_CATEGORIES;
 const FALLBACK: Category = { id: "other", name: "Другое", group: "life", icon: "Circle", keys: [] };
 export const cat = (id: string) => cats().find((c) => c.id === id) ?? FALLBACK;
@@ -85,7 +272,8 @@ export const GROUP_SHADES: Record<Group, string[]> = {
   safe: Array.from({ length: 5 }, (_, i) => `var(--group-safe-${i})`),
   life: Array.from({ length: 6 }, (_, i) => `var(--group-life-${i})`),
 };
-export const groupColor = (g: Group, s: State = getState()) => customColor(s.groupAppearance?.[g]?.color) ?? GROUP_SHADES[g][0] ?? "var(--primary)";
+export const groupColor = (g: Group, s: State = getState()) =>
+  customColor(s.groupAppearance?.[g]?.color) ?? GROUP_SHADES[g][0] ?? "var(--primary)";
 export const catColor = (c: Category, s: State = getState()) => {
   const appearance = s.groupAppearance?.[c.group];
   const chosen = customColor(c.color);
@@ -95,16 +283,26 @@ export const catColor = (c: Category, s: State = getState()) => {
   const index = defaults.findIndex((x) => x.id === c.id);
   const hash = Array.from(c.id).reduce((a, ch) => a + ch.charCodeAt(0), 0);
   const base = customColor(appearance?.color);
-  if (appearance?.shades && base) return `color-mix(in oklch, ${base} var(--category-shade-${(index >= 0 ? index : hash) % 6}), var(--category-shade-base))`;
+  if (appearance?.shades && base)
+    return `color-mix(in oklch, ${base} var(--category-shade-${(index >= 0 ? index : hash) % 6}), var(--category-shade-base))`;
   if (base) return base;
   return shades[(index >= 0 ? index : hash) % shades.length] ?? "var(--primary)";
 };
-export function saveCategories(list: Category[]) { setState((s) => ({ ...s, categories: list })); }
+export function saveCategories(list: Category[]) {
+  setState((s) => ({ ...s, categories: list }));
+}
 
 const KEY = "berezhny-budget-v1";
 const initial = (): State => ({
-  version: 1, balance: 0, cushion: 0, txs: [], obligations: [], incomes: [], incomeAck: {},
-  ai: { provider: "none", apiKey: "", model: "" }, createdAt: new Date().toISOString(),
+  version: 1,
+  balance: 0,
+  cushion: 0,
+  txs: [],
+  obligations: [],
+  incomes: [],
+  incomeAck: {},
+  ai: { provider: "none", apiKey: "", model: "" },
+  createdAt: new Date().toISOString(),
 });
 
 export const FUTURE_SCHEMA_ERROR = "future-schema";
@@ -113,7 +311,8 @@ export function migrateState(data: unknown): State {
   if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("invalid-state");
   const source = data as Partial<State>;
   const version = source.version ?? 1;
-  if (typeof version !== "number" || !Number.isInteger(version) || version < 1) throw new Error("invalid-state");
+  if (typeof version !== "number" || !Number.isInteger(version) || version < 1)
+    throw new Error("invalid-state");
   if (version > 1) throw new Error(FUTURE_SCHEMA_ERROR);
   return { ...initial(), ...source, version: 1 };
 }
@@ -124,7 +323,11 @@ const listeners = new Set<() => void>();
 function load(): State {
   if (state) return state;
   let raw: string | null = null;
-  try { raw = localStorage.getItem(KEY); } catch { /* storage unavailable */ }
+  try {
+    raw = localStorage.getItem(KEY);
+  } catch {
+    /* storage unavailable */
+  }
   try {
     state = raw ? migrateState(JSON.parse(raw)) : initial();
   } catch (e) {
@@ -134,39 +337,82 @@ function load(): State {
       saveBlocked = true;
     } else {
       // never silently overwrite unreadable data: keep the original text aside for recovery
-      try { localStorage.setItem(`${CORRUPT_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}`, raw ?? ""); } catch { saveBlocked = true; }
+      try {
+        localStorage.setItem(
+          `${CORRUPT_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}`,
+          raw ?? "",
+        );
+      } catch {
+        saveBlocked = true;
+      }
     }
     state = initial();
   }
   return state!;
 }
 const CORRUPT_PREFIX = "berezhny-budget-corrupt-";
-const corruptKeys = () => { const out: string[] = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k?.startsWith(CORRUPT_PREFIX)) out.push(k); } return out.sort(); };
+const corruptKeys = () => {
+  const out: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith(CORRUPT_PREFIX)) out.push(k);
+  }
+  return out.sort();
+};
 /** set when the damaged original could not be kept aside — then nothing overwrites it */
 let saveBlocked = false;
 /** text of the budget that could not be read at launch, or null */
 export function unreadableBackup(): string | null {
   if (futureRaw !== null) return futureRaw;
-  try { const k = corruptKeys().at(-1); return k ? localStorage.getItem(k) : null; } catch { return null; }
+  try {
+    const k = corruptKeys().at(-1);
+    return k ? localStorage.getItem(k) : null;
+  } catch {
+    return null;
+  }
 }
 export const newerBackup = () => futureRaw !== null;
 export function dismissUnreadableBackup() {
-  try { corruptKeys().forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+  try {
+    corruptKeys().forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* ignore */
+  }
 }
-export function getState() { return load(); }
+export function getState() {
+  return load();
+}
 /** test hook: forget the in-memory copy so the next read goes to storage */
-export function resetLoadedState() { state = null; futureRaw = null; saveBlocked = false; }
+export function resetLoadedState() {
+  state = null;
+  futureRaw = null;
+  saveBlocked = false;
+}
 export function setState(fn: (s: State) => State) {
   state = fn(load());
-  try { if (saveBlocked) throw new Error("blocked"); localStorage.setItem(KEY, JSON.stringify(state)); }
-  catch { if (typeof window !== "undefined") window.dispatchEvent(new Event("budget-save-failed")); }
+  try {
+    if (saveBlocked) throw new Error("blocked");
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("budget-save-failed"));
+  }
   listeners.forEach((l) => l());
 }
-export function replaceState(s: State) { setState(() => migrateState(s)); }
-export function subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; }
+export function replaceState(s: State) {
+  setState(() => migrateState(s));
+}
+export function subscribe(l: () => void) {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+}
 export function useBudget(): State | null {
   return useSyncExternalStore(
-    (l) => { listeners.add(l); return () => listeners.delete(l); },
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
     () => load(),
     () => null,
   );
@@ -176,12 +422,19 @@ export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().to
 export const rub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`;
 
 // ---------- dates ----------
-export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const dayKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 export const periodOf = (d: Date) => dayKey(d).slice(0, 7);
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-const parseKey = (k: string) => { const [y = 2000, m = 1, d = 1] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+const parseKey = (k: string) => {
+  const [y = 2000, m = 1, d = 1] = k.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
 /** a YYYY-MM-DD key or undefined — AI and screenshots may return «15 ноября» or empty dates */
-export const safeKey = (k?: string) => (k && /^\d{4}-\d{2}-\d{2}$/.test(k.slice(0, 10)) && !Number.isNaN(+parseKey(k.slice(0, 10))) ? k.slice(0, 10) : undefined);
+export const safeKey = (k?: string) =>
+  k && /^\d{4}-\d{2}-\d{2}$/.test(k.slice(0, 10)) && !Number.isNaN(+parseKey(k.slice(0, 10)))
+    ? k.slice(0, 10)
+    : undefined;
 function onDay(y: number, m: number, day: number) {
   const last = new Date(y, m + 1, 0).getDate();
   return new Date(y, m, Math.min(day, last));
@@ -189,7 +442,10 @@ function onDay(y: number, m: number, day: number) {
 /** a regular income counts only inside its optional «с … по …» period */
 export const incomeActive = (inc: Income, d: Date) => {
   const k = dayKey(d);
-  return (!inc.start || !safeKey(inc.start) || k >= inc.start) && (!inc.end || !safeKey(inc.end) || k <= inc.end);
+  return (
+    (!inc.start || !safeKey(inc.start) || k >= inc.start) &&
+    (!inc.end || !safeKey(inc.end) || k <= inc.end)
+  );
 };
 /** occurrences of an income around today */
 function incomeDates(inc: Income, from: Date, count = 4): Date[] {
@@ -207,13 +463,25 @@ function incomeDates(inc: Income, from: Date, count = 4): Date[] {
 /** nearest future date of one income, respecting a moved date and early confirmation */
 export function incomeUpcoming(s: State, inc: Income, now = new Date()): Date | null {
   const today = startOfDay(now);
-  if (inc.nextOn && safeKey(inc.nextOn)) { const d = parseKey(inc.nextOn); return d > today ? d : null; }
+  if (inc.nextOn && safeKey(inc.nextOn)) {
+    const d = parseKey(inc.nextOn);
+    return d > today ? d : null;
+  }
   const ack = s.incomeAck[inc.id];
-  return incomeDates(inc, today).find((x) => x > today && (!ack || dayKey(x) > ack) && periodOf(x) !== inc.skip) ?? null;
+  return (
+    incomeDates(inc, today).find(
+      (x) => x > today && (!ack || dayKey(x) > ack) && periodOf(x) !== inc.skip,
+    ) ?? null
+  );
 }
 export function nextIncome(s: State, now = new Date()): { date: Date; income?: Income } {
   const today = startOfDay(now);
-  if (s.nextIncomeOverride && safeKey(s.nextIncomeOverride) && parseKey(s.nextIncomeOverride) > today) return { date: parseKey(s.nextIncomeOverride) };
+  if (
+    s.nextIncomeOverride &&
+    safeKey(s.nextIncomeOverride) &&
+    parseKey(s.nextIncomeOverride) > today
+  )
+    return { date: parseKey(s.nextIncomeOverride) };
   let best: { date: Date; income?: Income } | null = null;
   for (const inc of s.incomes) {
     const d = incomeUpcoming(s, inc, now);
@@ -230,7 +498,9 @@ export function pendingIncome(s: State, now = new Date()): { income: Income; dat
       if (parseKey(inc.nextOn) <= today) return { income: inc, date: inc.nextOn };
       continue;
     }
-    const past = incomeDates(inc, today).filter((d) => d <= today && d >= created && periodOf(d) !== inc.skip);
+    const past = incomeDates(inc, today).filter(
+      (d) => d <= today && d >= created && periodOf(d) !== inc.skip,
+    );
     const last = past[past.length - 1];
     if (!last) continue;
     const k = dayKey(last);
@@ -249,7 +519,9 @@ export function obligationDue(o: Obligation, now = new Date()) {
   return d >= today ? d : onDay(today.getFullYear(), today.getMonth() + 1, day);
 }
 export function paidAmount(s: State, o: Obligation, due: Date) {
-  return s.txs.filter((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due))).reduce((a, t) => a + t.amount, 0);
+  return s.txs
+    .filter((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due)))
+    .reduce((a, t) => a + t.amount, 0);
 }
 export function isPaid(s: State, o: Obligation, due: Date) {
   return paidAmount(s, o, due) >= o.amount;
@@ -257,40 +529,88 @@ export function isPaid(s: State, o: Obligation, due: Date) {
 /** part of a payment or debt paid now; the rest stays reserved */
 export function payPart(o: Obligation, amount: number, method: Method = o.method ?? "card") {
   const due = obligationDue(o);
-  return addTx({ kind: "expense", amount, category: o.category, note: `${o.name} (часть)`, obligationId: o.id, period: periodOf(due), method, ...(o.goal && o.category === "savings" ? { goal: o.goal } : {}) });
+  return addTx({
+    kind: "expense",
+    amount,
+    category: o.category,
+    note: `${o.name} (часть)`,
+    obligationId: o.id,
+    period: periodOf(due),
+    method,
+    ...(o.goal && o.category === "savings" ? { goal: o.goal } : {}),
+  });
 }
 /** planned income came early / was entered by hand: mark this month's occurrence handled */
 export function markIncomeArrived(s: State, inc: Income) {
   const p = pendingIncome(s);
-  const key = inc.nextOn ?? (p?.income.id === inc.id ? p.date : dayKey(incomeUpcoming(s, inc) ?? new Date()));
-  setState((x) => ({ ...x, incomeAck: { ...x.incomeAck, [inc.id]: key }, incomes: x.incomes.map((y) => (y.id === inc.id ? { ...y, nextOn: undefined } : y)) }));
+  const key =
+    inc.nextOn ?? (p?.income.id === inc.id ? p.date : dayKey(incomeUpcoming(s, inc) ?? new Date()));
+  setState((x) => ({
+    ...x,
+    incomeAck: { ...x.incomeAck, [inc.id]: key },
+    incomes: x.incomes.map((y) => (y.id === inc.id ? { ...y, nextOn: undefined } : y)),
+  }));
 }
 export function toggleIncomeSkip(id: string, period: string) {
-  setState((s) => ({ ...s, incomes: s.incomes.map((y) => (y.id === id ? { ...y, skip: y.skip === period ? undefined : period } : y)) }));
+  setState((s) => ({
+    ...s,
+    incomes: s.incomes.map((y) =>
+      y.id === id ? { ...y, skip: y.skip === period ? undefined : period } : y,
+    ),
+  }));
 }
 export function payObligation(o: Obligation, method: Method = o.method ?? "card") {
   const due = obligationDue(o);
-  const t = addTx({ kind: "expense", amount: o.amount, category: o.category, note: o.name, obligationId: o.id, period: periodOf(due), method, ...(o.goal && o.category === "savings" ? { goal: o.goal } : {}) });
-  if (o.nextOn) setState((s) => ({ ...s, obligations: s.obligations.map((x) => (x.id === o.id ? { ...x, nextOn: undefined } : x)) }));
+  const t = addTx({
+    kind: "expense",
+    amount: o.amount,
+    category: o.category,
+    note: o.name,
+    obligationId: o.id,
+    period: periodOf(due),
+    method,
+    ...(o.goal && o.category === "savings" ? { goal: o.goal } : {}),
+  });
+  if (o.nextOn)
+    setState((s) => ({
+      ...s,
+      obligations: s.obligations.map((x) => (x.id === o.id ? { ...x, nextOn: undefined } : x)),
+    }));
   return t;
 }
 /** income really arrived: record money, mark this occurrence handled, drop any moved date */
 export function confirmIncome(s: State, inc: Income, amount = inc.amount) {
   const p = pendingIncome(s);
-  const key = inc.nextOn ?? (p?.income.id === inc.id ? p.date : dayKey(incomeUpcoming(s, inc) ?? new Date()));
-  const t = addTx({ kind: "income", amount, category: "income", note: inc.name, method: inc.method ?? "card" });
+  const key =
+    inc.nextOn ?? (p?.income.id === inc.id ? p.date : dayKey(incomeUpcoming(s, inc) ?? new Date()));
+  const t = addTx({
+    kind: "income",
+    amount,
+    category: "income",
+    note: inc.name,
+    method: inc.method ?? "card",
+  });
   setState((x) => ({
-    ...x, nextIncomeOverride: undefined,
+    ...x,
+    nextIncomeOverride: undefined,
     incomeAck: { ...x.incomeAck, [inc.id]: key },
     incomes: x.incomes.map((y) => (y.id === inc.id ? { ...y, nextOn: undefined } : y)),
   }));
   return t;
 }
 export function moveIncome(id: string, date: string) {
-  setState((s) => ({ ...s, incomes: s.incomes.map((y) => (y.id === id ? { ...y, nextOn: date } : y)) }));
+  setState((s) => ({
+    ...s,
+    incomes: s.incomes.map((y) => (y.id === id ? { ...y, nextOn: date } : y)),
+  }));
 }
 export function moveObligation(id: string, date: string) {
-  setState((s) => ({ ...s, obligations: s.obligations.map((y) => (y.id === id ? (y.once ? { ...y, once: date } : { ...y, nextOn: date }) : y)) }));
+  setState((s) => ({
+    ...s,
+    obligations: s.obligations.map((y) =>
+      y.id === id ? (y.once ? { ...y, once: date } : { ...y, nextOn: date }) : y,
+    ),
+  }));
 }
 
 // ---------- core calc ----------
@@ -308,7 +628,9 @@ export function calc(s: State, now = new Date()) {
   const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0);
   const tk = dayKey(today);
   // every expense entered today counts (medicine too); only planned payments paid from the reserve do not
-  const todayLife = s.txs.filter((t) => t.kind === "expense" && !t.goal && !t.obligationId && dayKey(new Date(t.date)) === tk);
+  const todayLife = s.txs.filter(
+    (t) => t.kind === "expense" && !t.goal && !t.obligationId && dayKey(new Date(t.date)) === tk,
+  );
   const spentToday = todayLife.reduce((a, t) => a + t.amount, 0);
   const total = s.balance + (s.cash ?? 0);
   // life minimum comes first; "set aside" never exceeds real money
@@ -322,12 +644,15 @@ export function calc(s: State, now = new Date()) {
   // if later payments need part of today's money (incomes ahead are too small), spend a bit less now
   if (!s.nextIncomeOverride) {
     const first = forecast(s, 60, now, pool)[0];
-    if (first && first.perDay < dailyNorm) dailyNorm = Math.max(first.perDay, Math.min(minDaily, pool / days));
+    if (first && first.perDay < dailyNorm)
+      dailyNorm = Math.max(first.perDay, Math.min(minDaily, pool / days));
   }
   // money kept now for payments after the next income — shown in «Отложено на платежи», not hidden
   let ahead = Math.max(0, Math.round(pool - held - dailyNorm * days));
   if (ahead > 0) {
-    const later = forecast(s, 60, now, pool).flatMap((g) => g.events).filter((e) => e.kind === "payment" && !e.paid && e.date >= next.date);
+    const later = forecast(s, 60, now, pool)
+      .flatMap((g) => g.events)
+      .filter((e) => e.kind === "payment" && !e.paid && e.date >= next.date);
     for (const e of later) {
       if (ahead <= 0) break;
       const o = s.obligations.find((x) => x.id === e.refId);
@@ -346,8 +671,30 @@ export function calc(s: State, now = new Date()) {
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
-  const afterSpread = days > 1 ? Math.max(0, Math.min(dailyNorm * days - spentToday, rest - held) / (days - 1)) : 0;
-  return { next, days, reserve, held, reserved, saving, aheadHeld, aheadEven, spentToday, dailyNorm, freeToday, overspend, afterSpread, total, shortfall, payGap, minDaily, setAside, setAsideShort, todayKey: tk };
+  const afterSpread =
+    days > 1 ? Math.max(0, Math.min(dailyNorm * days - spentToday, rest - held) / (days - 1)) : 0;
+  return {
+    next,
+    days,
+    reserve,
+    held,
+    reserved,
+    saving,
+    aheadHeld,
+    aheadEven,
+    spentToday,
+    dailyNorm,
+    freeToday,
+    overspend,
+    afterSpread,
+    total,
+    shortfall,
+    payGap,
+    minDaily,
+    setAside,
+    setAsideShort,
+    todayKey: tk,
+  };
 }
 
 // ---------- actions ----------
@@ -364,7 +711,8 @@ export function addTx(t: Omit<Tx, "id" | "date"> & { date?: string }) {
 function move(s: State, t: Tx, sign: 1 | -1): Partial<State> {
   if (t.kind === "savings" || t.kind === "goal") return {};
   if (t.kind === "transfer") {
-    const d = t.amount * sign, fromCash = t.method === "cash";
+    const d = t.amount * sign,
+      fromCash = t.method === "cash";
     return { balance: s.balance + (fromCash ? d : -d), cash: (s.cash ?? 0) + (fromCash ? -d : d) };
   }
   const d = delta(t) * sign;
@@ -375,7 +723,10 @@ function cushionMove(s: State, t: Tx, sign: 1 | -1): Partial<State> {
   const d = cushionDelta(t) * sign;
   if (!d) return {};
   const where = t.method;
-  return { cushion: s.cushion + d, ...(where === "cash" ? { cushionCash: (s.cushionCash ?? 0) + d } : {}) };
+  return {
+    cushion: s.cushion + d,
+    ...(where === "cash" ? { cushionCash: (s.cushionCash ?? 0) + d } : {}),
+  };
 }
 function cushionDelta(t: Tx) {
   if (t.kind === "expense" && t.category === "savings") return t.amount;
@@ -417,22 +768,57 @@ export function updateTx(id: string, patch: Partial<Omit<Tx, "id">>) {
 /** Move money between card and cash: total and «Сегодня свободно» stay the same. `from` = source wallet. */
 export function transfer(amount: number, from: Method) {
   const st = getState();
-  const have = from === "cash" ? st.cash ?? 0 : st.balance;
+  const have = from === "cash" ? (st.cash ?? 0) : st.balance;
   const a = Math.round(amount);
   if (!(a > 0) || a > have) return null;
-  return addTx({ kind: "transfer", amount: a, category: "adjust", note: from === "cash" ? "Наличные → на карту" : "Снятие наличных", method: from });
+  return addTx({
+    kind: "transfer",
+    amount: a,
+    category: "adjust",
+    note: from === "cash" ? "Наличные → на карту" : "Снятие наличных",
+    method: from,
+  });
 }
 export function reconcile(actual: number, method: Method = "card") {
   const st = getState();
-  const diff = actual - (method === "cash" ? st.cash ?? 0 : st.balance);
+  const diff = actual - (method === "cash" ? (st.cash ?? 0) : st.balance);
   if (diff === 0) return null;
-  return addTx({ kind: "adjust", amount: diff, category: "adjust", note: method === "cash" ? "Пересчёт наличных" : "Сверка баланса", method });
+  return addTx({
+    kind: "adjust",
+    amount: diff,
+    category: "adjust",
+    note: method === "cash" ? "Пересчёт наличных" : "Сверка баланса",
+    method,
+  });
 }
 /** money borrowed to cover a gap: adds it to the card and plans the return as a one-off payment */
-export function borrow(amount: number, from: string, returnOn: string, method: Method = "card", monthly?: number) {
+export function borrow(
+  amount: number,
+  from: string,
+  returnOn: string,
+  method: Method = "card",
+  monthly?: number,
+) {
   const ob: Obligation = monthly
-    ? { id: uid(), name: `Вернуть: ${from}`, amount: monthly, day: parseKey(returnOn).getDate(), category: "loan", method, from: dayKey(new Date()) }
-    : { id: uid(), name: `Вернуть: ${from}`, amount, day: parseKey(returnOn).getDate(), category: "loan", once: returnOn, method, from: dayKey(new Date()) };
+    ? {
+        id: uid(),
+        name: `Вернуть: ${from}`,
+        amount: monthly,
+        day: parseKey(returnOn).getDate(),
+        category: "loan",
+        method,
+        from: dayKey(new Date()),
+      }
+    : {
+        id: uid(),
+        name: `Вернуть: ${from}`,
+        amount,
+        day: parseKey(returnOn).getDate(),
+        category: "loan",
+        once: returnOn,
+        method,
+        from: dayKey(new Date()),
+      };
   const t = addTx({ kind: "adjust", amount, category: "adjust", note: `В долг: ${from}`, method });
   if (t) ob.loanTx = t.id;
   setState((s) => ({ ...s, obligations: [...s.obligations, ob] }));
@@ -443,7 +829,9 @@ export function loanTxOf(o: Obligation, s: State = getState()) {
   if (o.category !== "loan") return undefined;
   if (o.loanTx) return s.txs.find((t) => t.id === o.loanTx);
   const who = o.name.replace(/^Вернуть:\s*/, "");
-  return s.txs.find((t) => t.kind === "adjust" && (t.note === `В долг: ${who}` || t.note === `Взяла: ${who}`));
+  return s.txs.find(
+    (t) => t.kind === "adjust" && (t.note === `В долг: ${who}` || t.note === `Взяла: ${who}`),
+  );
 }
 /** editing a debt keeps the wallets right: changed card/cash moves the money, a changed one-off sum fixes the difference */
 export function syncLoanMoney(old: Obligation, next: Obligation) {
@@ -451,7 +839,8 @@ export function syncLoanMoney(old: Obligation, next: Obligation) {
   if (!t) return null;
   const patch: Partial<Tx> = {};
   if ((next.method ?? "card") !== (t.method ?? "card")) patch.method = next.method ?? "card";
-  if (next.once && old.once && next.amount !== old.amount) patch.amount = t.amount + (next.amount - old.amount);
+  if (next.once && old.once && next.amount !== old.amount)
+    patch.amount = t.amount + (next.amount - old.amount);
   const who = next.name.replace(/^Вернуть:\s*/, "");
   if (next.name !== old.name && next.name.startsWith("Вернуть:")) patch.note = `В долг: ${who}`;
   if (!Object.keys(patch).length) return null;
@@ -465,16 +854,25 @@ export function learnKeys(items: { note: string; category: string }[]) {
   let changed = false;
   const next = list.map((c) => ({ ...c, keys: [...c.keys] }));
   for (const it of items) {
-    const words = it.note.toLowerCase().replace(/[^a-zа-яё\s-]/gi, " ").split(/\s+/).filter((w) => w.length >= 3);
+    const words = it.note
+      .toLowerCase()
+      .replace(/[^a-zа-яё\s-]/gi, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3);
     // short names like «Городская ферма» are learned whole, so a generic first word doesn't steal other places
     const word = words.length >= 2 && words.length <= 3 ? words.join(" ") : words[0];
     if (!word) continue;
-    const stem = word.includes(" ") ? word : word.length > 6 ? word.slice(0, word.length - 2) : word;
+    const stem = word.includes(" ")
+      ? word
+      : word.length > 6
+        ? word.slice(0, word.length - 2)
+        : word;
     const owner = next.find((c) => c.keys.some((k) => word.includes(k)));
     if (owner?.id === it.category) continue;
     const target = next.find((c) => c.id === it.category);
     if (!target) continue;
-    target.keys.push(stem); changed = true;
+    target.keys.push(stem);
+    changed = true;
   }
   if (changed) saveCategories(next);
   return changed;
@@ -482,18 +880,58 @@ export function learnKeys(items: { note: string; category: string }[]) {
 /** «сейчас накоплено N»: corrects the savings total without touching card or cash */
 export function setCushion(card: number, cash?: number) {
   const st = getState();
-  const curCash = st.cushionCash ?? 0, curCard = st.cushion - curCash;
+  const curCash = st.cushionCash ?? 0,
+    curCard = st.cushion - curCash;
   const out: Tx[] = [];
-  if (card !== curCard) out.push(addTx({ kind: "savings", amount: card - curCard, category: "savings", note: "Накопления: пересчёт", method: "card" }));
-  if (cash !== undefined && cash !== curCash) out.push(addTx({ kind: "savings", amount: cash - curCash, category: "savings", note: "Накопления: пересчёт наличных", method: "cash" }));
+  if (card !== curCard)
+    out.push(
+      addTx({
+        kind: "savings",
+        amount: card - curCard,
+        category: "savings",
+        note: "Накопления: пересчёт",
+        method: "card",
+      }),
+    );
+  if (cash !== undefined && cash !== curCash)
+    out.push(
+      addTx({
+        kind: "savings",
+        amount: cash - curCash,
+        category: "savings",
+        note: "Накопления: пересчёт наличных",
+        method: "cash",
+      }),
+    );
   return out;
 }
 /** take money out of savings at any time; optionally plan to put it back */
-export function takeFromCushion(amount: number, to: Method = "card", returnOn?: string, goal?: string) {
-  const t = addTx({ kind: "cushion", amount, category: "cushion", note: "Из накоплений", method: to, ...(goal ? { goal } : {}) });
+export function takeFromCushion(
+  amount: number,
+  to: Method = "card",
+  returnOn?: string,
+  goal?: string,
+) {
+  const t = addTx({
+    kind: "cushion",
+    amount,
+    category: "cushion",
+    note: "Из накоплений",
+    method: to,
+    ...(goal ? { goal } : {}),
+  });
   let ob: Obligation | undefined;
   if (returnOn) {
-    ob = { id: uid(), name: "Вернуть в накопления", amount, day: parseKey(returnOn).getDate(), category: "savings", once: returnOn, method: to, from: dayKey(new Date()) };
+    ob = {
+      id: uid(),
+      name: "Вернуть в накопления",
+      amount,
+      day: parseKey(returnOn).getDate(),
+      category: "savings",
+      once: returnOn,
+      method: to,
+      from: dayKey(new Date()),
+    };
     setState((s) => ({ ...s, obligations: [...s.obligations, ob!] }));
   }
   return { t, ob };
@@ -501,7 +939,9 @@ export function takeFromCushion(amount: number, to: Method = "card", returnOn?: 
 /** a paid payment becomes active again */
 export function unpay(o: Obligation) {
   const due = obligationDue(o);
-  const list = getState().txs.filter((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due)));
+  const list = getState().txs.filter(
+    (t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due)),
+  );
   list.forEach((t) => removeTx(t.id));
   return list;
 }
@@ -512,10 +952,34 @@ export function coverFromCushion(amount: number) {
 }
 
 // ---------- calendar forecast ----------
-export interface CalEvent { date: Date; kind: "income" | "payment"; name: string; amount: number; paid?: boolean; method?: Method | undefined; refId: string }
-export interface CalSegment { start: Date; end: Date; days: number; money: number; payments: number; perDay: number; gap: number; events: CalEvent[]; incomes: CalEvent[]; open: boolean }
+export interface CalEvent {
+  date: Date;
+  kind: "income" | "payment";
+  name: string;
+  amount: number;
+  paid?: boolean;
+  method?: Method | undefined;
+  refId: string;
+}
+export interface CalSegment {
+  start: Date;
+  end: Date;
+  days: number;
+  money: number;
+  payments: number;
+  perDay: number;
+  gap: number;
+  events: CalEvent[];
+  incomes: CalEvent[];
+  open: boolean;
+}
 /** chain «доход → платежи → доход» for the coming days with how much is free per day on each stretch */
-export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: number): CalSegment[] {
+export function forecast(
+  s: State,
+  horizon = 45,
+  now = new Date(),
+  startMoney?: number,
+): CalSegment[] {
   const today = startOfDay(now);
   const limit = new Date(+today + horizon * 86400000);
   const ev: CalEvent[] = [];
@@ -524,37 +988,88 @@ export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: 
     const dates: Date[] = [];
     const months = Math.max(3, Math.ceil(horizon / 28) + 1);
     for (let i = 0; i < months; i++) {
-      if (inc.once) { const d = safeKey(inc.once) ? parseKey(inc.once) : null; if (i === 0 && d && d > today && d <= limit && (!ack || dayKey(d) > ack)) dates.push(d); continue; }
+      if (inc.once) {
+        const d = safeKey(inc.once) ? parseKey(inc.once) : null;
+        if (i === 0 && d && d > today && d <= limit && (!ack || dayKey(d) > ack)) dates.push(d);
+        continue;
+      }
       const d = onDay(today.getFullYear(), today.getMonth() + i, inc.day);
-      if (d > today && d <= limit && (!ack || dayKey(d) > ack) && periodOf(d) !== inc.skip && incomeActive(inc, d)) dates.push(d);
+      if (
+        d > today &&
+        d <= limit &&
+        (!ack || dayKey(d) > ack) &&
+        periodOf(d) !== inc.skip &&
+        incomeActive(inc, d)
+      )
+        dates.push(d);
     }
-    if (inc.nextOn) { const m = parseKey(inc.nextOn); if (dates.length) dates[0] = m; else if (m > today) dates.push(m); }
-    for (const d of dates) if (d > today && d <= limit) ev.push({ date: d, kind: "income", name: inc.name, amount: inc.amount, method: inc.method, refId: inc.id });
+    if (inc.nextOn) {
+      const m = parseKey(inc.nextOn);
+      if (dates.length) dates[0] = m;
+      else if (m > today) dates.push(m);
+    }
+    for (const d of dates)
+      if (d > today && d <= limit)
+        ev.push({
+          date: d,
+          kind: "income",
+          name: inc.name,
+          amount: inc.amount,
+          method: inc.method,
+          refId: inc.id,
+        });
   }
   for (const o of paymentObligations(s)) {
     const first = obligationDue(o, now);
-    const dates = o.once ? [first] : [first, onDay(first.getFullYear(), first.getMonth() + 1, o.day), onDay(first.getFullYear(), first.getMonth() + 2, o.day)];
+    const dates = o.once
+      ? [first]
+      : [
+          first,
+          onDay(first.getFullYear(), first.getMonth() + 1, o.day),
+          onDay(first.getFullYear(), first.getMonth() + 2, o.day),
+        ];
     dates.forEach((d, i) => {
       if (d >= limit) return;
       const left = o.amount - (i === 0 ? paidAmount(s, o, d) : 0);
       if (d < today && left <= 0) return;
-      ev.push({ date: d < today ? today : d, kind: "payment", name: o.name, amount: Math.max(0, left), paid: left <= 0, method: o.method, refId: o.id });
+      ev.push({
+        date: d < today ? today : d,
+        kind: "payment",
+        name: o.name,
+        amount: Math.max(0, left),
+        paid: left <= 0,
+        method: o.method,
+        refId: o.id,
+      });
     });
   }
   ev.sort((a, b) => +a.date - +b.date || (a.kind === "income" ? -1 : 1));
   const incs = ev.filter((e) => e.kind === "income");
   const ends = [...incs.map((e) => e.date), limit];
   // raw stretches between incomes
-  const raw: { start: Date; end: Date; days: number; payments: number; events: CalEvent[]; incomes: CalEvent[]; inAtEnd: number; open: boolean }[] = [];
+  const raw: {
+    start: Date;
+    end: Date;
+    days: number;
+    payments: number;
+    events: CalEvent[];
+    incomes: CalEvent[];
+    inAtEnd: number;
+    open: boolean;
+  }[] = [];
   let start = today;
   for (const end of ends) {
     if (+end <= +start && raw.length) continue;
     const inSeg = ev.filter((e) => e.kind === "payment" && +e.date >= +start && +e.date < +end);
     raw.push({
-      start, end, days: Math.max(1, Math.round((+end - +start) / 86400000)),
+      start,
+      end,
+      days: Math.max(1, Math.round((+end - +start) / 86400000)),
       payments: inSeg.filter((e) => !e.paid).reduce((a, e) => a + e.amount, 0),
-      events: inSeg, incomes: incs.filter((e) => +e.date === +start),
-      inAtEnd: incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0), open: end === limit,
+      events: inSeg,
+      incomes: incs.filter((e) => +e.date === +start),
+      inAtEnd: incs.filter((e) => +e.date === +end).reduce((a, e) => a + e.amount, 0),
+      open: end === limit,
     });
     if (end === limit) break;
     start = end;
@@ -562,20 +1077,34 @@ export function forecast(s: State, horizon = 45, now = new Date(), startMoney?: 
   // smooth: money from a big income is not "eaten" in a 3-day stretch — the daily amount is the
   // lowest steady rate that keeps every following payment covered
   const segs: CalSegment[] = [];
-  let money = (startMoney ?? s.balance + (s.cash ?? 0));
+  let money = startMoney ?? s.balance + (s.cash ?? 0);
   for (let i = 0; i < raw.length; i++) {
     const r = raw[i]!;
-    let cum = money, days = 0, rate = Infinity;
+    let cum = money,
+      days = 0,
+      rate = Infinity;
     for (let k = i; k < raw.length; k++) {
       // the open tail is cut by the horizon, not by an income — it doesn't limit earlier stretches
       if (raw[k]!.open && k > i) break;
-      cum -= raw[k]!.payments; days += raw[k]!.days;
+      cum -= raw[k]!.payments;
+      days += raw[k]!.days;
       rate = Math.min(rate, cum / days);
       cum += raw[k]!.inAtEnd;
     }
     const left = money - r.payments;
     const perDay = Math.max(0, Math.min(rate, left / r.days));
-    segs.push({ start: r.start, end: r.end, days: r.days, money, payments: r.payments, perDay, gap: Math.max(0, -left), events: r.events, incomes: r.incomes, open: r.open });
+    segs.push({
+      start: r.start,
+      end: r.end,
+      days: r.days,
+      money,
+      payments: r.payments,
+      perDay,
+      gap: Math.max(0, -left),
+      events: r.events,
+      incomes: r.incomes,
+      open: r.open,
+    });
     money = left - perDay * r.days + r.inAtEnd;
   }
   return segs;

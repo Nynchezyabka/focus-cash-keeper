@@ -11,7 +11,11 @@ function db(): SupabaseClient {
     if (!familyConfigured()) throw new Error("not-configured");
     const sv = activeServer()!;
     client = createClient(sv.url, sv.key, {
-      auth: { persistSession: false, autoRefreshToken: false, storageKey: "berezhny-family-noauth" },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        storageKey: "berezhny-family-noauth",
+      },
     });
   }
   return client;
@@ -25,21 +29,44 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
 
 type Snap = unknown;
 export const api = {
-  create: (name: string, snapshot: Snap) => rpc<{ code: string; memberId: string; token: string }>("family_create", { p_name: name, p_snapshot: snapshot }),
-  join: (code: string, name: string, snapshot: Snap) => rpc<{ code: string; memberId: string; token: string } | { error: "bad-code" | "full" }>("family_join", { p_code: code, p_name: name, p_snapshot: snapshot }),
-  push: (m: string, t: string, name: string, share: boolean, snapshot: Snap, txs: unknown) => rpc<void>("family_push", { p_member: m, p_token: t, p_name: name, p_share: share, p_snapshot: snapshot, p_txs: txs }),
-  pushGoals: (m: string, t: string, goals: unknown) => rpc<void>("family_goals_push", { p_member: m, p_token: t, p_goals: goals }),
+  create: (name: string, snapshot: Snap) =>
+    rpc<{ code: string; memberId: string; token: string }>("family_create", {
+      p_name: name,
+      p_snapshot: snapshot,
+    }),
+  join: (code: string, name: string, snapshot: Snap) =>
+    rpc<{ code: string; memberId: string; token: string } | { error: "bad-code" | "full" }>(
+      "family_join",
+      { p_code: code, p_name: name, p_snapshot: snapshot },
+    ),
+  push: (m: string, t: string, name: string, share: boolean, snapshot: Snap, txs: unknown) =>
+    rpc<void>("family_push", {
+      p_member: m,
+      p_token: t,
+      p_name: name,
+      p_share: share,
+      p_snapshot: snapshot,
+      p_txs: txs,
+    }),
+  pushGoals: (m: string, t: string, goals: unknown) =>
+    rpc<void>("family_goals_push", { p_member: m, p_token: t, p_goals: goals }),
   pull: (m: string, t: string) => rpc<unknown[]>("family_pull", { p_member: m, p_token: t }),
   leave: (m: string, t: string) => rpc<void>("family_leave", { p_member: m, p_token: t }),
-  kick: (m: string, t: string, target: string) => rpc<void>("family_kick", { p_member: m, p_token: t, p_target: target }),
+  kick: (m: string, t: string, target: string) =>
+    rpc<void>("family_kick", { p_member: m, p_token: t, p_target: target }),
   rotate: (m: string, t: string) => rpc<string>("family_rotate", { p_member: m, p_token: t }),
   remove: (m: string, t: string) => rpc<void>("family_delete", { p_member: m, p_token: t }),
 };
 
 /** step-by-step check of the whole chain, answered in plain Russian */
 export async function checkCloud(): Promise<{ ok: boolean; text: string }> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return { ok: false, text: "Нет интернета. Приложение работает и без него, семья обновится позже." };
-  if (!familyConfigured()) return { ok: false, text: "Сервер не подключён. Укажите свой сервер ниже или см. README." };
+  if (typeof navigator !== "undefined" && !navigator.onLine)
+    return {
+      ok: false,
+      text: "Нет интернета. Приложение работает и без него, семья обновится позже.",
+    };
+  if (!familyConfigured())
+    return { ok: false, text: "Сервер не подключён. Укажите свой сервер ниже или см. README." };
   const { url, key } = activeServer()!;
   const t0 = performance.now();
   try {
@@ -49,13 +76,24 @@ export async function checkCloud(): Promise<{ ok: boolean; text: string }> {
       body: "{}",
     });
     const ms = Math.round(performance.now() - t0);
-    if (r.status === 401 || r.status === 403) return { ok: false, text: "База отвечает, но ключ не подходит. Проверьте ключ на хостинге и пересоберите сайт." };
-    if (r.status === 404) return { ok: false, text: "База отвечает, но не подготовлена для семьи. Выполните файл supabase/family-setup.sql (см. README)." };
+    if (r.status === 401 || r.status === 403)
+      return {
+        ok: false,
+        text: "База отвечает, но ключ не подходит. Проверьте ключ на хостинге и пересоберите сайт.",
+      };
+    if (r.status === 404)
+      return {
+        ok: false,
+        text: "База отвечает, но не подготовлена для семьи. Выполните файл supabase/family-setup.sql (см. README).",
+      };
     if (!r.ok) return { ok: false, text: `База ответила ошибкой (${r.status}). Попробуйте позже.` };
     const j = (await r.json()) as { ok?: boolean };
     if (!j.ok) return { ok: false, text: "База отвечает, но запись и чтение не получились." };
     return { ok: true, text: `Всё работает: связь, ключ, запись и чтение (${ms} мс).` };
   } catch {
-    return { ok: false, text: "База не отвечает. Возможно, она недоступна из вашей сети — попробуйте другой интернет (Wi-Fi или мобильный)." };
+    return {
+      ok: false,
+      text: "База не отвечает. Возможно, она недоступна из вашей сети — попробуйте другой интернет (Wi-Fi или мобильный).",
+    };
   }
 }

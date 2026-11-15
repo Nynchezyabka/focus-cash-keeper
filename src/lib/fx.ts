@@ -17,7 +17,13 @@ export const currency = (code: string) => CURRENCIES.find((c) => c.code === code
 
 const KEY = "berezhny-fx";
 type Cache = { at: string; rates: Record<string, number> };
-function cache(): Cache | null { try { return JSON.parse(localStorage.getItem(KEY) ?? "null"); } catch { return null; } }
+function cache(): Cache | null {
+  try {
+    return JSON.parse(localStorage.getItem(KEY) ?? "null");
+  } catch {
+    return null;
+  }
+}
 
 /** rubles for one unit; cached value if offline */
 export function cachedRate(code: string): number | null {
@@ -35,7 +41,9 @@ export async function loadRates(): Promise<Cache | null> {
     const out = { at: new Date().toISOString(), rates };
     localStorage.setItem(KEY, JSON.stringify(out));
     return out;
-  } catch { return c; }
+  } catch {
+    return c;
+  }
 }
 
 /** finds a currency mentioned in a phrase («кофе 4 евро», «$12»); RUB when none */
@@ -43,6 +51,9 @@ export function detectCurrency(text: string): string {
   for (const c of CURRENCIES.slice(1)) if (c.words.test(text)) return c.code;
   return "RUB";
 }
-export const stripCurrency = (text: string) => CURRENCIES.reduce((t, c) => t.replace(new RegExp(c.words.source, "gi"), ""), text).replace(/\s+/g, " ").trim();
+export const stripCurrency = (text: string) =>
+  CURRENCIES.reduce((t, c) => t.replace(new RegExp(c.words.source, "gi"), ""), text)
+    .replace(/\s+/g, " ")
+    .trim();
 
 export const toRub = (amount: number, rate: number) => Math.round(amount * rate * 100) / 100;

@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { catColor, groupColor, DEFAULT_CATEGORIES, getState, replaceState, saveCategories, type AiSettings } from "@/lib/budget";
+import {
+  catColor,
+  groupColor,
+  DEFAULT_CATEGORIES,
+  getState,
+  replaceState,
+  saveCategories,
+  type AiSettings,
+} from "@/lib/budget";
 import { PALETTE } from "@/lib/colors";
 import { saveGoal, sharedGoals, mergeGoals } from "@/lib/goals";
 import { sharedTxs } from "@/lib/family";
@@ -16,8 +24,12 @@ describe("palette persistence", () => {
     const food = DEFAULT_CATEGORIES.find((c) => c.id === "food");
     const cafe = DEFAULT_CATEGORIES.find((c) => c.id === "cafe");
     if (!food || !cafe) throw new Error("Missing categories");
-    expect(catColor({ ...food, color: "sky" }, s)).toBe("color-mix(in oklch, var(--palette-rose) var(--category-shade-0), var(--category-shade-base))");
-    expect(catColor(cafe, s)).toBe("color-mix(in oklch, var(--palette-rose) var(--category-shade-1), var(--category-shade-base))");
+    expect(catColor({ ...food, color: "sky" }, s)).toBe(
+      "color-mix(in oklch, var(--palette-rose) var(--category-shade-0), var(--category-shade-base))",
+    );
+    expect(catColor(cafe, s)).toBe(
+      "color-mix(in oklch, var(--palette-rose) var(--category-shade-1), var(--category-shade-base))",
+    );
   });
   it("restores an individual color when group shades are switched off", () => {
     const c = DEFAULT_CATEGORIES.find((c) => c.id === "food");
@@ -40,22 +52,50 @@ describe("palette persistence", () => {
     replaceState({ ...getState(), goals: [], cushion: 1000 });
     const id = saveGoal({ name: "Отпуск", target: 50000, family: true, color: "sky" });
     expect(sharedGoals(getState())[0]?.color).toBe("sky");
-    const out = mergeGoals(getState(), [[{ id, name: "Отпуск", target: 50000, color: "rose", saved: 0, updatedAt: "2999-01-01" }]]);
+    const out = mergeGoals(getState(), [
+      [{ id, name: "Отпуск", target: 50000, color: "rose", saved: 0, updatedAt: "2999-01-01" }],
+    ]);
     expect(out?.[0]?.color).toBe("rose");
     expect(getState().cushion).toBe(1000);
   });
   it("only shared operations carry category colors, never the AI key", () => {
-    const s = { ...getState(), categories: [{ ...DEFAULT_CATEGORIES[0], id: "food", name: "Еда", group: "life" as const, icon: "Circle", keys: [], color: "mint" }], txs: [{ id: "x", kind: "expense" as const, amount: 100, category: "food", date: "2026-11-13" }] };
+    const s = {
+      ...getState(),
+      categories: [
+        {
+          ...DEFAULT_CATEGORIES[0],
+          id: "food",
+          name: "Еда",
+          group: "life" as const,
+          icon: "Circle",
+          keys: [],
+          color: "mint",
+        },
+      ],
+      txs: [
+        { id: "x", kind: "expense" as const, amount: 100, category: "food", date: "2026-11-13" },
+      ],
+    };
     expect(sharedTxs(s)[0]?.color).toBe("mint");
     expect(sharedTxs(s)[0]).not.toHaveProperty("ai");
   });
 });
 describe("BYOK model selection", () => {
-  const ai: AiSettings = { provider: "openai", apiKey: "sk-test-only", model: "gpt-4.1-mini", advisorModel: "gpt-4.1" };
-  it("uses the service default for old settings", () => expect(selectedModel({ ...ai, model: "", advisorModel: "" })).toBe("gpt-4o-mini"));
-  it("advisor falls back to parsing model", () => expect(selectedModel({ ...ai, advisorModel: "" }, "advisor")).toBe("gpt-4.1-mini"));
+  const ai: AiSettings = {
+    provider: "openai",
+    apiKey: "sk-test-only",
+    model: "gpt-4.1-mini",
+    advisorModel: "gpt-4.1",
+  };
+  it("uses the service default for old settings", () =>
+    expect(selectedModel({ ...ai, model: "", advisorModel: "" })).toBe("gpt-4o-mini"));
+  it("advisor falls back to parsing model", () =>
+    expect(selectedModel({ ...ai, advisorModel: "" }, "advisor")).toBe("gpt-4.1-mini"));
   it("sends parsing and advisor choices to the provider", async () => {
-    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '{"items":[]}' } }] }) });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{"items":[]}' } }] }),
+    });
     vi.stubGlobal("fetch", fetcher);
     await parseAi("test", ai);
     expect(JSON.parse(fetcher.mock.calls[0]?.[1].body).model).toBe("gpt-4.1-mini");
