@@ -3,7 +3,7 @@ import { weekSummary } from "@/lib/advisor-calc";
 import { useEffect, useState } from "react";
 import { ChevronDown, MessageCircleHeart } from "lucide-react";
 import { Button } from "./ui/button";
-import { aiChat, detectService } from "@/lib/parse";
+import { aiChat, endpoint } from "@/lib/parse";
 
 /** Facts of the last 7 days, calculated on the phone — works offline and without AI. */
 export function WeekSummary({ s }: { s: State }) {
@@ -40,7 +40,7 @@ export function WeekSummary({ s }: { s: State }) {
           ))}
         </div>
       )}
-      {detectService(s.ai.apiKey) && <div className="border-t border-border pt-2">
+      {endpoint(s.ai, "advisor") && <div className="border-t border-border pt-2">
         {note ? <p className="text-sm">{note}</p> : <Button variant="ghost" size="sm" disabled={busy} onClick={async () => {
           setBusy(true); setError("");
           try {

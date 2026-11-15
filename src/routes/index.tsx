@@ -52,7 +52,7 @@ import {
   type Method,
   type State,
 } from "@/lib/budget";
-import { applyFx, detectService, parseImage, parseSmart, type Parsed } from "@/lib/parse";
+import { aiName, applyFx, parseImage, parseSmart, type Parsed } from "@/lib/parse";
 import { CURRENCIES, cachedRate, currency, loadRates, toRub } from "@/lib/fx";
 import { CategoryChip, CategoryPicker, MethodToggle } from "@/components/Pickers";
 import { MicButton } from "@/components/Mic";
@@ -787,7 +787,7 @@ function PocketDialog({
     try {
       await loadRates();
       show(applyFx(await parseImage(f, getState().ai)));
-      setVia(detectService(getState().ai.apiKey)?.name ?? "");
+      setVia(aiName(getState().ai));
     } catch (e) {
       toast((e as Error).message);
     } finally {
@@ -838,7 +838,7 @@ function PocketDialog({
               <MicButton onText={(t) => setText((p) => (p ? p + ", " : "") + t)} />
             </div>
             <p className="text-xs text-muted-foreground">
-              {detectService(s.ai.apiKey)
+              {aiName(s.ai)
                 ? "Знакомые слова разберу сама, незнакомые — через ИИ."
                 : "Разбор на телефоне, по суммам и словам. Ключ ИИ можно добавить в настройках."}
             </p>
@@ -1160,7 +1160,7 @@ function BuyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
             }}
           />
         </label>
-        {!detectService(getState().ai.apiKey) && (
+        {!aiName(getState().ai) && (
           <p className="text-xs text-muted-foreground">Для оценки нужен ключ ИИ — его можно добавить в Настройках.</p>
         )}
         <Button disabled={!ok} onClick={go}>

@@ -45,12 +45,12 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
 }
 
 /** AI keys stay on each device, like in the backup file */
-const outgoing = (s: State) => ({ ...s, ai: { ...s.ai, apiKey: "", advisorApiKey: "" } });
+const outgoing = (s: State) => ({ ...s, ai: { ...s.ai, apiKey: "", advisorApiKey: "", connections: s.ai.connections?.map((c) => ({ ...c, apiKey: "" })) } });
 let applying = false;
 function applyRemote(remote: State) {
   const s = getState();
   applying = true;
-  try { replaceState({ ...remote, ai: { ...remote.ai, apiKey: s.ai.apiKey, advisorApiKey: (s.ai as { advisorApiKey?: string }).advisorApiKey ?? "" } as State["ai"] }); }
+  try { replaceState({ ...remote, ai: { ...remote.ai, apiKey: s.ai.apiKey, advisorApiKey: (s.ai as { advisorApiKey?: string }).advisorApiKey ?? "", connections: s.ai.connections, connId: s.ai.connId, advisorConnId: s.ai.advisorConnId } as State["ai"] }); }
   finally { applying = false; }
 }
 

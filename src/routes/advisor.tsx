@@ -33,7 +33,7 @@ import {
   setState,
   type State,
 } from "@/lib/budget";
-import { aiChat, detectService, type ChatMsg } from "@/lib/parse";
+import { aiChat, endpoint, type ChatMsg } from "@/lib/parse";
 import { familyTotals, getFamily } from "@/lib/family";
 
 /** «Оценить покупку» on the home screen leaves a ready question here (sessionStorage). */
@@ -216,7 +216,7 @@ function Chat({ s }: { s: State }) {
   const end = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const grew = useRef(false);
-  const hasKey = !!detectService(s.ai.apiKey);
+  const hasKey = !!endpoint(s.ai, "advisor");
   const [noKeyOpener] = useState(() => (hasKey ? null : openerDue(s)?.text(toneOf(s.advisorTone)) ?? null));
 
   useEffect(() => {

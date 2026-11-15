@@ -26,7 +26,9 @@ export type Method = "card" | "cash";
 /** day = regular monthly date; once = one-off date (YYYY-MM-DD); nextOn = moved date of the nearest occurrence */
 export interface Obligation { id: string; name: string; amount: number; day: number; category: string; debtFee?: DebtFee; schedule?: ScheduleRow[]; once?: string; nextOn?: string | undefined; method?: Method; from?: string; loanTx?: string; goal?: string | undefined }
 export interface Income { id: string; name: string; amount: number; day: number; method?: Method; nextOn?: string | undefined; period?: "monthly" | "biweekly"; once?: string | undefined /* YYYY-MM-DD: one-off income */; skip?: string | undefined /* "YYYY-MM": not counted this month */; start?: string | undefined /* YYYY-MM-DD: regular income begins */; end?: string | undefined /* YYYY-MM-DD: last possible date */ }
-export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; advisorApiKey?: string; mode?: "auto" | "always" }
+/** A user-defined AI service: any Base URL speaking OpenAI-compatible or Anthropic Messages API. Key stays on this device. */
+export interface AiConn { id: string; name: string; baseUrl: string; format: "openai" | "anthropic"; apiKey: string; model: string }
+export interface AiSettings { provider: "none" | "openai" | "openrouter" | "anthropic"; apiKey: string; model: string; advisorModel?: string; advisorApiKey?: string; mode?: "auto" | "always"; connections?: AiConn[]; connId?: string | undefined; advisorConnId?: string | undefined }
 
 export interface State {
   version: 1;

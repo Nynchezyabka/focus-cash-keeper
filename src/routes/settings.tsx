@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { detectService } from "@/lib/parse";
+import { aiName, detectService } from "@/lib/parse";
 import { useEffect, useRef, useState } from "react";
 import { APP_VERSION, checkForUpdates, hardReload, updatesSupported } from "@/lib/pwa";
 import { Download, Upload, ShieldCheck, ChevronRight, RefreshCw, RotateCcw } from "lucide-react";
@@ -62,9 +62,10 @@ function Settings({ s }: { s: State }) {
           setAi({ apiKey, ...(changed ? { model: "", advisorModel: "" } : {}) });
         }} />
         {(() => {
+          if (s.ai.connId && aiName(s.ai)) return <p className="text-sm text-primary">✓ Распознаёт через «{aiName(s.ai)}».</p>;
           const svc = detectService(s.ai.apiKey);
           if (svc) return <p className="text-sm text-primary">✓ Ключ {svc.name} — будет понимать любые формулировки.</p>;
-          if (s.ai.apiKey.trim()) return <p className="text-sm text-muted-foreground">Не узнаю этот ключ. Подходят ключи OpenAI, OpenRouter, Google Gemini, Groq, Anthropic, DeepSeek, xAI.</p>;
+          if (s.ai.apiKey.trim()) return <p className="text-sm text-muted-foreground">Не узнаю этот ключ. Подходят ключи OpenAI, OpenRouter, Google Gemini, Groq, Anthropic, DeepSeek, xAI. Для другого сервиса добавьте «Своё подключение» ниже.</p>;
           return (
             <div className="rounded-xl bg-secondary p-3 text-sm text-secondary-foreground">
               <p className="font-medium">Сейчас: встроенный режим, без ИИ</p>
@@ -87,7 +88,7 @@ function Settings({ s }: { s: State }) {
             <Switch checked={!!s.advisorNoFamily} onCheckedChange={(v) => setState((x) => ({ ...x, advisorNoFamily: v }))} />
           </label>
         )}
-        {detectService(s.ai.apiKey) && (
+        {aiName(s.ai) && (
           <div className="space-y-2">
             <p className="text-sm">Когда звать ИИ</p>
             <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-xs">
@@ -113,7 +114,7 @@ function Settings({ s }: { s: State }) {
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" onClick={() => {
             setState((x) => ({ ...x, lastBackup: new Date().toISOString() }));
-            const data = { ...getState(), ai: { ...getState().ai, apiKey: "", advisorApiKey: "" } };
+            const data = { ...getState(), ai: { ...getState().ai, apiKey: "", advisorApiKey: "", connections: getState().ai.connections?.map((c) => ({ ...c, apiKey: "" })) } };
             const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
             const a = document.createElement("a"); a.href = url; a.download = `berezhny-budget-${new Date().toISOString().slice(0, 10)}.json`;
             document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 30000);

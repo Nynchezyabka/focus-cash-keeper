@@ -56,14 +56,73 @@ export const MODEL_OPTIONS: Record<string, { models: string[]; keysUrl: string }
 /** Settings for advisor calls: a separate advisor key (if set) replaces the main one. */
 export function advisorAi(ai: AiSettings): AiSettings {
   const k = ai.advisorApiKey?.trim();
-  return k ? { ...ai, apiKey: k, model: "", advisorApiKey: "" } : ai;
+  return k ? { ...ai, apiKey: k, model: "", advisorApiKey: "", connId: undefined } : ai;
 }
 export function selectedModel(ai: AiSettings, purpose: "parse" | "advisor" = "parse") {
-  if (purpose === "advisor" && ai.advisorApiKey?.trim()) return ai.advisorModel?.trim() || detectService(ai.advisorApiKey)?.model || "";
-  return (purpose === "advisor" ? ai.advisorModel?.trim() || ai.model.trim() : ai.model.trim()) || detectService(ai.apiKey)?.model || "";
+  return endpoint(ai, purpose)?.model ?? "";
 }
+/** Normalises any pasted address (host, …/v1, full endpoint) to the request URL of the chosen format. */
+export function apiUrl(base: string, format: "openai" | "anthropic") {
+  let u = base.trim().replace(/\/+$/, "").replace(/\/(chat\/completions|messages)$/, "").replace(/\/+$/, "");
+  if (!/\/v\d+[a-z]*$/i.test(u)) u += "/v1";
+  return u + (format === "anthropic" ? "/messages" : "/chat/completions");
+}
+export type Endpoint = Svc & { key: string };
+/** One place decides which service, key and model answer for parsing or for the advisor. */
+export function endpoint(ai: AiSettings, purpose: "parse" | "advisor" = "parse"): Endpoint | null {
+  const conns = ai.connections ?? [];
+  const advKey = ai.advisorApiKey?.trim();
+  const ownAdv = purpose === "advisor" && (!!ai.advisorConnId || !!advKey);
+  const id = purpose === "advisor" ? (ai.advisorConnId || (advKey ? "" : ai.connId)) : ai.connId;
+  const c = id ? conns.find((x) => x.id === id) : undefined;
+  if (c) {
+    if (!c.apiKey.trim() || !c.baseUrl.trim()) return null;
+    const model = (purpose === "advisor" && !ownAdv ? ai.advisorModel?.trim() : "") || c.model.trim();
+    return { name: c.name.trim() || "Своё подключение", url: apiUrl(c.baseUrl, c.format), model, kind: c.format, key: c.apiKey.trim() };
+  }
+  if (purpose === "advisor" && advKey) {
+    const svc = detectService(advKey);
+    return svc && { ...svc, key: advKey, model: ai.advisorModel?.trim() || svc.model };
+  }
+  const svc = detectService(ai.apiKey);
+  if (!svc) return null;
+  const model = (purpose === "advisor" ? ai.advisorModel?.trim() || ai.model.trim() : ai.model.trim()) || svc.model;
+  return { ...svc, key: ai.apiKey.trim(), model };
+}
+/** Name of the AI that parses spending, or "" when only the built-in parser works. */
+export const aiName = (ai: AiSettings) => endpoint(ai, "parse")?.name ?? "";
+
+async function post(ep: Endpoint, body: Record<string, unknown>): Promise<string> {
+  let r: Response;
+  try {
+    r = await fetch(ep.url, {
+      method: "POST", signal: AbortSignal.timeout(30000),
+      headers: ep.kind === "anthropic"
+        ? { "content-type": "application/json", "x-api-key": ep.key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" }
+        : { "content-type": "application/json", authorization: `Bearer ${ep.key}` },
+      body: JSON.stringify({ model: ep.model, ...body }),
+    });
+  } catch (e) {
+    if (e instanceof Error && /timeout|abort/i.test(e.name + e.message)) throw new Error(`${ep.name} не ответил за 30 секунд (timeout).`);
+    throw new Error(`Нет связи с ${ep.name} (fetch): сервер недоступен или не разрешает запросы из браузера (CORS). Проверьте адрес и интернет.`);
+  }
+  if (!r.ok) throw new Error(`${ep.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
+  const j = await r.json().catch(() => { throw new Error(`${ep.name} прислал ответ не в том формате. Проверьте формат API.`); });
+  const text = ep.kind === "anthropic" ? j.content?.find?.((p: { type?: string }) => p.type === "text")?.text ?? j.content?.[0]?.text : j.choices?.[0]?.message?.content;
+  if (typeof text !== "string") throw new Error(`${ep.name} прислал ответ не в том формате. Проверьте формат API.`);
+  return text;
+}
+async function chatCall(ep: Endpoint, system: string, messages: { role: string; content: unknown }[], extra: Record<string, unknown> = {}) {
+  return ep.kind === "anthropic"
+    ? post(ep, { max_tokens: 1500, system, messages, ...extra })
+    : post(ep, { messages: [{ role: "system", content: system }, ...messages], ...extra });
+}
+
 export async function checkAiModel(ai: AiSettings, purpose: "parse" | "advisor") {
-  const reply = await aiChat("Ответь одним словом: OK.", [{ role: "user", content: "Проверка подключения" }], purpose === "parse" ? { ...ai, advisorApiKey: "", advisorModel: selectedModel(ai) } : ai);
+  const ep = endpoint(ai, purpose);
+  if (!ep) throw new Error("Подключение не настроено: нужны адрес, ключ и модель.");
+  if (!ep.model) throw new Error("Укажите название модели.");
+  const reply = await chatCall(ep, "Ответь одним словом: OK.", [{ role: "user", content: "Проверка подключения" }], { max_tokens: 20 });
   if (!reply.trim()) throw new Error("Модель ответила без текста. Попробуйте другую модель.");
 }
 export function detectService(key: string): Svc | null {
@@ -82,7 +141,7 @@ export function detectService(key: string): Svc | null {
 /** Economy mode: if every item was recognised on the device, AI is not called at all. */
 export async function parseSmart(input: string, ai: AiSettings): Promise<{ items: Parsed[]; via: "device" | string }> {
   const local = parseLocal(input);
-  const svc = detectService(ai.apiKey);
+  const svc = endpoint(ai, "parse");
   if (!svc) return { items: local, via: "device" };
   if ((ai.mode ?? "auto") === "auto" && local.length > 0 && local.every((i) => i.known)) return { items: local, via: "device" };
   return { items: await parseAi(input, ai), via: svc.name };
@@ -97,35 +156,19 @@ const IMG_PROMPT = () => `На картинке скриншот чека, за�
 Категории (id): ${cats().map((c) => `${c.id}=${c.name}`).join(", ")}. Ответь ТОЛЬКО JSON {"items":[{"note":"Городская ферма","amount":2300,"category":"fun","currency":"RUB"}]}. currency — код ISO валюты списания, amount — в этой валюте.`;
 
 export async function parseImage(file: File, main: AiSettings): Promise<Parsed[]> {
-  let ai = main;
-  let svc = detectService(ai.apiKey);
   const blind = (n?: string) => n === "Groq" || n === "DeepSeek";
-  // a text-only main model: read the photo with the advisor key, if it can see
-  if ((!svc || blind(svc.name)) && main.advisorApiKey?.trim() && !blind(detectService(main.advisorApiKey)?.name)) {
-    const a = advisorAi(main); ai = { ...a, model: selectedModel(main, "advisor") }; svc = detectService(ai.apiKey);
-  }
-  if (!svc) throw new Error("Для скриншотов нужен ключ ИИ — добавьте его в Настройках.");
-  if (blind(svc.name)) throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
+  let ep = endpoint(main, "parse");
+  // a text-only main model: read the photo with the advisor connection, if it can see
+  const adv = endpoint(main, "advisor");
+  if ((!ep || blind(ep.name)) && adv && !blind(adv.name) && (main.advisorApiKey?.trim() || main.advisorConnId)) ep = adv;
+  if (!ep) throw new Error("Для скриншотов нужен ключ ИИ — добавьте его в Настройках.");
+  if (blind(ep.name)) throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
   const dataUrl: string = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
   const b64 = dataUrl.split(",")[1] ?? "";
-  let text = "";
-  if (svc.kind === "anthropic") {
-    const r = await fetch(svc.url, {
-      method: "POST", signal: AbortSignal.timeout(30000),
-      headers: { "content-type": "application/json", "x-api-key": ai.apiKey.trim(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: selectedModel(ai), max_tokens: 3000, messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: file.type || "image/png", data: b64 } }, { type: "text", text: IMG_PROMPT() }] }] }),
-    });
-    if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
-    text = (await r.json()).content?.[0]?.text ?? "";
-  } else {
-    const r = await fetch(svc.url, {
-      method: "POST", signal: AbortSignal.timeout(30000),
-      headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-      body: JSON.stringify({ model: selectedModel(ai), max_tokens: 3000, messages: [{ role: "user", content: [{ type: "text", text: IMG_PROMPT() }, { type: "image_url", image_url: { url: dataUrl } }] }] }),
-    });
-    if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
-    text = (await r.json()).choices?.[0]?.message?.content ?? "";
-  }
+  const content = ep.kind === "anthropic"
+    ? [{ type: "image", source: { type: "base64", media_type: file.type || "image/png", data: b64 } }, { type: "text", text: IMG_PROMPT() }]
+    : [{ type: "text", text: IMG_PROMPT() }, { type: "image_url", image_url: { url: dataUrl } }];
+  const text = await post(ep, { max_tokens: 3000, messages: [{ role: "user", content }] });
   return toItems(text).filter((i) => !isOwnTransfer(i.note));
 }
 
@@ -144,60 +187,24 @@ function toItems(text: string): Parsed[] {
 }
 
 export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> {
-  const svc = detectService(ai.apiKey);
-  if (!svc) return parseLocal(input);
-  let text = "";
-  if (svc.kind === "anthropic") {
-    const r = await fetch(svc.url, {
-      method: "POST", signal: AbortSignal.timeout(30000),
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": ai.apiKey.trim(),
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({ model: selectedModel(ai), max_tokens: 800, system: PROMPT(), messages: [{ role: "user", content: input }] }),
-    });
-    if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
-    const j = await r.json();
-    text = j.content?.[0]?.text ?? "";
-  } else {
-    const r = await fetch(svc.url, {
-      method: "POST", signal: AbortSignal.timeout(30000),
-      headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-      body: JSON.stringify({ model: selectedModel(ai), messages: [{ role: "system", content: PROMPT() }, { role: "user", content: input }] }),
-    });
-    if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
-    const j = await r.json();
-    text = j.choices?.[0]?.message?.content ?? "";
-  }
-  return toItems(text);
+  const ep = endpoint(ai, "parse");
+  if (!ep) return parseLocal(input);
+  return toItems(await chatCall(ep, PROMPT(), [{ role: "user", content: input }], { max_tokens: 800 }));
 }
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 /** free conversation with the user's own AI key */
 export async function aiChat(system: string, messages: ChatMsg[], settings: AiSettings, image?: { dataUrl: string; type: string }): Promise<string> {
-  const ai = settings.advisorApiKey?.trim() ? { ...advisorAi(settings), advisorModel: selectedModel(settings, "advisor") } : settings;
-  const svc = detectService(ai.apiKey);
-  if (!svc) throw new Error("Для помощника нужен ключ ИИ — добавьте его в Настройках.");
-  if (image && (svc.name === "Groq" || svc.name === "DeepSeek")) throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
+  const ep = endpoint(settings, "advisor");
+  if (!ep) throw new Error("Для помощника нужен ключ ИИ — добавьте его в Настройках.");
+  if (image && (ep.name === "Groq" || ep.name === "DeepSeek")) throw new Error("Эта модель не читает картинки. Выберите модель с поддержкой изображений в Настройках.");
   // the screenshot is attached only to the latest user message
   const last = messages.length - 1;
   const b64 = image?.dataUrl.split(",")[1] ?? "";
-  if (svc.kind === "anthropic") {
-    const r = await fetch(svc.url, {
-      method: "POST", signal: AbortSignal.timeout(30000),
-      headers: { "content-type": "application/json", "x-api-key": ai.apiKey.trim(), "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: selectedModel(ai, "advisor"), max_tokens: 1500, temperature: 0.3, system, messages: messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "image", source: { type: "base64", media_type: image.type || "image/png", data: b64 } }, { type: "text", text: m.content }] } : m)) }),
-    });
-    if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
-    return (await r.json()).content?.[0]?.text ?? "";
-  }
-  const r = await fetch(svc.url, {
-    method: "POST", signal: AbortSignal.timeout(30000),
-    headers: { "content-type": "application/json", authorization: `Bearer ${ai.apiKey.trim()}` },
-    body: JSON.stringify({ model: selectedModel(ai, "advisor"), temperature: 0.3, messages: [{ role: "system", content: system }, ...messages.map((m, i) => (image && i === last ? { role: m.role, content: [{ type: "text", text: m.content }, { type: "image_url", image_url: { url: image.dataUrl } }] } : m))] }),
-  });
-  if (!r.ok) throw new Error(`${svc.name} ответил ошибкой ${r.status}. Проверьте ключ.`);
-  return (await r.json()).choices?.[0]?.message?.content ?? "";
+  const msgs = messages.map((m, i) => (image && i === last
+    ? { role: m.role, content: ep.kind === "anthropic"
+      ? [{ type: "image", source: { type: "base64", media_type: image.type || "image/png", data: b64 } }, { type: "text", text: m.content }]
+      : [{ type: "text", text: m.content }, { type: "image_url", image_url: { url: image.dataUrl } }] }
+    : m));
+  return chatCall(ep, system, msgs, { temperature: 0.3 });
 }
