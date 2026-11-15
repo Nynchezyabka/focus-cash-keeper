@@ -111,16 +111,36 @@ let state: State | null = null;
 const listeners = new Set<() => void>();
 function load(): State {
   if (state) return state;
+  let raw: string | null = null;
+  try { raw = localStorage.getItem(KEY); } catch { /* storage unavailable */ }
   try {
-    const raw = localStorage.getItem(KEY);
-    state = raw ? { ...initial(), ...JSON.parse(raw) } : initial();
-  } catch { state = initial(); }
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (raw && (!parsed || typeof parsed !== "object" || Array.isArray(parsed))) throw new Error("not an object");
+    state = parsed ? { ...initial(), ...parsed } : initial();
+  } catch {
+    // never silently overwrite unreadable data: keep the original text aside for recovery
+    try { localStorage.setItem(`${CORRUPT_PREFIX}${new Date().toISOString().replace(/[:.]/g, "-")}`, raw ?? ""); } catch { saveBlocked = true; }
+    state = initial();
+  }
   return state!;
 }
+const CORRUPT_PREFIX = "berezhny-budget-corrupt-";
+const corruptKeys = () => { const out: string[] = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k?.startsWith(CORRUPT_PREFIX)) out.push(k); } return out.sort(); };
+/** set when the damaged original could not be kept aside — then nothing overwrites it */
+let saveBlocked = false;
+/** text of the budget that could not be read at launch, or null */
+export function unreadableBackup(): string | null {
+  try { const k = corruptKeys().at(-1); return k ? localStorage.getItem(k) : null; } catch { return null; }
+}
+export function dismissUnreadableBackup() {
+  try { corruptKeys().forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+}
 export function getState() { return load(); }
+/** test hook: forget the in-memory copy so the next read goes to storage */
+export function resetLoadedState() { state = null; saveBlocked = false; }
 export function setState(fn: (s: State) => State) {
   state = fn(load());
-  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  try { if (saveBlocked) throw new Error("blocked"); localStorage.setItem(KEY, JSON.stringify(state)); }
   catch { if (typeof window !== "undefined") window.dispatchEvent(new Event("budget-save-failed")); }
   listeners.forEach((l) => l());
 }

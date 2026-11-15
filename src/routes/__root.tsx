@@ -1,3 +1,5 @@
+import { RecoveryBanner } from "@/components/RecoveryBanner";
+import { CONNECT_SRC } from "@/lib/allowed-hosts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -86,7 +88,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co https://www.cbr-xml-daily.ru https://api.openai.com https://openrouter.ai https://api.anthropic.com https://generativelanguage.googleapis.com https://api.groq.com https://api.x.ai https://api.deepseek.com",
+  `connect-src ${CONNECT_SRC}`,
   "media-src 'self' blob:",
   "worker-src 'self'",
   "manifest-src 'self'",
@@ -143,6 +145,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <RecoveryBanner />
       <Outlet />
       <Toaster position="top-center" />
       <WhatsNew />

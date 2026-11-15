@@ -1,3 +1,4 @@
+import { aiHostAllowed, blockedHostText } from "@/lib/allowed-hosts";
 import { useEffect, useState } from "react";
 import { Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -100,17 +101,18 @@ function Connections({ ai, onChange }: { ai: AiSettings; onChange: (p: Partial<A
     if (!confirm("Удалить это подключение? Ключ тоже удалится с устройства.")) return;
     onChange({ connections: conns.filter((c) => c.id !== id), ...(ai.connId === id ? { connId: undefined } : {}), ...(ai.advisorConnId === id ? { advisorConnId: undefined } : {}) });
   };
-  const ok = edit && edit.baseUrl.trim() && /^https?:\/\//i.test(edit.baseUrl.trim()) && edit.apiKey.trim() && edit.model.trim();
+  const blocked = !!edit?.baseUrl.trim() && /^https?:\/\//i.test(edit.baseUrl.trim()) && !aiHostAllowed(edit.baseUrl);
+  const ok = edit && edit.baseUrl.trim() && /^https?:\/\//i.test(edit.baseUrl.trim()) && !blocked && edit.apiKey.trim() && edit.model.trim();
   return <div className="space-y-2">
     <p className="text-sm font-medium">Свои подключения</p>
-    <p className="text-xs text-muted-foreground">Любой сервис с форматом OpenAI Compatible или Anthropic Messages: свой адрес, ключ и модель. Ключ хранится только на этом устройстве.</p>
+    <p className="text-xs text-muted-foreground">Любой сервис с форматом OpenAI Compatible или Anthropic Messages: свой ключ и модель. Адрес — из списка разрешённых сервисов. Ключ хранится только на этом устройстве.</p>
     {conns.map((c) => <div key={c.id} className="flex items-center justify-between gap-2 rounded-xl bg-muted p-2 text-sm">
       <span className="min-w-0"><span className="block truncate">{c.name || "Своё подключение"}</span><span className="block truncate text-xs text-muted-foreground">{c.format === "anthropic" ? "Anthropic" : "OpenAI"} · {c.model} · {c.baseUrl}</span></span>
       <span className="flex shrink-0 gap-1"><Button size="sm" variant="ghost" onClick={() => setEdit(c)}>Изменить</Button><Button size="sm" variant="ghost" onClick={() => remove(c.id)}>Удалить</Button></span>
     </div>)}
     {edit ? <div className="space-y-2 rounded-xl border border-border p-3">
       <Input aria-label="Название" placeholder="Название, например Claude n Codex" maxLength={60} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
-      <Input aria-label="API Base URL" placeholder="https://claude-n-codex.com:8443" inputMode="url" maxLength={300} value={edit.baseUrl} onChange={(e) => setEdit({ ...edit, baseUrl: e.target.value })} />
+      <Input aria-label="API Base URL" placeholder="https://openrouter.ai/api" inputMode="url" maxLength={300} value={edit.baseUrl} onChange={(e) => setEdit({ ...edit, baseUrl: e.target.value })} />
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-xs">
         {([["openai", "OpenAI Compatible"], ["anthropic", "Anthropic Messages"]] as const).map(([f, l]) => (
           <button key={f} type="button" onClick={() => setEdit({ ...edit, format: f })} className={`rounded-lg py-2 ${edit.format === f ? "bg-card text-foreground shadow-soft" : "text-muted-foreground"}`}>{l}</button>
@@ -118,7 +120,8 @@ function Connections({ ai, onChange }: { ai: AiSettings; onChange: (p: Partial<A
       </div>
       <Input aria-label="API-ключ" type="password" autoComplete="off" placeholder="API-ключ" value={edit.apiKey} onChange={(e) => setEdit({ ...edit, apiKey: e.target.value })} />
       <Input aria-label="Модель" placeholder="Точное название модели, например claude-sonnet-4-5" maxLength={150} value={edit.model} onChange={(e) => setEdit({ ...edit, model: e.target.value })} />
-      {edit.baseUrl.trim() && <p className="break-all text-xs text-muted-foreground">Запросы пойдут на {apiUrl(edit.baseUrl, edit.format)}</p>}
+      {blocked && <p role="alert" className="text-xs text-destructive">{blockedHostText()}</p>}
+      {edit.baseUrl.trim() && !blocked && <p className="break-all text-xs text-muted-foreground">Запросы пойдут на {apiUrl(edit.baseUrl, edit.format)}</p>}
       <div className="flex gap-2"><Button size="sm" disabled={!ok} onClick={save}>Сохранить</Button><Button size="sm" variant="ghost" onClick={() => setEdit(null)}>Отмена</Button></div>
     </div> : <Button variant="secondary" size="sm" onClick={() => setEdit(blank())}>+ Добавить подключение</Button>}
   </div>;

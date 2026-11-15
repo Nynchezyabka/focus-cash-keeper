@@ -15,6 +15,7 @@ revoke all on public.device_pairings from anon, authenticated;
 revoke all on public.device_vaults from anon, authenticated;
 grant all on public.device_pairings to service_role;
 grant all on public.device_vaults to service_role;
+alter table public.device_vaults add column if not exists accessed_at timestamptz not null default now();
 alter table public.device_pairings enable row level security;
 alter table public.device_vaults enable row level security;
 
@@ -23,6 +24,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   if length(p_hash) <> 64 or length(p_blob) > 4000 then raise exception 'too-big'; end if;
   delete from device_pairings where created_at < now() - interval '10 minutes';
+  if (select count(*) from device_pairings) >= 500 then raise exception 'pairings-full'; end if;
   insert into device_pairings(code_hash, blob) values (p_hash, p_blob) on conflict do nothing;
 end $$;
 
@@ -42,11 +44,13 @@ begin
   if length(p_token) < 32 or length(p_token) > 100 or length(p_blob) > 3000000 then raise exception 'too-big'; end if;
   select * into r from device_vaults where id = p_id;
   if not found then
+    delete from device_vaults where accessed_at < now() - interval '90 days';
+    if (select count(*) from device_vaults) >= 2000 then raise exception 'vaults-full'; end if;
     insert into device_vaults(id, token_hash, blob, rev) values (p_id, h, p_blob, p_rev);
     return p_rev;
   end if;
   if r.token_hash <> h then raise exception 'no-access'; end if;
-  update device_vaults set blob = p_blob, rev = p_rev, updated_at = now() where id = p_id;
+  update device_vaults set blob = p_blob, rev = p_rev, updated_at = now(), accessed_at = now() where id = p_id;
   return p_rev;
 end $$;
 
@@ -56,6 +60,7 @@ declare r record;
 begin
   select * into r from device_vaults where id = p_id and token_hash = encode(extensions.digest(p_token, 'sha256'), 'hex');
   if not found then return null; end if;
+  update device_vaults set accessed_at = now() where id = p_id;
   return jsonb_build_object('blob', r.blob, 'rev', r.rev);
 end $$;
 

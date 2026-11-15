@@ -10,6 +10,8 @@ export interface Link { id: string; token: string; key: string; rev: number; dir
 export function syncErrorText(e: unknown): string {
   const m = String(e instanceof Error ? e.message : e);
   if (m.includes("not-configured")) return "Сервер не подключён";
+  if (m.includes("vaults-full") || m.includes("pairings-full")) return "Сервер синхронизации переполнен — попробуйте позже или подключите свой сервер";
+  if (m.includes("too-big")) return "Данных слишком много для синхронизации (больше 3 МБ) — сделайте экспорт в файл и перенесите его вручную";
   if (m.includes("no-access")) return "Нет доступа к хранилищу — подключите устройство заново";
   if (m.includes("vault-missing")) return "Бюджет с телефона ещё не пришёл";
   if (/PGRST202|42883|could not find the function|404/i.test(m)) return "На сервере не настроена синхронизация (нужно выполнить device-sync.sql)";
