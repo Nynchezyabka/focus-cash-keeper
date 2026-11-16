@@ -104,9 +104,45 @@ const outgoing = (s: State) => ({
     connections: s.ai.connections?.map((c) => ({ ...c, apiKey: "" })),
   },
 });
+/** a budget with no operations and no money — what a wiped browser starts with */
+export function isEmptyBudget(s: Partial<State> | null | undefined): boolean {
+  if (!s) return true;
+  const n = (v: unknown) => (typeof v === "number" ? v : 0);
+  return (
+    (s.txs?.length ?? 0) === 0 &&
+    n(s.balance) === 0 &&
+    n(s.cash) === 0 &&
+    n(s.cushion) === 0 &&
+    (s.goals?.length ?? 0) === 0
+  );
+}
+/** what sync should do with a fetched copy: never let an empty budget overwrite a filled one */
+export function syncDecision(
+  local: State,
+  remote: State | null,
+  remoteNewer: boolean,
+  localWins: boolean,
+): "pull" | "push" | "idle" {
+  const le = isEmptyBudget(local);
+  if (remote && le && !isEmptyBudget(remote)) return "pull";
+  if (remote && !le && isEmptyBudget(remote)) return "push";
+  if (remoteNewer && !localWins) return "pull";
+  return localWins || !remote ? "push" : "idle";
+}
+export const SNAPSHOT_KEY = "berezhny-budget-before-sync";
 let applying = false;
 function applyRemote(remote: State) {
   const s = getState();
+  if (!isEmptyBudget(s)) {
+    try {
+      localStorage.setItem(
+        SNAPSHOT_KEY,
+        JSON.stringify({ at: new Date().toISOString(), state: s }),
+      );
+    } catch {
+      /* no space: sync still proceeds */
+    }
+  }
   applying = true;
   try {
     replaceState({
@@ -162,7 +198,15 @@ export async function pollPairing(
       p_token: creds.token,
     });
     if (remote) {
-      applyRemote(await open<State>(key, remote.blob));
+      const incoming = await open<State>(key, remote.blob);
+      if (isEmptyBudget(incoming) && !isEmptyBudget(getState())) {
+        // the phone is empty: keep this budget and send it to the phone instead
+        setLink({ ...creds, rev: remote.rev, dirty: true, dirtyAt: Date.now() });
+        await syncDevices(true);
+        onStage?.("done");
+        return true;
+      }
+      applyRemote(incoming);
       setLink({ ...creds, rev: remote.rev, dirty: false, lastSync: new Date().toISOString() });
       onStage?.("done");
       return true;
@@ -203,9 +247,12 @@ export async function syncDevices(forcePush = false): Promise<SyncResult> {
       p_token: l.token,
     });
     const remoteNewer = !!remote && remote.rev > l.rev;
-    // both changed: the later change wins (last write wins)
-    if (remoteNewer && !(l.dirty && (l.dirtyAt ?? 0) > remote!.rev && !forcePush)) {
-      applyRemote(await open<State>(key, remote!.blob));
+    const remoteState = remote ? await open<State>(key, remote.blob) : null;
+    // both changed: the later change wins (last write wins); empty never beats filled
+    const localWins = forcePush || (l.dirty && (!remoteNewer || (l.dirtyAt ?? 0) > remote!.rev));
+    const action = syncDecision(getState(), remoteState, remoteNewer, localWins);
+    if (action === "pull") {
+      applyRemote(remoteState!);
       patch({
         rev: remote!.rev,
         dirty: false,
@@ -215,7 +262,7 @@ export async function syncDevices(forcePush = false): Promise<SyncResult> {
       });
       return { ok: true };
     }
-    if (l.dirty || !remote || forcePush) {
+    if (action === "push") {
       const rev = Math.max(Date.now(), (remote?.rev ?? 0) + 1);
       await rpc("device_vault_push", {
         p_id: l.id,
