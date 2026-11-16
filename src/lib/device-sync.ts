@@ -317,3 +317,21 @@ export function startDeviceSync() {
   }, 30000);
   void syncDevices();
 }
+
+/** the copy saved before the last update from another device, if any */
+export function beforeSyncSnapshot(): { at: string; state: State } | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) ?? "null");
+    return v && v.at && v.state ? v : null;
+  } catch {
+    return null;
+  }
+}
+/** put the pre-sync copy back; keeps this device's AI keys */
+export function restoreBeforeSync(): boolean {
+  const snap = beforeSyncSnapshot();
+  if (!snap) return false;
+  const cur = getState();
+  replaceState({ ...snap.state, ai: { ...snap.state.ai, apiKey: cur.ai.apiKey, advisorApiKey: (cur.ai as { advisorApiKey?: string }).advisorApiKey ?? "" } as State["ai"] });
+  return true;
+}

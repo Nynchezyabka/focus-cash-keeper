@@ -14,6 +14,8 @@ import { useEffect, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { initPwa } from "@/lib/pwa";
+import { guardStorage } from "@/lib/storage-guard";
+import { toast } from "sonner";
 import { startFamilySync } from "@/lib/family";
 import { startDeviceSync } from "@/lib/device-sync";
 import { initTheme, THEME_BOOT } from "@/lib/theme";
@@ -144,7 +146,11 @@ function RootComponent() {
     initTheme();
     initPwa();
     startFamilySync();
-    startDeviceSync();
+    void guardStorage()
+      .then((restored) => {
+        if (restored) toast("Бюджет восстановлен из запасной копии на этом устройстве");
+      })
+      .finally(() => startDeviceSync());
   }, []);
 
   return (

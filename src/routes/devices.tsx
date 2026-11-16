@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { getState } from "@/lib/budget";
 import { familyConfigured } from "@/lib/family-api";
 import {
+  beforeSyncSnapshot,
+  restoreBeforeSync,
   answerPairing,
   pollPairing,
   setPairing,
@@ -132,6 +134,7 @@ function Linked() {
           <Unlink /> Отключить
         </Button>
       </div>
+      <SnapshotRestore />
     </section>
   );
 }
@@ -323,5 +326,29 @@ function Scan() {
         </Button>
       </div>
     </section>
+  );
+}
+
+function SnapshotRestore() {
+  const [snap, setSnap] = useState<ReturnType<typeof beforeSyncSnapshot>>(null);
+  useEffect(() => setSnap(beforeSyncSnapshot()), []);
+  if (!snap) return null;
+  const n = snap.state.txs?.length ?? 0;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted p-3 text-sm">
+      <span>
+        Копия до последней сверки: {new Date(snap.at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}, операций: {n}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          if (!confirm("Вернуть бюджет к этой копии? Текущие данные на этом устройстве заменятся.")) return;
+          if (restoreBeforeSync()) toast("Бюджет возвращён к копии");
+        }}
+      >
+        Вернуть
+      </Button>
+    </div>
   );
 }

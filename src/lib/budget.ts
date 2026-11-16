@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { customColor } from "./colors";
 import type { DebtFee } from "./debt-fee";
+import { shadowSave } from "@/lib/shadow-store";
 import { paymentObligations, type ScheduleRow } from "./loan-schedule";
 
 export type Group = "must" | "safe" | "life";
@@ -397,7 +398,9 @@ export function setState(fn: (s: State) => State) {
   state = fn(load());
   try {
     if (saveBlocked) throw new Error("blocked");
-    localStorage.setItem(KEY, JSON.stringify(state));
+    const json = JSON.stringify(state);
+    localStorage.setItem(KEY, json);
+    shadowSave(json);
   } catch {
     if (typeof window !== "undefined") window.dispatchEvent(new Event("budget-save-failed"));
   }

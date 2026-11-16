@@ -35,3 +35,4 @@
 - Keep the original auditor passport as a dated snapshot below a current correction summary in docs/passport.md — preserves audit provenance without presenting resolved issues as current defects.
 - Exclude managed generated integration files from project ESLint checks — regeneration must not require hand-editing platform-owned code.
 - Shell owns the shared back control for secondary pages, including Family; primary navigation and Plan tabs omit it to keep navigation consistent.
+- Budget is mirrored to IndexedDB (src/lib/shadow-store.ts) and restored at launch by storage-guard.ts only when the live budget is empty, before device sync starts — survives localStorage wipes offline.
