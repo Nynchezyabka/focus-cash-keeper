@@ -49,33 +49,59 @@ export function scheduleTotals(s: State, o: Obligation) {
   };
 }
 
-/** Text import deliberately rejects incomplete rows instead of guessing a date or amount. */
-export function parseScheduleText(text: string): { rows: ScheduleRow[]; errors: number[] } {
+const MONTHS = ["янв", "фев", "мар", "апр", "ма", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+const DATE_RE =
+  /(\d{4}-\d{2}-\d{2})|\b(\d{1,2})[./](\d{1,2})(?:[./](\d{4}))?\b|\b(\d{1,2})\s+(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-яё]*\.?(?:\s+(\d{4}))?/i;
+const pad = (n: number) => String(n).padStart(2, "0");
+const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/** Text import rejects incomplete rows; a missing year is inferred as the nearest upcoming one and kept chronological. */
+export function parseScheduleText(
+  text: string,
+  today = new Date(),
+): { rows: ScheduleRow[]; errors: number[] } {
   const rows: ScheduleRow[] = [],
     errors: number[] = [];
+  const floor = key(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 60));
+  let prev = "";
   text.split(/\n/).forEach((line, i) => {
     if (!line.trim()) return;
-    const match = line.match(/\b(\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4})\b/);
-    if (!match) {
+    const m = line.match(DATE_RE);
+    if (!m) {
       errors.push(i + 1);
       return;
     }
-    const raw = match[0];
-    const parts = raw.split(/[./]/);
-    const date = raw.includes("-")
-      ? raw
-      : `${parts[2]}-${parts[1]?.padStart(2, "0")}-${parts[0]?.padStart(2, "0")}`;
+    let date: string;
+    if (m[1]) date = m[1];
+    else {
+      const day = Number(m[2] ?? m[5]);
+      const month = m[3]
+        ? Number(m[3])
+        : MONTHS.findIndex((x) => (m[6] ?? "").toLowerCase().startsWith(x)) + 1;
+      const yearText = m[4] ?? m[7];
+      let year = yearText ? Number(yearText) : today.getFullYear();
+      date = `${year}-${pad(month)}-${pad(day)}`;
+      if (!yearText) {
+        while (date < floor || (prev && date < prev)) {
+          year += 1;
+          date = `${year}-${pad(month)}-${pad(day)}`;
+        }
+      }
+    }
     const rest = line
-      .replace(raw, "")
-      .replace(/₽|руб\.?/gi, "")
+      .replace(m[0], "")
+      .replace(/₽|руб\.?|р\./gi, "")
+      .replace(/[A-Za-zА-Яа-яЁё]+\.?/g, "")
       .trim()
-      .replace(/^[;:\s—–-]+/, "");
+      .replace(/^[;:\s—–-]+/, "")
+      .replace(/[;:\s—–-]+$/, "");
     const amount = Number(rest.replace(/[\s\u00a0\u202f]/g, "").replace(",", "."));
     const numberFormat = /^(?:\d+|\d{1,3}(?:[\s\u00a0\u202f]\d{3})+)(?:[.,]\d{1,2})?$/;
     if (!validDate(date) || !numberFormat.test(rest) || !Number.isFinite(amount) || amount <= 0) {
       errors.push(i + 1);
       return;
     }
+    prev = date;
     rows.push({ id: `import-${i}`, date, amount });
   });
   return { rows, errors };

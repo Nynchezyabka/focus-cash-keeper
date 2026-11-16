@@ -109,3 +109,14 @@ describe("spendDay", () => {
     expect(_sd("завтра", new Date(2026, 10, 13))?.getDate()).toBe(14);
   });
 });
+
+describe("advisor schedule action", () => {
+  it("parses a schedule tag into dated rows", async () => {
+    const { parseActions } = await import("@/lib/advisor-calc");
+    const { actions } = parseActions("[[schedule:Рассрочка|2026-11-22 314; 2026-12-27 319]]");
+    expect(actions).toHaveLength(1);
+    const a = actions[0];
+    expect(a?.type).toBe("schedule");
+    if (a?.type === "schedule") expect(a.rows.map((r) => [r.date, r.amount])).toEqual([["2026-11-22", 314], ["2026-12-27", 319]]);
+  });
+});

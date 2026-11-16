@@ -17,7 +17,7 @@ import {
   type State,
 } from "@/lib/budget";
 import { saveGoal } from "@/lib/goals";
-import { validDate } from "@/lib/loan-schedule";
+import { parseScheduleText, validDate, validSchedule, type ScheduleRow } from "@/lib/loan-schedule";
 import { debtFeeAt } from "@/lib/debt-fee";
 
 const d = (x: Date) => x.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
@@ -265,12 +265,13 @@ export function unverifiedSums(answer: string, sources: string[]): number[] {
 export type Action =
   | { type: "transfer"; from: Method; amount: number }
   | { type: "payment"; name: string; amount: number; date: string }
-  | { type: "goal"; name: string; target: number };
+  | { type: "goal"; name: string; target: number }
+  | { type: "schedule"; name: string; rows: ScheduleRow[] };
 export type MoveAction =
   | { type: "movePayment"; id: string; date: string }
   | { type: "moveIncome"; id: string; date: string };
 export type AdvisorAction = Action | MoveAction;
-const TAG = /\[\[(transfer|payment|goal|movePayment|moveIncome):([^\]]{1,200})\]\]/g;
+const TAG = /\[\[(transfer|payment|goal|schedule|movePayment|moveIncome):([^\]]{1,3000})\]\]/g;
 export function parseActions(text: string): { clean: string; actions: AdvisorAction[] } {
   const actions: AdvisorAction[] = [];
   for (const m of text.matchAll(TAG)) {
@@ -291,6 +292,15 @@ export function parseActions(text: string): { clean: string; actions: AdvisorAct
       validDate(p[2] ?? "")
     )
       actions.push({ type: "payment", name: p[0].slice(0, 60), amount, date: p[2] ?? "" });
+    if (m[1] === "schedule" && p[0] && p[1]) {
+      const parsed = parseScheduleText(p.slice(1).join("|").replace(/[;,]\s*(?=\d{4}-)/g, "\n"));
+      if (!parsed.errors.length && parsed.rows.length && parsed.rows.length <= 120)
+        actions.push({
+          type: "schedule",
+          name: p[0].slice(0, 60),
+          rows: parsed.rows.map((r) => ({ ...r, id: uid() })),
+        });
+    }
     if (m[1] === "goal" && p[0] && Number.isFinite(amount) && amount > 0)
       actions.push({ type: "goal", name: p[0].slice(0, 60), target: amount });
     if ((m[1] === "movePayment" || m[1] === "moveIncome") && p[0] && validDate(p[1] ?? ""))
@@ -323,6 +333,14 @@ export function describeAction(
       title: a.from === "card" ? "Перевести с карты в наличные" : "Перевести наличные на карту",
       before: `карта ${rub(s.balance)}, наличные ${rub(s.cash ?? 0)}`,
       after: `карта ${rub(s.balance + dc)}, наличные ${rub((s.cash ?? 0) - dc)}`,
+    };
+  }
+  if (a.type === "schedule") {
+    const sorted = [...a.rows].sort((x, y) => x.date.localeCompare(y.date));
+    return {
+      title: "Создать график платежей",
+      before: `платежей в плане: ${s.obligations.length}`,
+      after: `+ «${a.name}»: ${a.rows.length} платежей на ${rub(a.rows.reduce((t, r) => t + r.amount, 0))}, ${sorted[0]?.date} – ${sorted.at(-1)?.date}`,
     };
   }
   if (a.type === "payment")
@@ -370,6 +388,25 @@ export function applyAction(a: AdvisorAction): boolean {
     return true;
   }
   if (a.type === "transfer") return !!transfer(a.amount, a.from);
+  if (a.type === "schedule") {
+    if (!validSchedule(a.rows)) return false;
+    setState((s) => ({
+      ...s,
+      obligations: [
+        ...s.obligations,
+        {
+          id: uid(),
+          name: a.name,
+          category: "loan",
+          method: "card",
+          day: 0,
+          amount: a.rows.reduce((t, r) => t + r.amount, 0),
+          schedule: [...a.rows].sort((x, y) => x.date.localeCompare(y.date)),
+        },
+      ],
+    }));
+    return true;
+  }
   if (a.type === "payment") {
     if (!safeKey(a.date)) return false;
     setState((s) => ({

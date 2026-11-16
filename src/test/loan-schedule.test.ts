@@ -103,9 +103,21 @@ describe("schedule import", () => {
     ]);
   });
   it("rejects impossible dates and ambiguous rows instead of silently importing", () => {
-    const parsed = parseScheduleText("31.02.2026 1000\n20.11.2026 1200 400\n20.11 500");
+    const parsed = parseScheduleText("31.02.2026 1000\n20.11.2026 1200 400\nпросто текст 500");
     expect(parsed.rows).toEqual([]);
     expect(parsed.errors).toEqual([1, 2, 3]);
     expect(validSchedule([{ id: "x", date: "2026-11-20", amount: -1 }])).toBe(false);
+  });
+  it("reads Russian month names without a year and rolls over New Year", () => {
+    const parsed = parseScheduleText(
+      "Ближайший платёж 22 ноября 314 ₽\n27 декабря 319 ₽\n3 января 314 ₽",
+      new Date(2026, 10, 16),
+    );
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.rows.map((r) => [r.date, r.amount])).toEqual([
+      ["2026-11-22", 314],
+      ["2026-12-27", 319],
+      ["2027-01-03", 314],
+    ]);
   });
 });
