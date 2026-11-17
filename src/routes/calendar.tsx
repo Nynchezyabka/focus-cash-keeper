@@ -6,7 +6,7 @@ import { PlanTabs } from "@/components/PlanTabs";
 import { MethodBadge } from "@/components/Pickers";
 import { NewIncomeOn, PlanEventEditor } from "./incomes";
 import { NewPaymentOn } from "./payments";
-import { Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { calc, dayKey, forecast, rub, type CalEvent, type State } from "@/lib/budget";
 
 export const Route = createFileRoute("/calendar")({
@@ -443,7 +443,7 @@ function Grid({ s }: { s: State }) {
           </ul>
         ) : (
           <p className="pt-2 text-xs text-muted-foreground">
-            Платежей и поступлений в этот день нет
+            Платежей и поступлений в этот день не запланировано
           </p>
         )}
         {selDate >= today && (
@@ -451,9 +451,9 @@ function Grid({ s }: { s: State }) {
             <button
               type="button"
               onClick={() => setAdding("payment")}
-              className="flex items-center justify-center gap-1 rounded-xl bg-secondary py-2 text-xs text-secondary-foreground"
+              className="flex items-center justify-center gap-1 rounded-xl bg-spend-soft py-2 text-xs text-spend"
             >
-              <Plus className="h-4 w-4" /> Платёж
+              <Minus className="h-4 w-4" /> Платёж
             </button>
             <button
               type="button"
