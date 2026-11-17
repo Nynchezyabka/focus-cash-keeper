@@ -32,3 +32,22 @@ describe("one-off income", () => {
     expect(pendingIncome(s, new Date(2027, 0, 26))).toBeNull();
   });
 });
+
+describe("pending income after moving", () => {
+  const reg = (extra: object): State =>
+    ({
+      ...base(),
+      createdAt: new Date(2026, 9, 1).toISOString(),
+      incomes: [{ id: "z", name: "Зарплата", amount: 25000, day: 10, nextOn: "2026-11-12", ...extra }],
+    }) as unknown as State;
+  it("shows a moved income when its date arrives", () => {
+    expect(pendingIncome(reg({}), now)?.income.id).toBe("z");
+  });
+  it("hides a moved income skipped this month", () => {
+    expect(pendingIncome(reg({ skip: "2026-11" }), now)).toBeNull();
+  });
+  it("hides a moved income already marked as entered", () => {
+    const s = { ...reg({}), incomeAck: { z: "2026-11-12" } };
+    expect(pendingIncome(s, now)).toBeNull();
+  });
+});

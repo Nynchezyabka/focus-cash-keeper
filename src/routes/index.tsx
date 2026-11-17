@@ -43,6 +43,8 @@ import {
   pendingIncome,
   nextIncome,
   markIncomeArrived,
+  periodOf,
+  toggleIncomeSkip,
   setCushion,
   takeFromCushion,
   reconcile,
@@ -472,31 +474,98 @@ function ReserveDialog({
 }
 
 function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>> }) {
-  const shift = (days: number) => {
+  const [edit, setEdit] = useState(false);
+  const [amount, setAmount] = useState(String(p.income.amount));
+  const [method, setMethod] = useState<Method>(p.income.method ?? "card");
+  const [date, setDate] = useState("");
+  const shift = (key: string) => {
+    moveIncome(p.income.id, key);
+    toast(`Ждём доход до ${new Date(key + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`);
+  };
+  const plus = (days: number) => {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    moveIncome(p.income.id, dayKey(d));
-    toast(`Ждём доход до ${d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`);
+    shift(dayKey(d));
   };
+  const sum = Math.round(Number(amount.replace(",", ".").replace(/\s/g, "")));
   return (
     <div className="rounded-2xl bg-secondary p-4 text-secondary-foreground">
       <p className="text-sm">
         «{p.income.name}» ({rub(p.income.amount)}) уже пришёл?
       </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          onClick={() => addedToast(confirmIncome(getState(), p.income), "Доход учтён")}
-        >
-          Да, пришёл
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => shift(2)}>
-          Сдвинуть на 2 дня
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => shift(5)}>
-          На 5 дней
-        </Button>
-      </div>
+      {edit ? (
+        <div className="mt-3 space-y-2">
+          <Input
+            inputMode="decimal"
+            aria-label="Сколько пришло"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            autoFocus
+          />
+          <MethodToggle value={method} onChange={setMethod} />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              disabled={!(sum > 0)}
+              onClick={() => addedToast(confirmIncome(getState(), p.income, sum, method), "Доход учтён")}
+            >
+              Учесть {sum > 0 ? rub(sum) : ""}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEdit(false)}>
+              Отмена
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={() => addedToast(confirmIncome(getState(), p.income), "Доход учтён")}
+          >
+            Да, {rub(p.income.amount)}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setEdit(true)}>
+            Пришло другое
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              markIncomeArrived(getState(), p.income);
+              toast("Хорошо, вопрос снят");
+            }}
+          >
+            Уже внесено вручную
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              toggleIncomeSkip(p.income.id, periodOf(new Date(p.date + "T12:00")));
+              toast("В этом месяце не ждём");
+            }}
+          >
+            Не ждать в этом месяце
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => plus(2)}>
+            +2 дня
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => plus(5)}>
+            +5 дней
+          </Button>
+          <Input
+            type="date"
+            aria-label="Сдвинуть на дату"
+            className="h-9 w-auto"
+            value={date}
+            min={dayKey(new Date())}
+            onChange={(e) => {
+              setDate(e.target.value);
+              if (e.target.value) shift(e.target.value);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

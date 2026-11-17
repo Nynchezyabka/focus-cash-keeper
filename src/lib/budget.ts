@@ -503,7 +503,10 @@ export function pendingIncome(s: State, now = new Date()): { income: Income; dat
   const created = startOfDay(new Date(s.createdAt));
   for (const inc of s.incomes) {
     if (inc.nextOn && safeKey(inc.nextOn)) {
-      if (parseKey(inc.nextOn) <= today) return { income: inc, date: inc.nextOn };
+      const moved = parseKey(inc.nextOn);
+      const ackd = s.incomeAck[inc.id];
+      if (moved <= today && periodOf(moved) !== inc.skip && !(ackd && ackd >= inc.nextOn))
+        return { income: inc, date: inc.nextOn };
       continue;
     }
     const past = incomeDates(inc, today).filter(
@@ -563,7 +566,9 @@ export function toggleIncomeSkip(id: string, period: string) {
   setState((s) => ({
     ...s,
     incomes: s.incomes.map((y) =>
-      y.id === id ? { ...y, skip: y.skip === period ? undefined : period } : y,
+      y.id === id
+        ? { ...y, skip: y.skip === period ? undefined : period, nextOn: undefined }
+        : y,
     ),
   }));
 }
@@ -587,7 +592,12 @@ export function payObligation(o: Obligation, method: Method = o.method ?? "card"
   return t;
 }
 /** income really arrived: record money, mark this occurrence handled, drop any moved date */
-export function confirmIncome(s: State, inc: Income, amount = inc.amount) {
+export function confirmIncome(
+  s: State,
+  inc: Income,
+  amount = inc.amount,
+  method: Method = inc.method ?? "card",
+) {
   const p = pendingIncome(s);
   const key =
     inc.nextOn ?? (p?.income.id === inc.id ? p.date : dayKey(incomeUpcoming(s, inc) ?? new Date()));
@@ -596,7 +606,7 @@ export function confirmIncome(s: State, inc: Income, amount = inc.amount) {
     amount,
     category: "income",
     note: inc.name,
-    method: inc.method ?? "card",
+    method,
   });
   setState((x) => ({
     ...x,
