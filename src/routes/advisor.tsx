@@ -1,3 +1,4 @@
+import { reviewRange, reviewText } from "@/lib/review";
 import { activeGoals, familyCollected, goalSaved, unassigned } from "@/lib/goals";
 import { GUIDE_TEXT } from "@/lib/guide";
 import { paymentObligations } from "@/lib/loan-schedule";
@@ -364,6 +365,7 @@ function Chat({ s }: { s: State }) {
   async function send(q: string, base: Msg[] = msgs, shot = img) {
     if ((!q.trim() && !shot) || busy) return;
     const pre = q.trim() ? precompute(s, q) : null;
+    const rv = q.trim() ? reviewRange(q) : null;
     const cmd = !shot ? memoryCommand(q) : null;
     if (cmd) {
       let reply: string;
@@ -402,7 +404,7 @@ function Chat({ s }: { s: State }) {
     try {
       const facts = context(s);
       const tone = toneOf(s.advisorTone);
-      const sys = `${RULES}\n\n${personaRules(tone, nameOf(s.advisorName))}\n${HONEST_RULE}\n${memoryPrompt(s.advisorMemory)}${isNextStep(q) ? "\nЭТО ВОПРОС ПРО СЛЕДУЮЩИЙ ШАГ: ответь одним шагом." : ""}\n\n${facts}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
+      const sys = `${RULES}\n\n${personaRules(tone, nameOf(s.advisorName))}\n${HONEST_RULE}\n${memoryPrompt(s.advisorMemory)}${isNextStep(q) ? "\nЭТО ВОПРОС ПРО СЛЕДУЮЩИЙ ШАГ: ответь одним шагом." : ""}\n\n${facts}${rv ? `\n\n${reviewText(s, rv)}` : ""}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
       const raw = (
         await aiChat(
           sys,

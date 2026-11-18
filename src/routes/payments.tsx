@@ -67,7 +67,13 @@ function Payments({ s }: { s: State }) {
   const [loan, setLoan] = useState(false);
   const [schedule, setSchedule] = useState<Obligation | "new" | null>(null);
   const list = [...s.obligations]
-    .map((o) => ({ o, due: obligationDue(o) }))
+    .map((o) => {
+      if (!o.schedule) return { o, due: obligationDue(o) };
+      const rows = paymentObligations({ ...s, obligations: [o] }).filter(
+        (p) => !isPaid(s, p, obligationDue(p)),
+      );
+      return { o, due: rows[0] ? obligationDue(rows[0]) : new Date(8.64e15) };
+    })
     .sort((a, b) => +a.due - +b.due);
   const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
   return (
@@ -131,8 +137,8 @@ function Payments({ s }: { s: State }) {
                       <MethodBadge m={o.method} />
                     </span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {o.once ? `Один раз, ${fmt(due)}` : `Каждый месяц, ${o.day}-го`}
-                      {o.nextOn ? ` · перенесён на ${fmt(due)}` : ""}
+                      {o.once ? `Один раз, ${fmt(due)}` : `Каждый месяц, ${o.day}-го · ближайший ${fmt(due)}`}
+                      {o.nextOn ? " (перенесён)" : ""}
                       {paid ? " · оплачено" : reserved ? " · отложено" : ""}
                     </span>
                   </span>

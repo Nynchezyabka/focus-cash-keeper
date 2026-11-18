@@ -231,7 +231,7 @@ function Segments({ s, horizon }: { s: State; horizon: number }) {
   return (
     <>
       {segs.map((g, i) => {
-        const perDay = i === 0 ? c.dailyNorm : g.perDay;
+        const perDay = i === 0 ? c.afterSpread : g.perDay;
         return (
           <section key={dayKey(g.start)} className="rounded-2xl bg-card p-4 shadow-soft">
             {g.incomes.length > 0 && (
@@ -319,7 +319,8 @@ function Grid({ s }: { s: State }) {
     const i = segs.findIndex((g) => +d >= +g.start && +d < +g.end);
     const g = segs[i];
     if (!g || (g.open && i > 0)) return null;
-    return i === 0 ? c.dailyNorm : g.perDay;
+    if (i > 0) return g.perDay;
+    return dayKey(d) === todayK ? Math.max(0, c.freeToday) : c.afterSpread;
   };
   const days = monthCells(ym.getFullYear(), ym.getMonth());
   const selDate = days.find((d) => d && dayKey(d) === sel) ?? today;

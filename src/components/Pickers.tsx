@@ -213,7 +213,7 @@ export function DateDialog({
         </DialogHeader>
         <Input type="date" value={v} onChange={(e) => setV(e.target.value)} className="h-12" />
         <p className="text-xs text-muted-foreground">
-          Меняется только ближайший раз. Потом всё вернётся к обычному числу.
+          Сдвигается только ближайшая выплата. В следующем месяце всё вернётся к обычному числу. Если число поменялось насовсем — измените его в самой выплате.
         </p>
         <Button
           disabled={!v}

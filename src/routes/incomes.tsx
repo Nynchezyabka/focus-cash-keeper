@@ -25,6 +25,7 @@ import {
   setState,
   uid,
   type Income,
+  type Method,
   type State,
 } from "@/lib/budget";
 
@@ -84,6 +85,7 @@ const periodText = (i: Income) =>
 function Incomes({ s }: { s: State }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [moving, setMoving] = useState<Income | null>(null);
+  const [arrived, setArrived] = useState<Income | null>(null);
   const pending = pendingIncome(s);
   const next = nextIncome(s);
   const list = s.incomes.filter((i) => !i.once).sort((a, b) => a.day - b.day);
@@ -189,9 +191,7 @@ function Incomes({ s }: { s: State }) {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() =>
-                        addedToast(confirmIncome(s, i), `${i.name}: +${rub(i.amount)}`)
-                      }
+                      onClick={() => setArrived(i)}
                     >
                       <Check /> Пришли
                     </Button>
@@ -285,7 +285,36 @@ function Incomes({ s }: { s: State }) {
         onSave={(d) => moving && moveIncome(moving.id, d)}
       />
       <IncomeEditor draft={draft} onClose={() => setDraft(null)} />
+      {arrived && <ArrivedDialog s={s} inc={arrived} onClose={() => setArrived(null)} />}
     </div>
+  );
+}
+
+/** confirm a planned income with the amount that really came (sick leave, bonus, deductions) */
+function ArrivedDialog({ s, inc, onClose }: { s: State; inc: Income; onClose: () => void }) {
+  const [amount, setAmount] = useState(String(inc.amount));
+  const [method, setMethod] = useState<Method>(inc.method ?? "card");
+  const sum = Math.round(Number(amount.replace(",", ".").replace(/\s/g, "")));
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Сколько пришло — «{inc.name}»?</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">По плану {rub(inc.amount)}. Можно поправить сумму.</p>
+        <Input inputMode="decimal" aria-label="Сколько пришло" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12" />
+        <MethodToggle value={method} onChange={setMethod} />
+        <Button
+          disabled={!(sum > 0)}
+          onClick={() => {
+            addedToast(confirmIncome(s, inc, sum, method), `${inc.name}: +${rub(sum)}`);
+            onClose();
+          }}
+        >
+          Учесть {sum > 0 ? rub(sum) : ""}
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -354,9 +383,12 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
           )}
         </div>
         {v.once === null && (
-          <div className="space-y-1">
+          <details className="space-y-1" open={!!(v.start || v.end)}>
+            <summary className="cursor-pointer text-xs text-muted-foreground">
+              Дополнительно: срок действия
+            </summary>
             <p className="text-xs text-muted-foreground">
-              Период (необязательно) — например, пособие с мая на полтора года
+              Необязательно — например, пособие с мая на полтора года
             </p>
             <div className="flex gap-2">
               <label className="flex-1 text-xs text-muted-foreground">
@@ -377,7 +409,7 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
               </label>
             </div>
             {!periodOk && <p className="text-xs text-destructive">Дата окончания раньше начала</p>}
-          </div>
+          </details>
         )}
         <MethodToggle value={v.method} onChange={(m) => setV({ ...v, method: m })} />
         <p className="text-xs text-muted-foreground">

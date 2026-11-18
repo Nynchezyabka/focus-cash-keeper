@@ -525,7 +525,7 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
             Да, {rub(p.income.amount)}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setEdit(true)}>
-            Пришло другое
+            Другая сумма
           </Button>
           <Button
             size="sm"
