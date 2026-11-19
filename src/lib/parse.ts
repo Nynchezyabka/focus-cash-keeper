@@ -139,7 +139,75 @@ export function endpoint(ai: AiSettings, purpose: "parse" | "advisor" = "parse")
 /** Name of the AI that parses spending, or "" when only the built-in parser works. */
 export const aiName = (ai: AiSettings) => endpoint(ai, "parse")?.name ?? "";
 
+export type Usage = { input: number; cached: number };
+export type SystemParts = { stable: string; dynamic: string };
+const NO_CACHE_KEY = "bb-ai-nocache";
+const noCacheList = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(NO_CACHE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+};
+/** cache_control goes only to api.anthropic.com, or to an own Anthropic server the user marked as supporting it. */
+export function wantsCache(ep: Endpoint, ai: Pick<AiSettings, "cacheOk">, blocked: string[] = []) {
+  if (ep.kind !== "anthropic" || blocked.includes(ep.url)) return false;
+  let host = "";
+  try {
+    host = new URL(ep.url).hostname;
+  } catch {
+    return false;
+  }
+  return host === "api.anthropic.com" || !!ai.cacheOk;
+}
+/** Builds the request body: stable part first so provider prefix caches can hit. */
+export function chatBody(
+  ep: Endpoint,
+  system: string | SystemParts,
+  messages: { role: string; content: unknown }[],
+  extra: Record<string, unknown> = {},
+  cache = false,
+): Record<string, unknown> {
+  const flat =
+    typeof system === "string"
+      ? system
+      : [system.stable, system.dynamic].filter(Boolean).join("\n\n");
+  if (ep.kind === "anthropic") {
+    const sys =
+      cache && typeof system !== "string"
+        ? [
+            { type: "text", text: system.stable, cache_control: { type: "ephemeral" } },
+            ...(system.dynamic ? [{ type: "text", text: system.dynamic }] : []),
+          ]
+        : flat;
+    return { max_tokens: 1500, system: sys, messages, ...extra };
+  }
+  return { messages: [{ role: "system", content: flat }, ...messages], ...extra };
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function readUsage(ep: Endpoint, j: Record<string, any>): Usage | undefined {
+  const u = j?.["usage"];
+  if (!u) return undefined;
+  if (ep.kind === "anthropic") {
+    const cached = +(u.cache_read_input_tokens ?? 0);
+    return {
+      input: +(u.input_tokens ?? 0) + cached + +(u.cache_creation_input_tokens ?? 0),
+      cached,
+    };
+  }
+  return {
+    input: +(u.prompt_tokens ?? u.input_tokens ?? 0),
+    cached: +(u.prompt_tokens_details?.cached_tokens ?? u.prompt_cache_hit_tokens ?? 0),
+  };
+}
+
 async function post(ep: Endpoint, body: Record<string, unknown>): Promise<string> {
+  return (await postFull(ep, body)).text;
+}
+async function postFull(
+  ep: Endpoint,
+  body: Record<string, unknown>,
+): Promise<{ text: string; usage?: Usage | undefined }> {
   let r: Response;
   try {
     r = await fetch(ep.url, {
@@ -164,6 +232,19 @@ async function post(ep: Endpoint, body: Record<string, unknown>): Promise<string
     );
   }
   if (!r.ok) {
+    if (r.status === 400 && JSON.stringify(body).includes("cache_control")) {
+      const t = await r.text().catch(() => "");
+      if (/cache_control|unknown|unrecogni[sz]ed|extra|not permitted|invalid/i.test(t)) {
+        try {
+          localStorage.setItem(NO_CACHE_KEY, JSON.stringify([...noCacheList(), ep.url]));
+        } catch {
+          /* storage unavailable */
+        }
+        const flat = (body["system"] as { text: string }[]).map((b) => b.text).join("\n\n");
+        return postFull(ep, { ...body, system: flat });
+      }
+      throw new Error(`${ep.name} ответил ошибкой 400${t ? `: ${t.slice(0, 200)}` : ""}`);
+    }
     const detail = await Promise.resolve()
       .then(() => r.json())
       .then((j) => String(j?.error?.message ?? j?.message ?? "").slice(0, 200))
@@ -182,7 +263,7 @@ async function post(ep: Endpoint, body: Record<string, unknown>): Promise<string
       : j.choices?.[0]?.message?.content;
   if (typeof text !== "string")
     throw new Error(`${ep.name} прислал ответ не в том формате. Проверьте формат API.`);
-  return text;
+  return { text, usage: readUsage(ep, j) };
 }
 async function chatCall(
   ep: Endpoint,
@@ -368,10 +449,11 @@ export async function parseAi(input: string, ai: AiSettings): Promise<Parsed[]> 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 /** free conversation with the user's own AI key */
 export async function aiChat(
-  system: string,
+  system: string | SystemParts,
   messages: ChatMsg[],
   settings: AiSettings,
   image?: { dataUrl: string; type: string },
+  onUsage?: (u: Usage) => void,
 ): Promise<string> {
   const ep = endpoint(settings, "advisor");
   if (!ep) throw new Error("Для помощника нужен ключ ИИ — добавьте его в Настройках.");
@@ -402,5 +484,10 @@ export async function aiChat(
         }
       : m,
   );
-  return chatCall(ep, system, msgs, { temperature: 0.3 });
+  const r = await postFull(
+    ep,
+    chatBody(ep, system, msgs, { temperature: 0.3 }, wantsCache(ep, settings, noCacheList())),
+  );
+  if (r.usage && onUsage) onUsage(r.usage);
+  return r.text;
 }

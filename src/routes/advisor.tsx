@@ -1,6 +1,8 @@
 import { reviewRange, reviewText } from "@/lib/review";
 import { activeGoals, familyCollected, goalSaved, unassigned } from "@/lib/goals";
 import { GUIDE_TEXT } from "@/lib/guide";
+import { ALL_FACTS, factNeeds, systemParts, type FactNeeds } from "@/lib/advisor-prompt";
+import type { Usage } from "@/lib/parse";
 import { paymentObligations } from "@/lib/loan-schedule";
 import { debtFeeAt } from "@/lib/debt-fee";
 import ReactMarkdown from "react-markdown";
@@ -108,7 +110,7 @@ const KIND: Record<string, string> = {
   transfer: "перевод карта↔наличные, не трата",
 };
 /** Facts of the budget the advisor must rely on — it never invents numbers. */
-function context(s: State, readable = false) {
+function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
   const c = calc(s);
   const since = Date.now() - 30 * 86400000;
   const by: Record<string, number> = {};
@@ -197,7 +199,7 @@ function context(s: State, readable = false) {
       `Подтверждённые предпочтения: ${s.advisorMemory?.join("\n") || "пока нет"}`,
       `Прогноз на 60 дней: ${forecastText(s)}`,
     ].join("\n\n");
-  return `ТЕКУЩИЕ ФАКТЫ (собраны на устройстве ${new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}; единственный источник цифр, цифры из прошлых сообщений устарели):
+  const out = `ТЕКУЩИЕ ФАКТЫ (собраны на устройстве ${new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}; единственный источник цифр, цифры из прошлых сообщений устарели):
 Сегодня ${d(new Date())}, ${new Date().toLocaleDateString("ru-RU", { weekday: "long", year: "numeric" })}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
 Накопления (в «всего» НЕ входят): ${rub(s.cushion)}, из них наличными ${rub(s.cushionCash ?? 0)}.
 Ближайший доход ${d(c.next.date)}, через ${c.days} дн.
@@ -241,6 +243,18 @@ function context(s: State, readable = false) {
 Минимум на жизнь: ${rub(c.minDaily)} в день.
 ПРОГНОЗ НА 60 ДНЕЙ (раздел «План», отрезки от дохода до дохода; дневной ориентир сглажен с учётом следующих отрезков, деньги на начало уже учитывают плановые траты на жизнь в предыдущих отрезках; не дели остаток самостоятельно):
 ${forecastText(s)}`;
+  const drop: [boolean, RegExp][] = [
+    [!need.spending, /^(Траты за 30 дней|Последние операции за 30 дней)/],
+    [!need.family, /^Семья:/],
+    [!need.goals, /^Цели накоплений/],
+    [!need.debts, /^(Кредиты и долги|Плата по сохранённым)/],
+  ];
+  let text = out;
+  if (!need.forecast) text = text.replace(/\nПРОГНОЗ НА 60 ДНЕЙ[\s\S]*$/, "");
+  return text
+    .split("\n")
+    .filter((l) => !drop.some(([off, re]) => off && re.test(l)))
+    .join("\n");
 }
 
 function forecastText(s: State) {
@@ -317,6 +331,7 @@ function Chat({ s }: { s: State }) {
   const [panel, setPanel] = useState<"" | "rules" | "facts" | "memory">("");
   const [about, setAbout] = useState(s.advisorAbout ?? "");
   const [loans, setLoans] = useState(s.advisorLoans ?? "");
+  const [usage, setUsage] = useState<Usage | null>(null);
   const [img, setImg] = useState<{ dataUrl: string; type: string; name: string } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -402,15 +417,26 @@ function Chat({ s }: { s: State }) {
     setErr("");
     setBusy(true);
     try {
-      const facts = context(s);
+      const facts = context(s, false, rv ? ALL_FACTS : factNeeds(q, !!shot));
       const tone = toneOf(s.advisorTone);
-      const sys = `${RULES}\n\n${personaRules(tone, nameOf(s.advisorName))}\n${HONEST_RULE}\n${memoryPrompt(s.advisorMemory)}${isNextStep(q) ? "\nЭТО ВОПРОС ПРО СЛЕДУЮЩИЙ ШАГ: ответь одним шагом." : ""}\n\n${facts}${rv ? `\n\n${reviewText(s, rv)}` : ""}${pre ? `\n\nРАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}` : ""}`;
+      const memBase = memoryPrompt(undefined);
+      const sys = systemParts(`${RULES}\n\n${HONEST_RULE}\n${memBase}`, [
+        personaRules(tone, nameOf(s.advisorName)) +
+          memoryPrompt(s.advisorMemory).slice(memBase.length) +
+          (isNextStep(q) ? "\nЭТО ВОПРОС ПРО СЛЕДУЮЩИЙ ШАГ: ответь одним шагом." : ""),
+        facts,
+        rv ? reviewText(s, rv) : "",
+        pre
+          ? `РАСЧЁТ ПРИЛОЖЕНИЯ ДЛЯ ЭТОГО ВОПРОСА (точный, объясни его, не меняй цифры):\n${pre}`
+          : "",
+      ]);
       const raw = (
         await aiChat(
           sys,
           next.slice(-12).map(({ role, content }) => ({ role, content })),
           s.ai,
           shot ?? undefined,
+          setUsage,
         )
       ).trim();
       const { clean: a, remember } = extractRemember(raw);
@@ -572,6 +598,12 @@ function Chat({ s }: { s: State }) {
           <DialogHeader>
             <DialogTitle>Бюджет</DialogTitle>
           </DialogHeader>
+          {usage && (
+            <p className="text-xs text-muted-foreground">
+              Последний запрос: {usage.input.toLocaleString("ru-RU")} токенов, из кэша{" "}
+              {usage.cached.toLocaleString("ru-RU")}.
+            </p>
+          )}
           <div className="min-w-0 space-y-5 text-sm leading-relaxed">
             {context(s, true)
               .split("\n\n")

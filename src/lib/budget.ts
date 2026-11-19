@@ -82,6 +82,8 @@ export interface AiSettings {
   /** Optional own server address overriding the detected service. */
   baseUrl?: string;
   advisorBaseUrl?: string;
+  /** Own Anthropic-format server accepts prompt cache marks. */
+  cacheOk?: boolean;
   /** User chose a separate advisor key. */
   advisorSeparate?: boolean;
   mode?: "auto" | "always";

@@ -152,6 +152,20 @@ export function AiModels({
               )}
             </>
           )}
+          {advEp?.kind === "anthropic" && !/^https:\/\/api\.anthropic\.com\//.test(advEp.url) && (
+            <label className="flex items-center justify-between gap-2 text-sm">
+              <span>
+                Сервер поддерживает кэш
+                <span className="block text-xs text-muted-foreground">
+                  Включите, если сервис принимает кэш запросов: повторные вопросы станут дешевле.
+                </span>
+              </span>
+              <Switch
+                checked={!!ai.cacheOk}
+                onCheckedChange={(cacheOk) => onChange({ cacheOk })}
+              />
+            </label>
+          )}
         </div>
       )}
       {(parseEp || advEp) && (
