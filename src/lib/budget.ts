@@ -115,6 +115,7 @@ export interface State {
   advisorLoans?: string;
   advisorTone?: "calm" | "direct" | "shake";
   advisorName?: string;
+  advisorChat?: { role: "user" | "assistant"; content: string; [k: string]: unknown }[]; // synced conversation
   advisorMemory?: string[]; // short stable preferences the person approved
   advisorInitiative?: boolean; // false = Помощник не пишет первым
   demo?: boolean | undefined; // example data from «Посмотреть на примере»

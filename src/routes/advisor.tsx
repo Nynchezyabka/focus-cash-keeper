@@ -80,6 +80,7 @@ import {
   rub,
   dayKey,
   setState,
+  getState,
   type State,
 } from "@/lib/budget";
 import { aiChat, endpoint, type ChatMsg } from "@/lib/parse";
@@ -98,6 +99,8 @@ export const Route = createFileRoute("/advisor")({
 });
 
 const HKEY = "berezhny-advisor-chat";
+/** unsent draft survives switching tabs */
+const DKEY = "berezhny-advisor-draft";
 const d = (x: Date) => x.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
 const KIND: Record<string, string> = {
@@ -345,7 +348,9 @@ function Chat({ s }: { s: State }) {
   useEffect(() => {
     let h: Msg[] = [];
     try {
-      h = JSON.parse(localStorage.getItem(HKEY) ?? "[]");
+      h = s.advisorChat?.length
+        ? (s.advisorChat as Msg[])
+        : JSON.parse(localStorage.getItem(HKEY) ?? "[]");
     } catch {
       /* empty */
     }
@@ -356,6 +361,7 @@ function Chat({ s }: { s: State }) {
     }
     if (op || noKeyOpener) markOpener();
     setMsgs(h);
+    setText(localStorage.getItem(DKEY) ?? "");
     setReady(true);
     const raw = sessionStorage.getItem(ASK_KEY);
     if (raw && hasKey) {
@@ -371,7 +377,12 @@ function Chat({ s }: { s: State }) {
   }, []);
   useEffect(() => {
     if (!ready) return; // never overwrite the saved chat before it is read
-    localStorage.setItem(HKEY, JSON.stringify(msgs.slice(-30)));
+    const keep = msgs.slice(-30);
+    localStorage.setItem(HKEY, JSON.stringify(keep));
+    // the conversation travels with the encrypted budget to the person's other devices
+    const plain = keep.map((m) => ({ ...m, content: m.content.slice(0, 8000) }));
+    if (JSON.stringify(plain) !== JSON.stringify(getState().advisorChat ?? []))
+      setState((x) => ({ ...x, advisorChat: plain }));
     // the screen does not jump down when it opens — only when the conversation grows
     if (grew.current) end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     grew.current = false;
@@ -405,14 +416,14 @@ function Chat({ s }: { s: State }) {
         { role: "user", content: q.trim() },
         { role: "assistant", content: reply },
       ]);
-      setText("");
+      (setText(""), localStorage.removeItem(DKEY));
       return;
     }
     const content = (q.trim() || "Посмотри скриншот") + (shot ? "\n📷 скриншот" : "");
     const next: Msg[] = [...base, { role: "user", content }];
     grew.current = true;
     setMsgs(next);
-    setText("");
+    (setText(""), localStorage.removeItem(DKEY));
     setImg(null);
     setErr("");
     setBusy(true);
@@ -831,7 +842,10 @@ function Chat({ s }: { s: State }) {
               rows={1}
               className="max-h-32 min-h-10 min-w-0 flex-1 resize-none rounded-2xl [field-sizing:content]"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                localStorage.setItem(DKEY, e.target.value);
+              }}
               placeholder="Спросите о покупке или планах"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {

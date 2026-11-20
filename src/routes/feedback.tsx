@@ -194,6 +194,15 @@ function Inbox({ k, onExit }: { k: string; onExit: () => void }) {
           Выйти
         </button>
       </div>
+      <button
+        className="text-xs text-muted-foreground underline"
+        onClick={async () => {
+          await navigator.clipboard.writeText(k);
+          toast.success("Ключ автора скопирован — вставьте его на другом устройстве");
+        }}
+      >
+        Скопировать ключ автора
+      </button>
       <Button
         variant="secondary"
         className="w-full"
