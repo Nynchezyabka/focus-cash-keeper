@@ -29,7 +29,7 @@ export const Route = createFileRoute("/calendar")({
 
 const H_KEY = "berezhny-plan-horizon";
 const V_KEY = "berezhny-plan-view";
-const HORIZONS = [30, 45, 60] as const;
+const HORIZONS = [30, 45, 60, 120, 180] as const;
 const dm = (d: Date) =>
   d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "short" });
 
@@ -249,14 +249,16 @@ function Segments({ s, horizon }: { s: State; horizon: number }) {
                     g.start.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}{" "}
                 · {g.days} дн.
               </p>
-              {g.open && i > 0 ? (
-                <p className="text-right text-xs text-muted-foreground">дальше выплат пока нет</p>
-              ) : (
-                <p className="text-sm">
-                  <span className="font-display text-lg tabular-nums">{rub(perDay)}</span>
-                  <span className="text-muted-foreground"> в день</span>
-                </p>
-              )}
+              <p className="text-right text-sm">
+                <span className="font-display text-lg tabular-nums">{rub(perDay)}</span>
+                <span className="text-muted-foreground"> в день</span>
+                {g.open && i > 0 && (
+                  <span className="block text-xs text-muted-foreground">
+                    дальше доходов пока нет — расчёт до{" "}
+                    {g.end.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                  </span>
+                )}
+              </p>
             </div>
             {g.events.length === 0 ? (
               <p className="pt-2 text-xs text-muted-foreground">Платежей нет</p>
@@ -294,7 +296,8 @@ export function monthCells(year: number, month: number): (Date | null)[] {
   return cells;
 }
 
-const MAX_AHEAD = 2;
+const MAX_AHEAD = 6;
+const GRID_HORIZON = 200;
 
 function Grid({ s }: { s: State }) {
   const [open, setOpen] = useState<CalEvent | null>(null);
@@ -307,7 +310,7 @@ function Grid({ s }: { s: State }) {
   const [adding, setAdding] = useState<null | "income" | "payment">(null);
   const ym = new Date(today.getFullYear(), today.getMonth() + offset, 1);
   const lastOfMonth = new Date(ym.getFullYear(), ym.getMonth() + 1, 0);
-  const horizon = Math.max(31, Math.round((+lastOfMonth - +today) / 86400000) + 2);
+  const horizon = Math.max(GRID_HORIZON, Math.round((+lastOfMonth - +today) / 86400000) + 2);
   const segs = forecast(s, horizon);
   const byDay = new Map<string, CalEvent[]>();
   for (const g of segs)
@@ -318,7 +321,7 @@ function Grid({ s }: { s: State }) {
   const perDayOf = (d: Date) => {
     const i = segs.findIndex((g) => +d >= +g.start && +d < +g.end);
     const g = segs[i];
-    if (!g || (g.open && i > 0)) return null;
+    if (!g) return null;
     if (i > 0) return g.perDay;
     return dayKey(d) === todayK ? Math.max(0, c.freeToday) : c.afterSpread;
   };

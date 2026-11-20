@@ -1104,8 +1104,8 @@ export function forecast(
       days = 0,
       rate = Infinity;
     for (let k = i; k < raw.length; k++) {
-      // the open tail is cut by the horizon, not by an income — it doesn't limit earlier stretches
-      if (raw[k]!.open && k > i) break;
+      // the open tail (no known income after it) also has to be lived on, so it limits earlier
+      // stretches too — otherwise a short stretch right before it would «eat» the money
       cum -= raw[k]!.payments;
       days += raw[k]!.days;
       rate = Math.min(rate, cum / days);

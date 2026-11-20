@@ -197,7 +197,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
         })
         .join("\n")}`,
       `Подтверждённые предпочтения: ${s.advisorMemory?.join("\n") || "пока нет"}`,
-      `Прогноз на 60 дней: ${forecastText(s)}`,
+      `Прогноз на 180 дней: ${forecastText(s)}`,
     ].join("\n\n");
   const out = `ТЕКУЩИЕ ФАКТЫ (собраны на устройстве ${new Date().toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}; единственный источник цифр, цифры из прошлых сообщений устарели):
 Сегодня ${d(new Date())}, ${new Date().toLocaleDateString("ru-RU", { weekday: "long", year: "numeric" })}. На карте ${rub(s.balance)}, наличными ${rub(s.cash ?? 0)}, всего ${rub(c.total)}.
@@ -241,7 +241,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
       .join("; ") || "не заданы"
   }.
 Минимум на жизнь: ${rub(c.minDaily)} в день.
-ПРОГНОЗ НА 60 ДНЕЙ (раздел «План», отрезки от дохода до дохода; дневной ориентир сглажен с учётом следующих отрезков, деньги на начало уже учитывают плановые траты на жизнь в предыдущих отрезках; не дели остаток самостоятельно):
+ПРОГНОЗ НА 180 ДНЕЙ (раздел «План», отрезки от дохода до дохода; дневной ориентир сглажен с учётом следующих отрезков, деньги на начало уже учитывают плановые траты на жизнь в предыдущих отрезках; не дели остаток самостоятельно):
 ${forecastText(s)}`;
   const drop: [boolean, RegExp][] = [
     [!need.spending, /^(Траты за 30 дней|Последние операции за 30 дней)/],
@@ -250,7 +250,7 @@ ${forecastText(s)}`;
     [!need.debts, /^(Кредиты и долги|Плата по сохранённым)/],
   ];
   let text = out;
-  if (!need.forecast) text = text.replace(/\nПРОГНОЗ НА 60 ДНЕЙ[\s\S]*$/, "");
+  if (!need.forecast) text = text.replace(/\nПРОГНОЗ НА 180 ДНЕЙ[\s\S]*$/, "");
   return text
     .split("\n")
     .filter((l) => !drop.some(([off, re]) => off && re.test(l)))
@@ -258,7 +258,7 @@ ${forecastText(s)}`;
 }
 
 function forecastText(s: State) {
-  const segs = forecast(s, 60);
+  const segs = forecast(s, 180);
   if (!segs.length) return "нет данных";
   return segs
     .map((g, i) => {

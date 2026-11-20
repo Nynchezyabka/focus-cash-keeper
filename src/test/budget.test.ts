@@ -279,4 +279,20 @@ describe("calendar forecast", () => {
     expect(b!.money).toBe(30000);
     expect(b!.incomes[0]!.name).toBe("Зарплата");
   });
+
+  it("a one-day stretch before a long gap without incomes does not get all the money", async () => {
+    const { forecast } = await import("@/lib/budget");
+    replaceState({
+      ...base(),
+      balance: 0,
+      incomes: [
+        { id: "a", name: "Зарплата", amount: 50000, day: 26 },
+        { id: "b", name: "Отпускные", amount: 0, day: 27 },
+      ],
+      obligations: [],
+    });
+    const segs = forecast(getState(), 40, NOW);
+    const oneDay = segs.find((g) => g.days === 1)!;
+    expect(oneDay.perDay).toBeLessThan(5000);
+  });
 });
