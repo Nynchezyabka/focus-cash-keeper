@@ -142,6 +142,14 @@ export const aiName = (ai: AiSettings) => endpoint(ai, "parse")?.name ?? "";
 export type Usage = { input: number; cached: number };
 export type SystemParts = { stable: string; dynamic: string };
 const NO_CACHE_KEY = "bb-ai-nocache";
+/** Switching the cache on again forgets an earlier refusal. */
+export function forgetNoCache() {
+  try {
+    localStorage.removeItem(NO_CACHE_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
 const noCacheList = (): string[] => {
   try {
     return JSON.parse(localStorage.getItem(NO_CACHE_KEY) || "[]");
@@ -220,6 +228,9 @@ async function postFull(
               "x-api-key": ep.key,
               "anthropic-version": "2023-06-01",
               "anthropic-dangerous-direct-browser-access": "true",
+              ...(JSON.stringify(body).includes("cache_control")
+                ? { "anthropic-beta": "prompt-caching-2024-07-31" }
+                : {}),
             }
           : { "content-type": "application/json", authorization: `Bearer ${ep.key}` },
       body: JSON.stringify({ model: ep.model, ...body }),

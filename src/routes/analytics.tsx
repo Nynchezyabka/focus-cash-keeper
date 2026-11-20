@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { CatIcon, Shell, meta } from "@/components/Shell";
 import { TxList } from "@/components/TxList";
+import { catPatterns } from "@/lib/spend-pattern";
 import { Link } from "@tanstack/react-router";
 import { Settings2 } from "lucide-react";
 import {
@@ -57,6 +58,14 @@ function Analytics({ s }: { s: State }) {
   const catRows = [...byCat.entries()].sort(
     (a, b) => ORDER.indexOf(cat(a[0]).group) - ORDER.indexOf(cat(b[0]).group) || b[1] - a[1],
   );
+  const pat = new Map(catPatterns(exp, 0, Infinity).map((p) => [p.id, p]));
+  const rhythm = (id: string) => {
+    const p = pat.get(id);
+    if (!p || p.activeDays < 2) return "";
+    return p.count > p.activeDays * 1.3
+      ? `${p.count} покупок · средний чек ${rub(p.avgTicket)}`
+      : `${p.activeDays} дн. с тратами · ≈ ${rub(p.perActiveDay)} в такой день`;
+  };
   const total = catRows.reduce((a, [, v]) => a + v, 0);
   const groups: Record<Group, number> = { must: 0, safe: 0, life: 0 };
   catRows.forEach(([id, v]) => (groups[cat(id).group] += v));
@@ -239,7 +248,12 @@ function Analytics({ s }: { s: State }) {
                       >
                         <CatIcon name={c.icon} className="h-4 w-4" />
                       </span>
-                      <span className="flex-1 text-sm">{label(id)}</span>
+                      <span className="flex-1 text-sm">
+                        {label(id)}
+                        {mode === "exp" && view === "cats" && rhythm(id) && (
+                          <span className="block text-xs text-muted-foreground">{rhythm(id)}</span>
+                        )}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {Math.round((v / sum) * 100)}%
                       </span>

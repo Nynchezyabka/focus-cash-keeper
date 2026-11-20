@@ -4,7 +4,7 @@ import { Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { checkAiModel, detectService, endpoint, MODEL_OPTIONS } from "@/lib/parse";
+import { checkAiModel, detectService, endpoint, forgetNoCache, MODEL_OPTIONS } from "@/lib/parse";
 import type { AiSettings } from "@/lib/budget";
 
 export function AiModels({
@@ -162,7 +162,10 @@ export function AiModels({
               </span>
               <Switch
                 checked={!!ai.cacheOk}
-                onCheckedChange={(cacheOk) => onChange({ cacheOk })}
+                onCheckedChange={(cacheOk) => {
+                  if (cacheOk) forgetNoCache();
+                  onChange({ cacheOk });
+                }}
               />
             </label>
           )}

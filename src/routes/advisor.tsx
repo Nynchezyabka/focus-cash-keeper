@@ -5,6 +5,7 @@ import { ALL_FACTS, factNeeds, systemParts, type FactNeeds } from "@/lib/advisor
 import type { Usage } from "@/lib/parse";
 import { paymentObligations } from "@/lib/loan-schedule";
 import { debtFeeAt } from "@/lib/debt-fee";
+import { patternText } from "@/lib/spend-pattern";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -187,6 +188,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
       `Платежи: ${obl}`,
       `Плановые доходы: ${inc}`,
       `Траты за 30 дней: ${spent}`,
+      `Ритм трат за 30 дней: ${patternText(s).split("; ").join("\n")}`,
       `Последние операции: ${recent}`,
       `Семья: ${fam}`,
       `Цели накоплений: ${goalsText}`,
@@ -228,6 +230,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
 Платежи и их состояние (оплаченные уже списаны и не резервируются): ${obl}.
 Плановые доходы: ${inc}.
 Траты за 30 дней: ${spent}.
+Ритм повседневных трат за 30 дней (посчитан приложением; «в такой день» — только дни, когда трата была; для вопросов «сколько заложить на N будней» умножай средний будний день на N): ${patternText(s)}.
 Последние операции за 30 дней (до 15): ${recent}.
 Семья: ${fam}
 Цели накоплений (часть накоплений, не отдельные деньги): ${goalsText}.
@@ -247,7 +250,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
 ПРОГНОЗ НА 180 ДНЕЙ (раздел «План», отрезки от дохода до дохода; дневной ориентир сглажен с учётом следующих отрезков, деньги на начало уже учитывают плановые траты на жизнь в предыдущих отрезках; не дели остаток самостоятельно):
 ${forecastText(s)}`;
   const drop: [boolean, RegExp][] = [
-    [!need.spending, /^(Траты за 30 дней|Последние операции за 30 дней)/],
+    [!need.spending, /^(Траты за 30 дней|Ритм повседневных трат|Последние операции за 30 дней)/],
     [!need.family, /^Семья:/],
     [!need.goals, /^Цели накоплений/],
     [!need.debts, /^(Кредиты и долги|Плата по сохранённым)/],
