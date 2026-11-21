@@ -106,7 +106,7 @@ export interface State {
   overspendHandled?: string; // date key
   minDaily?: number | undefined; // protected minimum for life per day
   dailyCarry?: boolean; // unspent daily money moves to the next day whole; overspend still spreads
-  carryLog?: { day: string; norm: number; carry: number }; // today's base norm and carried money
+  carryLog?: { day: string; norm: number; carry: number } | undefined; // today's base norm and carried money
   ai: AiSettings;
   categories?: Category[];
   groupAppearance?: Partial<Record<Group, { color?: string; shades: boolean }>>;
