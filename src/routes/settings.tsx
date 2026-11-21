@@ -315,6 +315,23 @@ function Settings({ s }: { s: State }) {
           }}
         />
       </section>
+      <section className="rounded-2xl bg-card p-4 shadow-soft">
+        <label className="flex items-center justify-between gap-3">
+          <span>
+            <span className="block text-base font-medium">Переносить остаток дня</span>
+            <span className="block text-sm text-muted-foreground">
+              Не потраченное за день целиком добавляется к&nbsp;следующему и&nbsp;копится, пока не
+              потратите. Перерасход по-прежнему мягко делится на&nbsp;все дни до&nbsp;дохода.
+            </span>
+          </span>
+          <Switch
+            checked={!!s.dailyCarry}
+            onCheckedChange={(v) =>
+              setState((x) => ({ ...x, dailyCarry: v, carryLog: undefined }))
+            }
+          />
+        </label>
+      </section>
       <h2 className="px-1 pt-2 font-display text-lg text-foreground">О приложении</h2>
       <Updates />
 

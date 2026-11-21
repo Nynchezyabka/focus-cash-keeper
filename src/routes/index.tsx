@@ -95,6 +95,12 @@ function Today({ s }: { s: State }) {
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
   const pending = pendingIncome(s);
+  useEffect(() => {
+    if (!s.dailyCarry) return;
+    const log = s.carryLog;
+    if (log && log.day === c.todayKey && Math.abs(log.norm - c.baseNorm) < 1) return;
+    setState((x) => ({ ...x, carryLog: { day: c.todayKey, norm: c.baseNorm, carry: c.carry } }));
+  }, [s.dailyCarry, s.carryLog, c.todayKey, c.baseNorm, c.carry]);
   const showOver = c.overspend > 0 && s.overspendHandled !== c.todayKey;
   const empty = s.txs.length === 0 && s.balance === 0;
 
@@ -107,6 +113,11 @@ function Today({ s }: { s: State }) {
           <p className="font-display text-[clamp(3.5rem,18vw,5.5rem)] leading-none tracking-tight text-foreground tabular-nums">
             {rub(Math.max(0, c.freeToday))}
           </p>
+          {c.carry >= 1 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              норма {rub(c.baseNorm)} +&nbsp;{rub(c.carry)} с&nbsp;прошлых дней
+            </p>
+          )}
           {c.spentToday > 0 && (
             <p className="mt-2 text-xs text-muted-foreground">
               потрачено {rub(c.spentToday)} из {rub(c.dailyNorm)}

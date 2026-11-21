@@ -105,6 +105,8 @@ export interface State {
   nextIncomeOverride?: string | undefined; // YYYY-MM-DD
   overspendHandled?: string; // date key
   minDaily?: number | undefined; // protected minimum for life per day
+  dailyCarry?: boolean; // unspent daily money moves to the next day whole; overspend still spreads
+  carryLog?: { day: string; norm: number; carry: number }; // today's base norm and carried money
   ai: AiSettings;
   categories?: Category[];
   groupAppearance?: Partial<Record<Group, { color?: string; shades: boolean }>>;
@@ -636,6 +638,27 @@ export function moveObligation(id: string, date: string) {
 
 // ---------- core calc ----------
 export const MIN_DAILY = 500;
+/** Unspent money carried into today: grows day by day until spent; an overspent day resets it to 0
+ *  (the overspend then lowers the pool and spreads over all days). */
+export function carriedIn(s: State, today: Date): number {
+  const log = s.carryLog;
+  if (!s.dailyCarry || !log || !safeKey(log.day)) return 0;
+  const tk = dayKey(today);
+  if (log.day === tk) return log.carry;
+  let carry = log.carry;
+  let d = parseKey(log.day);
+  if (+d > +today) return 0;
+  let guard = 0;
+  while (dayKey(d) !== tk && guard++ < 400) {
+    const k = dayKey(d);
+    const spent = s.txs
+      .filter((t) => t.kind === "expense" && !t.goal && !t.obligationId && dayKey(new Date(t.date)) === k)
+      .reduce((a, t) => a + t.amount, 0);
+    carry = Math.max(0, carry + log.norm - spent);
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+  }
+  return carry;
+}
 export function calc(s: State, now = new Date()) {
   const today = startOfDay(now);
   const next = nextIncome(s, now);
@@ -689,6 +712,10 @@ export function calc(s: State, now = new Date()) {
   // what is shown as «Отложено»: never more than the money actually on the card and in cash right now
   const setAside = Math.min(held + aheadHeld, Math.max(0, total));
   const setAsideShort = Math.max(0, reserve - setAside);
+  // carry mode: yesterday's unspent money stays whole for today instead of being spread
+  const carry = s.dailyCarry ? Math.min(carriedIn(s, today), dailyNorm * days) : 0;
+  const baseNorm = s.dailyCarry ? Math.max(0, dailyNorm - carry / days) : dailyNorm;
+  dailyNorm = baseNorm + carry;
   const freeToday = dailyNorm - spentToday;
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
@@ -705,6 +732,8 @@ export function calc(s: State, now = new Date()) {
     aheadEven,
     spentToday,
     dailyNorm,
+    baseNorm,
+    carry,
     freeToday,
     overspend,
     afterSpread,
