@@ -265,3 +265,13 @@
 .goal-progress > div {
   background: var(--goal-color, var(--primary));
 }
+
+/* Полноэкранная камера: всегда тёмная, как системная */
+.camera-ui {
+  background: #000;
+  color: #fff;
+}
+.camera-shutter {
+  background: #fff;
+  box-shadow: 0 0 0 5px #000, 0 0 0 9px rgb(255 255 255 / 0.35);
+}

@@ -58,6 +58,7 @@ import { aiName, applyFx, parseImage, parseSmart, type Parsed } from "@/lib/pars
 import { CURRENCIES, cachedRate, currency, loadRates, toRub } from "@/lib/fx";
 import { CategoryChip, CategoryPicker, MethodToggle } from "@/components/Pickers";
 import { MicButton } from "@/components/Mic";
+import { CameraCapture, SmartCameraIcon } from "@/components/CameraCapture";
 import { useFamily } from "@/lib/family";
 import { Switch } from "@/components/ui/switch";
 
@@ -94,6 +95,8 @@ function Today({ s }: { s: State }) {
   }, []);
   const [recMethod, setRecMethod] = useState<Method>("card");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [cam, setCam] = useState(false);
+  const [qrAmount, setQrAmount] = useState<string | null>(null);
   const pending = pendingIncome(s);
   useEffect(() => {
     if (!s.dailyCarry) return;
@@ -311,6 +314,35 @@ function Today({ s }: { s: State }) {
         onSmart={(f) => {
           setPhoto(f);
           setDialog("pocket");
+        }}
+        onCamera={() => {
+          setDialog(null);
+          setCam(true);
+        }}
+        prefill={qrAmount}
+        onPrefilled={() => setQrAmount(null)}
+      />
+      <CameraCapture
+        open={cam}
+        onClose={() => {
+          setCam(false);
+          setDialog("expense");
+        }}
+        onPhoto={(f) => {
+          setCam(false);
+          setPhoto(f);
+          setDialog("pocket");
+        }}
+        onQr={(q) => {
+          setCam(false);
+          setQrAmount(String(q.amount));
+          setDialog("expense");
+          const today = new Date().toISOString().slice(0, 10);
+          toast(
+            q.date && q.date !== today
+              ? `Сумма с чека: ${q.amount} ₽. Чек от ${new Date(q.date + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`
+              : `Сумма с чека: ${q.amount} ₽`,
+          );
         }}
       />
       <IncomeDialog open={dialog === "income"} onClose={() => setDialog(null)} s={s} />
@@ -585,12 +617,24 @@ function ExpenseDialog({
   open,
   onClose,
   onSmart,
+  onCamera,
+  prefill,
+  onPrefilled,
 }: {
   open: boolean;
   onClose: () => void;
   onSmart: (photo: File | null) => void;
+  onCamera: () => void;
+  prefill: string | null;
+  onPrefilled: () => void;
 }) {
   const [amount, setAmount] = useState("");
+  useEffect(() => {
+    if (open && prefill) {
+      setAmount(prefill);
+      onPrefilled();
+    }
+  }, [open, prefill, onPrefilled]);
   const [method, setMethod] = useState<Method>("card");
   const [family, setFam] = useState(false);
   const fam = useFamily();
@@ -686,24 +730,18 @@ function ExpenseDialog({
             >
               <MicIcon className="h-5 w-5" />
             </button>
-            <label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-muted-foreground active:scale-95">
-              <span className="sr-only">Чек или скриншот</span>
-              <ImageUp className="h-5 w-5" />
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  if (f) onSmart(f);
-                }}
-              />
-            </label>
+            <button
+              type="button"
+              aria-label="Снять чек или выбрать фото"
+              onClick={onCamera}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground active:scale-95"
+            >
+              <SmartCameraIcon />
+            </button>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Изображение отправится в выбранный вами сервис ИИ.
+          QR-код чека читается на телефоне. Фото без QR отправится в выбранный вами сервис ИИ.
         </p>
         {cur !== "RUB" && (
           <Input
