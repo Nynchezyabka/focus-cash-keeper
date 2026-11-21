@@ -1,5 +1,5 @@
 // Обновления приложения: автоматическая проверка при запуске, ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.64.1";
+export const APP_VERSION = "1.64.2";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -49,9 +49,8 @@ export function hasPendingInput(): boolean {
   if (document.querySelector('[data-unsaved="true"]')) return true;
   const active = document.activeElement;
   if (active && hasText(active)) return true;
-  return [...document.querySelectorAll('[role="dialog"], dialog[open]')].some((dialog) =>
-    [...dialog.querySelectorAll("input, textarea, [contenteditable]")].some(hasText),
-  );
+  // любое открытое окно (быстрый ввод с ярлыка и т.п.) — не перезагружаем
+  return !!document.querySelector('[role="dialog"], [role="alertdialog"], dialog[open]');
 }
 
 function offerUpdate() {
@@ -125,8 +124,9 @@ export async function checkForUpdates(): Promise<"current" | "updating" | "offli
     const res = await fetch("/?_v=" + Date.now(), { cache: "no-store" });
     if (!res.ok) return "offline";
     const html = await res.text();
-    const fresh = [...html.matchAll(/assets\/[^"']+\.js/g)]
-      .map((m) => m[0])
+    // только точки входа: <script src>, как и в текущем документе
+    const fresh = [...html.matchAll(/<script[^>]+src=["'][^"']*(assets\/[^"']+\.js)/g)]
+      .map((m) => m[1])
       .sort()
       .join();
     const now = [...document.querySelectorAll("script[src]")]
