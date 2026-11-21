@@ -63,8 +63,8 @@ function Analytics({ s }: { s: State }) {
     const p = pat.get(id);
     if (!p || p.activeDays < 2) return "";
     return p.count > p.activeDays * 1.3
-      ? `${p.count} покупок · средний чек ${rub(p.avgTicket)}`
-      : `${p.activeDays} дн. с тратами · ≈ ${rub(p.perActiveDay)} в такой день`;
+      ? `${p.count}\u00A0покупок\u00A0·\u00A0средний чек ${rub(p.avgTicket)}`
+      : `${p.activeDays}\u00A0дн. с\u00A0тратами\u00A0·\u00A0≈\u00A0${rub(p.perActiveDay)} в\u00A0такой день`;
   };
   const total = catRows.reduce((a, [, v]) => a + v, 0);
   const groups: Record<Group, number> = { must: 0, safe: 0, life: 0 };
@@ -248,16 +248,16 @@ function Analytics({ s }: { s: State }) {
                       >
                         <CatIcon name={c.icon} className="h-4 w-4" />
                       </span>
-                      <span className="flex-1 text-sm">
+                      <span className="min-w-0 flex-1 text-sm">
                         {label(id)}
                         {mode === "exp" && view === "cats" && rhythm(id) && (
                           <span className="block text-xs text-muted-foreground">{rhythm(id)}</span>
                         )}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
                         {Math.round((v / sum) * 100)}%
                       </span>
-                      <span className="w-24 text-right text-sm tabular-nums">{rub(v)}</span>
+                      <span className="w-24 shrink-0 text-right text-sm tabular-nums">{rub(v)}</span>
                     </button>
                   </li>
                 );

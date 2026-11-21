@@ -22,4 +22,8 @@ describe("spending rhythm", () => {
     expect(p!.cardShare).toBe(70);
     expect(p!.everyDays).toBe(1);
   });
+  it("finds big purchases above twice the typical ticket", () => {
+    const [p] = catPatterns([tx("2026-11-16", 500), tx("2026-11-17", 600), tx("2026-11-18", 3000)], 0, Infinity);
+    expect(p!.big.map((b) => b.amount)).toEqual([3000]);
+  });
 });

@@ -5,7 +5,7 @@ import { ALL_FACTS, factNeeds, systemParts, type FactNeeds } from "@/lib/advisor
 import type { Usage } from "@/lib/parse";
 import { paymentObligations } from "@/lib/loan-schedule";
 import { debtFeeAt } from "@/lib/debt-fee";
-import { patternText } from "@/lib/spend-pattern";
+import { dailyDiary, patternText } from "@/lib/spend-pattern";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -159,7 +159,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
   const recent =
     s.txs
       .filter((t) => +new Date(t.date) >= since)
-      .slice(0, 15)
+      .slice(0, 40)
       .map(
         (t) =>
           `${d(new Date(t.date))} ${KIND[t.kind] ?? t.kind}: ${t.note || cat(t.category).name} ${rub(Math.abs(t.amount))}${t.method === "cash" ? " (наличные)" : ""}${t.orig ? ` (= ${t.orig.amount} ${t.orig.currency} по курсу ${t.orig.rate})` : ""}${t.family ? " — перевод внутри семьи, не трата" : ""}`,
@@ -189,6 +189,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
       `Плановые доходы: ${inc}`,
       `Траты за 30 дней: ${spent}`,
       `Ритм трат за 30 дней: ${patternText(s).split("; ").join("\n")}`,
+      `Траты по дням за 30 дней: ${dailyDiary(s).split("; ").join("\n")}`,
       `Последние операции: ${recent}`,
       `Семья: ${fam}`,
       `Цели накоплений: ${goalsText}`,
@@ -231,7 +232,8 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
 Плановые доходы: ${inc}.
 Траты за 30 дней: ${spent}.
 Ритм повседневных трат за 30 дней (посчитан приложением; «в такой день» — только дни, когда трата была; для вопросов «сколько заложить на N будней» умножай средний будний день на N): ${patternText(s)}.
-Последние операции за 30 дней (до 15): ${recent}.
+Траты по дням за 30 дней (повседневные, по категориям; дней без записи — трат не было): ${dailyDiary(s)}.
+Последние операции за 30 дней (до 40): ${recent}.
 Семья: ${fam}
 Цели накоплений (часть накоплений, не отдельные деньги): ${goalsText}.
 О пользователе и мои правила: ${s.advisorAbout?.trim() || "не указано"}.
@@ -250,7 +252,7 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
 ПРОГНОЗ НА 180 ДНЕЙ (раздел «План», отрезки от дохода до дохода; дневной ориентир сглажен с учётом следующих отрезков, деньги на начало уже учитывают плановые траты на жизнь в предыдущих отрезках; не дели остаток самостоятельно):
 ${forecastText(s)}`;
   const drop: [boolean, RegExp][] = [
-    [!need.spending, /^(Траты за 30 дней|Ритм повседневных трат|Последние операции за 30 дней)/],
+    [!need.spending, /^(Траты за 30 дней|Ритм повседневных трат|Траты по дням|Последние операции за 30 дней)/],
     [!need.family, /^Семья:/],
     [!need.goals, /^Цели накоплений/],
     [!need.debts, /^(Кредиты и долги|Плата по сохранённым)/],
@@ -337,7 +339,19 @@ function Chat({ s }: { s: State }) {
   const [panel, setPanel] = useState<"" | "rules" | "facts" | "memory">("");
   const [about, setAbout] = useState(s.advisorAbout ?? "");
   const [loans, setLoans] = useState(s.advisorLoans ?? "");
-  const [usage, setUsage] = useState<Usage | null>(null);
+  const [usage, setUsageState] = useState<Usage | null>(null);
+  useEffect(() => {
+    try {
+      const u = localStorage.getItem("bb-ai-usage");
+      if (u) setUsageState(JSON.parse(u));
+    } catch {}
+  }, []);
+  const setUsage = (u: Usage) => {
+    setUsageState(u);
+    try {
+      localStorage.setItem("bb-ai-usage", JSON.stringify(u));
+    } catch {}
+  };
   const [img, setImg] = useState<{ dataUrl: string; type: string; name: string } | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -612,12 +626,11 @@ function Chat({ s }: { s: State }) {
           <DialogHeader>
             <DialogTitle>Бюджет</DialogTitle>
           </DialogHeader>
-          {usage && (
-            <p className="text-xs text-muted-foreground">
-              Последний запрос: {usage.input.toLocaleString("ru-RU")} токенов, из кэша{" "}
-              {usage.cached.toLocaleString("ru-RU")}.
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            {usage
+              ? `Последний запрос: ${usage.input.toLocaleString("ru-RU")} токенов, из\u00A0кэша ${usage.cached.toLocaleString("ru-RU")}.`
+              : "Расход токенов появится после первого ответа Помощника."}
+          </p>
           <div className="min-w-0 space-y-5 text-sm leading-relaxed">
             {context(s, true)
               .split("\n\n")
