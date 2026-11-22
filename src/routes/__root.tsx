@@ -13,7 +13,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
-import { initPwa } from "@/lib/pwa";
+import { initPwa, APP_VERSION } from "@/lib/pwa";
 import { guardStorage } from "@/lib/storage-guard";
 import { toast } from "sonner";
 import { startFamilySync } from "@/lib/family";
@@ -107,6 +107,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Бережный бюджет" },
       { name: "description", content: "Спокойный личный бюджет без таблиц и чувства вины." },
       { name: "theme-color", content: "#f4efe6" },
+      { name: "app-version", content: APP_VERSION },
       ...(import.meta.env.PROD ? [{ httpEquiv: "Content-Security-Policy", content: CSP }] : []),
     ],
     links: [

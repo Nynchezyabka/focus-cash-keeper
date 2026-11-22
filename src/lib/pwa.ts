@@ -1,5 +1,5 @@
 // Обновления приложения: автоматическая проверка при запуске, ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.66.0";
+export const APP_VERSION = "1.66.1";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -124,16 +124,9 @@ export async function checkForUpdates(): Promise<"current" | "updating" | "offli
     const res = await fetch("/?_v=" + Date.now(), { cache: "no-store" });
     if (!res.ok) return "offline";
     const html = await res.text();
-    // только точки входа: <script src>, как и в текущем документе
-    const fresh = [...html.matchAll(/<script[^>]+src=["'][^"']*(assets\/[^"']+\.js)/g)]
-      .map((m) => m[1])
-      .sort()
-      .join();
-    const now = [...document.querySelectorAll("script[src]")]
-      .map((s) => (s as HTMLScriptElement).src.match(/assets\/[^"']+\.js/)?.[0])
-      .filter(Boolean)
-      .sort()
-      .join();
+    // сравниваем номер версии из свежей страницы с версией, которая сейчас работает
+    const fresh = html.match(/<meta[^>]+name=["']app-version["'][^>]+content=["']([^"']+)/)?.[1] ?? "";
+    const now = APP_VERSION;
     if (fresh && now && fresh !== now) {
       // свежая страница в кэш, чтобы перезагрузка не достала старую
       if ("caches" in window) {
