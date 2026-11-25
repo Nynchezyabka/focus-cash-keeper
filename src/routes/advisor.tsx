@@ -432,6 +432,7 @@ function Chat({ s }: { s: State }) {
       });
       return () => cancelAnimationFrame(frame);
     }
+    return undefined;
   }, [msgs, ready]);
 
   async function send(q: string, base: Msg[] = msgs, shot = img) {

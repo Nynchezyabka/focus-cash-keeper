@@ -578,13 +578,15 @@ function PaymentReceiptDialog({
   o,
   onClose,
   onEdit,
+  occurrence,
 }: {
   s: State;
   o: Obligation;
   onClose: () => void;
   onEdit?: () => void;
+  occurrence?: Date | undefined;
 }) {
-  const due = obligationDue(o);
+  const due = occurrence ?? obligationDue(o);
   const done = paidAmount(s, o, due);
   const paid = isPaid(s, o, due);
   const [amount, setAmount] = useState(String(remainingPayment(s, o, due)));
@@ -605,7 +607,7 @@ function PaymentReceiptDialog({
           <Button
             variant="outline"
             onClick={() => {
-              const txs = unpay(o);
+              const txs = unpay(o, due);
               undoable("Платёж снова ждёт оплаты", () => txs.forEach(restoreTx));
               onClose();
             }}
@@ -641,7 +643,7 @@ function PaymentReceiptDialog({
               disabled={!Number.isFinite(a) || a <= 0}
               onClick={() => {
                 addedToast(
-                  partial ? payPart(o, a, method) : payObligation(o, method, a),
+                  partial ? payPart(o, a, method, due) : payObligation(o, method, a, due),
                   partial ? `Внесено ${rub(a)}` : `${o.name}: оплачено ${rub(a)}`,
                 );
                 onClose();
@@ -663,7 +665,17 @@ function PaymentReceiptDialog({
   );
 }
 
-export function PaymentEditFlow({ s, id, onClose }: { s: State; id: string; onClose: () => void }) {
+export function PaymentEditFlow({
+  s,
+  id,
+  onClose,
+  occurrence,
+}: {
+  s: State;
+  id: string;
+  onClose: () => void;
+  occurrence?: Date | undefined;
+}) {
   const o0 =
     s.obligations.find((o) => o.id === id) ??
     s.obligations.find(
@@ -677,6 +689,7 @@ export function PaymentEditFlow({ s, id, onClose }: { s: State; id: string; onCl
       <PaymentReceiptDialog
         s={s}
         o={o}
+        occurrence={occurrence}
         onClose={onClose}
         onEdit={() => setMode(o0.schedule ? "schedule" : "edit")}
       />

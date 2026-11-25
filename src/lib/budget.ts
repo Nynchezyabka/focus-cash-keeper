@@ -562,8 +562,12 @@ export function remainingPayment(s: State, o: Obligation, due: Date) {
   return isPaid(s, o, due) ? 0 : Math.max(0, o.amount - paidAmount(s, o, due));
 }
 /** part of a payment or debt paid now; the rest stays reserved */
-export function payPart(o: Obligation, amount: number, method: Method = o.method ?? "card") {
-  const due = obligationDue(o);
+export function payPart(
+  o: Obligation,
+  amount: number,
+  method: Method = o.method ?? "card",
+  due = obligationDue(o),
+) {
   return addTx({
     kind: "expense",
     amount,
@@ -598,8 +602,8 @@ export function payObligation(
   o: Obligation,
   method: Method = o.method ?? "card",
   amount = o.amount,
+  due = obligationDue(o),
 ) {
-  const due = obligationDue(o);
   const t = addTx({
     kind: "expense",
     amount,
@@ -611,7 +615,7 @@ export function payObligation(
     method,
     ...(o.goal && o.category === "savings" ? { goal: o.goal } : {}),
   });
-  if (o.nextOn)
+  if (o.nextOn === dayKey(due))
     setState((s) => ({
       ...s,
       obligations: s.obligations.map((x) => (x.id === o.id ? { ...x, nextOn: undefined } : x)),
@@ -1035,8 +1039,7 @@ export function takeFromCushion(
   return { t, ob };
 }
 /** a paid payment becomes active again */
-export function unpay(o: Obligation) {
-  const due = obligationDue(o);
+export function unpay(o: Obligation, due = obligationDue(o)) {
   const list = getState().txs.filter(
     (t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due)),
   );

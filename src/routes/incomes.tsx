@@ -530,13 +530,13 @@ export function PlanEventEditor({
   onClose,
 }: {
   s: State;
-  e: { kind: "income" | "payment"; refId: string } | null;
+  e: { kind: "income" | "payment"; refId: string; date?: Date } | null;
   onClose: () => void;
 }) {
   if (!e) return null;
   return e.kind === "income" ? (
     <IncomeEditFlow s={s} id={e.refId} onClose={onClose} />
   ) : (
-    <PaymentEditFlow s={s} id={e.refId} onClose={onClose} />
+    <PaymentEditFlow s={s} id={e.refId} occurrence={e.date} onClose={onClose} />
   );
 }
