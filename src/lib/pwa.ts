@@ -1,5 +1,5 @@
 // Обновления приложения: автоматическая проверка при запуске, ручная проверка и перезагрузка начисто.
-export const APP_VERSION = "1.66.1";
+export const APP_VERSION = "1.67.0";
 
 function refused(): boolean {
   if (!import.meta.env.PROD) return true;
@@ -125,7 +125,8 @@ export async function checkForUpdates(): Promise<"current" | "updating" | "offli
     if (!res.ok) return "offline";
     const html = await res.text();
     // сравниваем номер версии из свежей страницы с версией, которая сейчас работает
-    const fresh = html.match(/<meta[^>]+name=["']app-version["'][^>]+content=["']([^"']+)/)?.[1] ?? "";
+    const fresh =
+      html.match(/<meta[^>]+name=["']app-version["'][^>]+content=["']([^"']+)/)?.[1] ?? "";
     const now = APP_VERSION;
     if (fresh && now && fresh !== now) {
       // свежая страница в кэш, чтобы перезагрузка не достала старую

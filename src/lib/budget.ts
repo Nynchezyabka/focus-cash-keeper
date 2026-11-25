@@ -15,6 +15,8 @@ export interface Tx {
   note?: string;
   date: string; // ISO
   obligationId?: string;
+  closesObligation?: boolean; // final settlement of this occurrence, even below the estimate
+  incomeId?: string; // planned receipt; absent means a one-off addition
   period?: string; // "YYYY-MM" for obligation payments
   method?: Method; // where the money moved; default card
   orig?: { amount: number; currency: string; rate: number }; // spent in another currency; amount is in rubles
@@ -536,11 +538,28 @@ export function obligationDue(o: Obligation, now = new Date()) {
 }
 export function paidAmount(s: State, o: Obligation, due: Date) {
   return s.txs
-    .filter((t) => t.obligationId === o.id && (o.once ? true : t.period === periodOf(due)))
+    .filter(
+      (t) =>
+        t.kind === "expense" &&
+        t.obligationId === o.id &&
+        (o.once ? true : t.period === periodOf(due)),
+    )
     .reduce((a, t) => a + t.amount, 0);
 }
 export function isPaid(s: State, o: Obligation, due: Date) {
-  return paidAmount(s, o, due) >= o.amount;
+  return (
+    paidAmount(s, o, due) >= o.amount ||
+    s.txs.some(
+      (t) =>
+        t.kind === "expense" &&
+        t.obligationId === o.id &&
+        t.closesObligation &&
+        (o.once || t.period === periodOf(due)),
+    )
+  );
+}
+export function remainingPayment(s: State, o: Obligation, due: Date) {
+  return isPaid(s, o, due) ? 0 : Math.max(0, o.amount - paidAmount(s, o, due));
 }
 /** part of a payment or debt paid now; the rest stays reserved */
 export function payPart(o: Obligation, amount: number, method: Method = o.method ?? "card") {
@@ -571,17 +590,20 @@ export function toggleIncomeSkip(id: string, period: string) {
   setState((s) => ({
     ...s,
     incomes: s.incomes.map((y) =>
-      y.id === id
-        ? { ...y, skip: y.skip === period ? undefined : period, nextOn: undefined }
-        : y,
+      y.id === id ? { ...y, skip: y.skip === period ? undefined : period, nextOn: undefined } : y,
     ),
   }));
 }
-export function payObligation(o: Obligation, method: Method = o.method ?? "card") {
+export function payObligation(
+  o: Obligation,
+  method: Method = o.method ?? "card",
+  amount = o.amount,
+) {
   const due = obligationDue(o);
   const t = addTx({
     kind: "expense",
-    amount: o.amount,
+    amount,
+    closesObligation: true,
     category: o.category,
     note: o.name,
     obligationId: o.id,
@@ -611,6 +633,7 @@ export function confirmIncome(
     amount,
     category: "income",
     note: inc.name,
+    incomeId: inc.id,
     method,
   });
   setState((x) => ({
@@ -652,12 +675,33 @@ export function carriedIn(s: State, today: Date): number {
   while (dayKey(d) !== tk && guard++ < 400) {
     const k = dayKey(d);
     const spent = s.txs
-      .filter((t) => t.kind === "expense" && !t.goal && !t.obligationId && dayKey(new Date(t.date)) === k)
+      .filter(
+        (t) => t.kind === "expense" && !t.goal && !t.obligationId && dayKey(new Date(t.date)) === k,
+      )
       .reduce((a, t) => a + t.amount, 0);
     carry = Math.max(0, carry + log.norm - spent);
     d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
   }
   return carry;
+}
+/** One-off receipts stay in the current income interval, outside long-range smoothing.
+ * Legacy planned receipts are recognised by their exact source name, never by amount. */
+export function intervalExtra(s: State, now = new Date()) {
+  const today = startOfDay(now);
+  const previous = s.incomes.flatMap((inc) =>
+    incomeDates(inc, today).filter((d) => d <= today && periodOf(d) !== inc.skip),
+  );
+  const start = previous.reduce((a, d) => (d > a ? d : a), startOfDay(new Date(s.createdAt)));
+  return s.txs
+    .filter(
+      (t) =>
+        t.kind === "income" &&
+        !t.incomeId &&
+        !s.incomes.some((i) => i.name === t.note) &&
+        new Date(t.date) >= start &&
+        startOfDay(new Date(t.date)) <= today,
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
 }
 export function calc(s: State, now = new Date()) {
   const today = startOfDay(now);
@@ -669,7 +713,7 @@ export function calc(s: State, now = new Date()) {
   // only payments due before the next income are set aside from today's money;
   // later ones are covered by the incomes that come before them (see forecast smoothing below)
   const saving: { o: Obligation; due: Date; part: number }[] = [];
-  const reserve = reserved.reduce((a, x) => a + x.o.amount - paidAmount(s, x.o, x.due), 0);
+  const reserve = reserved.reduce((a, x) => a + remainingPayment(s, x.o, x.due), 0);
   const tk = dayKey(today);
   // every expense entered today counts (medicine too); only planned payments paid from the reserve do not
   const todayLife = s.txs.filter(
@@ -687,19 +731,23 @@ export function calc(s: State, now = new Date()) {
   let dailyNorm = Math.max(0, (pool - held) / days);
   // if later payments need part of today's money (incomes ahead are too small), spend a bit less now
   if (!s.nextIncomeOverride) {
-    const first = forecast(s, 60, now, pool)[0];
-    if (first && first.perDay < dailyNorm)
-      dailyNorm = Math.max(first.perDay, Math.min(minDaily, pool / days));
+    const extra = Math.min(intervalExtra(s, now), Math.max(0, pool - held));
+    const first = forecast(s, 60, now, pool - extra)[0];
+    if (first && first.perDay + extra / days < dailyNorm)
+      dailyNorm = Math.max(first.perDay + extra / days, Math.min(minDaily, pool / days));
   }
   // money kept now for payments after the next income — shown in «Отложено на платежи», not hidden
-  let ahead = Math.max(0, Math.round(pool - held - dailyNorm * days));
+  let ahead = Math.min(
+    Math.max(0, total - held),
+    Math.max(0, Math.round(pool - held - dailyNorm * days)),
+  );
   if (ahead > 0) {
     const later = forecast(s, 60, now, pool)
       .flatMap((g) => g.events)
       .filter((e) => e.kind === "payment" && !e.paid && e.date >= next.date);
     for (const e of later) {
       if (ahead <= 0) break;
-      const o = s.obligations.find((x) => x.id === e.refId);
+      const o = paymentObligations(s).find((x) => x.id === e.refId);
       if (!o) continue;
       const part = Math.min(ahead, e.amount);
       saving.push({ o, due: e.date, part });
@@ -1080,7 +1128,7 @@ export function forecast(
         ];
     dates.forEach((d, i) => {
       if (d >= limit) return;
-      const left = o.amount - (i === 0 ? paidAmount(s, o, d) : 0);
+      const left = i === 0 ? remainingPayment(s, o, d) : o.amount;
       if (d < today && left <= 0) return;
       ev.push({
         date: d < today ? today : d,

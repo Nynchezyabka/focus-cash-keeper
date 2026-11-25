@@ -1,6 +1,6 @@
 // Advisor memory (short stable preferences) and gentle initiative (one opening message a day).
 // Everything stays on the device; numbers always come from calc(), never from memory.
-import { calc, dayKey, obligationDue, paidAmount, rub, type State } from "@/lib/budget";
+import { calc, dayKey, obligationDue, remainingPayment, rub, type State } from "@/lib/budget";
 import { paymentObligations } from "@/lib/loan-schedule";
 import { goalSaved } from "@/lib/goals";
 import type { Tone } from "@/lib/persona";
@@ -92,11 +92,11 @@ export function openerReason(
     .map((o) => ({ o, due: obligationDue(o, now) }))
     .filter(({ o, due }) => {
       const d = Math.round((+due - +today) / day);
-      return d >= 1 && d <= 3 && paidAmount(s, o, due) < o.amount;
+      return d >= 1 && d <= 3 && remainingPayment(s, o, due) > 0;
     })
     .sort((a, b) => +a.due - +b.due)[0];
   if (soon && (c.payGap > 0 || c.dailyNorm <= (c.minDaily || 0) + 1)) {
-    const left = soon.o.amount - paidAmount(s, soon.o, soon.due);
+    const left = remainingPayment(s, soon.o, soon.due);
     const d = Math.round((+soon.due - +today) / day);
     const when = d === 1 ? "завтра" : `через ${d} дн.`;
     const gap =

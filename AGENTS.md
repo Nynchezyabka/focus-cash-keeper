@@ -36,3 +36,7 @@
 - Exclude managed generated integration files from project ESLint checks — regeneration must not require hand-editing platform-owned code.
 - Shell owns the shared back control for secondary pages, including Family; primary navigation and Plan tabs omit it to keep navigation consistent.
 - Budget is mirrored to IndexedDB (src/lib/shadow-store.ts) and restored at launch by storage-guard.ts only when the live budget is empty, before device sync starts — survives localStorage wipes offline.
+
+- Final payment settlement is a marker on its linked expense transaction, not a changed plan amount; remainingPayment and schedule totals respect it so undo/export stay deterministic.
+- One-off receipts within the current planned-income interval bypass long-range smoothing; planned receipts carry incomeId and legacy ones match exact source names to avoid counting salary as a gift.
+- Chat multi-selection copies clean visible messages in chronological order and deletes only selected indices while sending is disabled, preserving saved chat sync.

@@ -39,7 +39,10 @@ export function scheduleTotals(s: State, o: Obligation) {
     const paid = s.txs
       .filter((t) => t.kind === "expense" && t.obligationId === p.id)
       .reduce((a, t) => a + t.amount, 0);
-    return { payment: p, paid, left: Math.max(0, p.amount - paid) };
+    const closed = s.txs.some(
+      (t) => t.kind === "expense" && t.obligationId === p.id && t.closesObligation,
+    );
+    return { payment: p, paid, left: closed ? 0 : Math.max(0, p.amount - paid) };
   });
   return {
     rows,

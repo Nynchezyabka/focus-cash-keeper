@@ -5,7 +5,7 @@ import { LoanScheduleCard, LoanScheduleEditor } from "@/components/LoanSchedule"
 import { paymentObligations } from "@/lib/loan-schedule";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2 } from "lucide-react";
+import { Check, CalendarClock, HandCoins, Lock, Plus, Trash2, Pencil } from "lucide-react";
 import { Shell, CatIcon, meta } from "@/components/Shell";
 import { MonthStrip } from "@/components/MonthStrip";
 import { PlanTabs } from "@/components/PlanTabs";
@@ -22,6 +22,7 @@ import {
   dayKey,
   isPaid,
   paidAmount,
+  remainingPayment,
   payPart,
   unpay,
   restoreTx,
@@ -64,6 +65,7 @@ function Payments({ s }: { s: State }) {
   const [edit, setEdit] = useState<Obligation | null>(null);
   const [moving, setMoving] = useState<Obligation | null>(null);
   const [part, setPart] = useState<Obligation | null>(null);
+  const [paying, setPaying] = useState<Obligation | null>(null);
   const [loan, setLoan] = useState(false);
   const [schedule, setSchedule] = useState<Obligation | "new" | null>(null);
   const list = [...s.obligations]
@@ -137,7 +139,9 @@ function Payments({ s }: { s: State }) {
                       <MethodBadge m={o.method} />
                     </span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {o.once ? `Один раз, ${fmt(due)}` : `Каждый месяц, ${o.day}-го · ближайший ${fmt(due)}`}
+                      {o.once
+                        ? `Один раз, ${fmt(due)}`
+                        : `Каждый месяц, ${o.day}-го · ближайший ${fmt(due)}`}
                       {o.nextOn ? " (перенесён)" : ""}
                       {paid ? " · оплачено" : reserved ? " · отложено" : ""}
                     </span>
@@ -153,11 +157,7 @@ function Payments({ s }: { s: State }) {
                         const l = unpay(o);
                         undoable(`«${o.name}» снова ждёт оплаты`, () => l.forEach(restoreTx));
                       } else {
-                        const rest = o.amount - done;
-                        addedToast(
-                          done > 0 ? payPart(o, rest) : payObligation(o),
-                          `${o.name} оплачено — минус одна забота`,
-                        );
+                        setPaying(o);
                       }
                     }}
                     className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 active:scale-95 ${paid ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
@@ -205,6 +205,7 @@ function Payments({ s }: { s: State }) {
             unpay(moving);
         }}
       />
+      {paying && <PaymentReceiptDialog s={s} o={paying} onClose={() => setPaying(null)} />}
       {part && (
         <PartDialog
           o={part}
@@ -572,18 +573,115 @@ export function NewPaymentOn({ date, onClose }: { date: string; onClose: () => v
   );
 }
 
+function PaymentReceiptDialog({
+  s,
+  o,
+  onClose,
+  onEdit,
+}: {
+  s: State;
+  o: Obligation;
+  onClose: () => void;
+  onEdit?: () => void;
+}) {
+  const due = obligationDue(o);
+  const done = paidAmount(s, o, due);
+  const paid = isPaid(s, o, due);
+  const [amount, setAmount] = useState(String(remainingPayment(s, o, due)));
+  const [method, setMethod] = useState<Method>(o.method ?? "card");
+  const a = Number(amount.replace(/\s/g, "").replace(",", "."));
+  const [partial, setPartial] = useState(false);
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{o.name}</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          По плану {rub(o.amount)}
+          {done > 0 ? ` · внесено ${rub(done)}` : ""}
+        </p>
+        {paid ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              const txs = unpay(o);
+              undoable("Платёж снова ждёт оплаты", () => txs.forEach(restoreTx));
+              onClose();
+            }}
+          >
+            Отменить оплату
+          </Button>
+        ) : (
+          <>
+            <label className="text-sm" htmlFor="actual-payment">
+              Фактическая сумма
+            </label>
+            <Input
+              id="actual-payment"
+              autoFocus
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="h-12 text-xl"
+            />
+            <MethodToggle value={method} onChange={setMethod} />
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={!partial ? "secondary" : "outline"}
+                onClick={() => setPartial(false)}
+              >
+                Полностью
+              </Button>
+              <Button variant={partial ? "secondary" : "outline"} onClick={() => setPartial(true)}>
+                Часть
+              </Button>
+            </div>
+            <Button
+              disabled={!Number.isFinite(a) || a <= 0}
+              onClick={() => {
+                addedToast(
+                  partial ? payPart(o, a, method) : payObligation(o, method, a),
+                  partial ? `Внесено ${rub(a)}` : `${o.name}: оплачено ${rub(a)}`,
+                );
+                onClose();
+              }}
+            >
+              <Check />
+              {partial ? "Внести часть" : "Оплачено полностью"}
+            </Button>
+          </>
+        )}
+        {onEdit && (
+          <Button variant="ghost" onClick={onEdit}>
+            <Pencil />
+            Изменить план
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function PaymentEditFlow({ s, id, onClose }: { s: State; id: string; onClose: () => void }) {
   const o0 =
     s.obligations.find((o) => o.id === id) ??
     s.obligations.find(
       (o) => o.schedule && paymentObligations({ ...s, obligations: [o] }).some((p) => p.id === id),
     );
-  const [mode, setMode] = useState<"edit" | "move" | "part" | "schedule">(
-    o0?.schedule ? "schedule" : "edit",
-  );
+  const [mode, setMode] = useState<"quick" | "edit" | "move" | "part" | "schedule">("quick");
   if (!o0) return null;
-  const o = o0;
-  if (mode === "schedule") return <LoanScheduleEditor o={o} onClose={onClose} />;
+  const o = paymentObligations(s).find((p) => p.id === id) ?? o0;
+  if (mode === "quick")
+    return (
+      <PaymentReceiptDialog
+        s={s}
+        o={o}
+        onClose={onClose}
+        onEdit={() => setMode(o0.schedule ? "schedule" : "edit")}
+      />
+    );
+  if (mode === "schedule") return <LoanScheduleEditor o={o0} onClose={onClose} />;
   if (mode === "part")
     return (
       <PartDialog o={o} left={o.amount - paidAmount(s, o, obligationDue(o))} onClose={onClose} />

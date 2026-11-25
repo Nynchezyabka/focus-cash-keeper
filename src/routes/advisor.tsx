@@ -1,3 +1,5 @@
+import { selectedDialogue } from "@/lib/chat-selection";
+import { Checkbox } from "@/components/ui/checkbox";
 import { reviewRange, reviewText } from "@/lib/review";
 import { activeGoals, familyCollected, goalSaved, unassigned } from "@/lib/goals";
 import { GUIDE_TEXT } from "@/lib/guide";
@@ -22,6 +24,7 @@ import {
   Flag,
   MoreHorizontal,
   Copy,
+  ListChecks,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -76,6 +79,7 @@ import {
   GROUPS,
   obligationDue,
   paidAmount,
+  isPaid,
   incomeUpcoming,
   periodOf,
   rub,
@@ -131,12 +135,11 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
       .map((o) => {
         const due = obligationDue(o),
           paid = paidAmount(s, o, due);
-        const st =
-          paid >= o.amount
-            ? "ОПЛАЧЕНО"
-            : paid > 0
-              ? `внесено ${rub(paid)} из ${rub(o.amount)}, осталось ${rub(o.amount - paid)}`
-              : "ещё не оплачено";
+        const st = isPaid(s, o, due)
+          ? "ОПЛАЧЕНО"
+          : paid > 0
+            ? `внесено ${rub(paid)} из ${rub(o.amount)}, осталось ${rub(o.amount - paid)}`
+            : "ещё не оплачено";
         return `${o.name}${readable ? "" : ` [id=${o.id}]`} ${rub(o.amount)} — ${d(due)}${o.once ? " (разово)" : " (ежемесячно)"} — ${st}`;
       })
       .join(readable ? "\n" : "; ") || "нет";
@@ -252,7 +255,10 @@ function context(s: State, readable = false, need: FactNeeds = ALL_FACTS) {
 ПРОГНОЗ НА 180 ДНЕЙ (раздел «План», отрезки от дохода до дохода; дневной ориентир сглажен с учётом следующих отрезков, деньги на начало уже учитывают плановые траты на жизнь в предыдущих отрезках; не дели остаток самостоятельно):
 ${forecastText(s)}`;
   const drop: [boolean, RegExp][] = [
-    [!need.spending, /^(Траты за 30 дней|Ритм повседневных трат|Траты по дням|Последние операции за 30 дней)/],
+    [
+      !need.spending,
+      /^(Траты за 30 дней|Ритм повседневных трат|Траты по дням|Последние операции за 30 дней)/,
+    ],
     [!need.family, /^Семья:/],
     [!need.goals, /^Цели накоплений/],
     [!need.debts, /^(Кредиты и долги|Плата по сохранённым)/],
@@ -354,6 +360,21 @@ function Chat({ s }: { s: State }) {
   };
   const [img, setImg] = useState<{ dataUrl: string; type: string; name: string } | null>(null);
   const end = useRef<HTMLDivElement>(null);
+  const history = useRef<HTMLDivElement>(null);
+  const opened = useRef(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const toggleSelected = (i: number) =>
+    setSelected((old) => {
+      const next = new Set(old);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
   const imageInput = useRef<HTMLInputElement>(null);
   const [ready, setReady] = useState(false);
   const grew = useRef(false);
@@ -400,9 +421,17 @@ function Chat({ s }: { s: State }) {
     const plain = keep.map((m) => ({ ...m, content: m.content.slice(0, 8000) }));
     if (JSON.stringify(plain) !== JSON.stringify(getState().advisorChat ?? []))
       setState((x) => ({ ...x, advisorChat: plain }));
-    // the screen does not jump down when it opens — only when the conversation grows
-    if (grew.current) end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const first = !opened.current;
+    const scroll = first || grew.current;
+    opened.current = true;
     grew.current = false;
+    if (scroll) {
+      const frame = requestAnimationFrame(() => {
+        const el = history.current;
+        el?.scrollTo({ top: el.scrollHeight, behavior: first ? "instant" : "smooth" });
+      });
+      return () => cancelAnimationFrame(frame);
+    }
   }, [msgs, ready]);
 
   async function send(q: string, base: Msg[] = msgs, shot = img) {
@@ -521,7 +550,7 @@ function Chat({ s }: { s: State }) {
 
   return (
     <div className="flex h-[calc(100dvh-11rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-64 flex-col lg:relative lg:mx-auto lg:h-[calc(100dvh-7rem)] lg:max-w-4xl lg:pl-60">
-      <div className="mb-3 flex flex-nowrap items-center gap-1.5 lg:absolute lg:left-0 lg:top-0 lg:w-52 lg:flex-col lg:items-stretch">
+      <div className="mb-3 flex flex-wrap items-center gap-1.5 lg:absolute lg:left-0 lg:top-0 lg:w-52 lg:flex-col lg:items-stretch">
         <p className="hidden px-1 text-xs text-muted-foreground lg:block">
           {nameOf(s.advisorName)} учитывает ваши правила, память и цифры приложения. Характер — над
           полем ввода.
@@ -551,6 +580,18 @@ function Chat({ s }: { s: State }) {
           <Brain /> Память{s.advisorMemory?.length ? ` (${s.advisorMemory.length})` : ""}
         </Button>
         {msgs.length > 0 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Выбрать сообщения"
+            title="Выбрать сообщения"
+            disabled={busy}
+            onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+          >
+            <ListChecks />
+          </Button>
+        )}
+        {msgs.length > 0 && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -572,7 +613,14 @@ function Chat({ s }: { s: State }) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Оставить</AlertDialogCancel>
-                <AlertDialogAction onClick={() => setMsgs([])}>Начать заново</AlertDialogAction>
+                <AlertDialogAction
+                  onClick={() => {
+                    setMsgs([]);
+                    stopSelecting();
+                  }}
+                >
+                  Начать заново
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -673,20 +721,39 @@ function Chat({ s }: { s: State }) {
         </div>
       )}
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-3">
+      <div
+        ref={history}
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-3"
+      >
         {msgs.map((m, i) => {
           if (m.role === "user")
             return (
               <div
                 key={i}
-                className="ml-8 whitespace-pre-wrap rounded-2xl bg-primary p-3 text-sm text-primary-foreground"
+                className={`relative whitespace-pre-wrap rounded-2xl bg-primary p-3 text-sm text-primary-foreground ${selecting ? "ml-10" : "ml-8"}`}
               >
+                {selecting && (
+                  <Checkbox
+                    aria-label={`Выбрать сообщение ${i + 1}`}
+                    checked={selected.has(i)}
+                    onCheckedChange={() => toggleSelected(i)}
+                    className="absolute -left-9 top-3"
+                  />
+                )}
                 {m.content}
               </div>
             );
           const { clean, actions } = parseActions(m.content);
           return (
-            <div key={i} className="mr-4 space-y-2">
+            <div key={i} className={`relative mr-4 space-y-2 ${selecting ? "ml-10" : ""}`}>
+              {selecting && (
+                <Checkbox
+                  aria-label={`Выбрать сообщение ${i + 1}`}
+                  checked={selected.has(i)}
+                  onCheckedChange={() => toggleSelected(i)}
+                  className="absolute -left-9 top-3"
+                />
+              )}
               <div className="md relative overflow-x-auto rounded-2xl bg-card p-3 pr-9 text-sm">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -706,9 +773,19 @@ function Chat({ s }: { s: State }) {
                       <Copy /> Скопировать
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      onClick={() => {
+                        setSelecting(true);
+                        setSelected(new Set([i]));
+                      }}
+                      disabled={busy}
+                    >
+                      <ListChecks />
+                      Выбрать
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       onClick={() =>
                         setReport({
-                          q: msgs[i - 1]?.role === "user" ? msgs[i - 1]!.content : "",
+                          q: msgs[i - 1]?.role === "user" ? (msgs[i - 1]?.content ?? "") : "",
                           a: clean,
                         })
                       }
@@ -793,13 +870,75 @@ function Chat({ s }: { s: State }) {
           );
         })}
         <ReportDialog data={report} onClose={() => setReport(null)} />
-        {busy && (
-          <ThinkingNote />
-        )}
+        {busy && <ThinkingNote />}
         {err && <p className="rounded-2xl bg-accent p-3 text-sm text-accent-foreground">{err}</p>}
         <div ref={end} />
       </div>
 
+      {selecting && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-background py-2">
+          <span className="mr-auto text-sm">Выбрано: {selected.size}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!selected.size || busy}
+            onClick={async () => {
+              try {
+                const clean = msgs.map((m) => ({
+                  role: m.role,
+                  content: m.role === "assistant" ? parseActions(m.content).clean : m.content,
+                }));
+                await navigator.clipboard.writeText(selectedDialogue(clean, selected));
+                toast("Диалог скопирован");
+              } catch {
+                toast("Не удалось скопировать диалог");
+              }
+            }}
+          >
+            <Copy />
+            Скопировать
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Удалить выбранные"
+                title="Удалить выбранные"
+                disabled={!selected.size || busy}
+              >
+                <Trash2 />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Удалить выбранные сообщения?</AlertDialogTitle>
+                <AlertDialogDescription>Остальные сообщения останутся.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Оставить</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setMsgs((all) => all.filter((_, i) => !selected.has(i)));
+                    stopSelecting();
+                  }}
+                >
+                  Удалить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Отменить выбор"
+            title="Отменить выбор"
+            onClick={stopSelecting}
+          >
+            <X />
+          </Button>
+        </div>
+      )}
       <div className="shrink-0 border-t border-border bg-background/95 backdrop-blur">
         <div className="py-2">
           <div
@@ -1083,9 +1222,17 @@ function ThinkingNote() {
     return () => clearInterval(t);
   }, []);
   return (
-    <div role="status" aria-live="polite" className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground">
+    <div
+      role="status"
+      aria-live="polite"
+      className="mr-4 rounded-2xl bg-card p-3 text-sm text-muted-foreground"
+    >
       <span className="animate-pulse">Думаю…</span> {sec} сек.
-      {sec >= 10 && <div className="mt-1 text-xs">Сложный вопрос может занять до пары минут — ответ придёт, можно подождать.</div>}
+      {sec >= 10 && (
+        <div className="mt-1 text-xs">
+          Сложный вопрос может занять до пары минут — ответ придёт, можно подождать.
+        </div>
+      )}
     </div>
   );
 }

@@ -188,11 +188,7 @@ function Incomes({ s }: { s: State }) {
                     <Button size="sm" variant="ghost" onClick={() => setMoving(i)}>
                       <CalendarClock /> Перенести
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setArrived(i)}
-                    >
+                    <Button size="sm" variant="secondary" onClick={() => setArrived(i)}>
                       <Check /> Пришли
                     </Button>
                   </div>
@@ -291,7 +287,17 @@ function Incomes({ s }: { s: State }) {
 }
 
 /** confirm a planned income with the amount that really came (sick leave, bonus, deductions) */
-function ArrivedDialog({ s, inc, onClose }: { s: State; inc: Income; onClose: () => void }) {
+function ArrivedDialog({
+  s,
+  inc,
+  onClose,
+  onEdit,
+}: {
+  s: State;
+  inc: Income;
+  onClose: () => void;
+  onEdit?: () => void;
+}) {
   const [amount, setAmount] = useState(String(inc.amount));
   const [method, setMethod] = useState<Method>(inc.method ?? "card");
   const sum = Math.round(Number(amount.replace(",", ".").replace(/\s/g, "")));
@@ -301,8 +307,14 @@ function ArrivedDialog({ s, inc, onClose }: { s: State; inc: Income; onClose: ()
         <DialogHeader>
           <DialogTitle>Сколько пришло — «{inc.name}»?</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">По плану {rub(inc.amount)}. Можно поправить сумму.</p>
-        <Input inputMode="decimal" aria-label="Сколько пришло" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-12" />
+        <p className="text-xs text-muted-foreground">По плану {rub(inc.amount)}.</p>
+        <Input
+          inputMode="decimal"
+          aria-label="Сколько пришло"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="h-12"
+        />
         <MethodToggle value={method} onChange={setMethod} />
         <Button
           disabled={!(sum > 0)}
@@ -313,6 +325,12 @@ function ArrivedDialog({ s, inc, onClose }: { s: State; inc: Income; onClose: ()
         >
           Учесть {sum > 0 ? rub(sum) : ""}
         </Button>
+        {onEdit && (
+          <Button variant="ghost" onClick={onEdit}>
+            <Pencil />
+            Изменить план
+          </Button>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -480,7 +498,10 @@ function IncomeEditor({ draft, onClose }: { draft: Draft | null; onClose: () => 
 /** opens the same income editor from the calendar or the 30-day strip */
 export function IncomeEditFlow({ s, id, onClose }: { s: State; id: string; onClose: () => void }) {
   const i = s.incomes.find((x) => x.id === id);
+  const [editing, setEditing] = useState(false);
   if (!i) return null;
+  if (!editing)
+    return <ArrivedDialog s={s} inc={i} onClose={onClose} onEdit={() => setEditing(true)} />;
   return (
     <IncomeEditor
       draft={{

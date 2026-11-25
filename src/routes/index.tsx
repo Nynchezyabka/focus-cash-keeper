@@ -523,7 +523,9 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
   const [date, setDate] = useState("");
   const shift = (key: string) => {
     moveIncome(p.income.id, key);
-    toast(`Ждём доход до ${new Date(key + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`);
+    toast(
+      `Ждём доход до ${new Date(key + "T12:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`,
+    );
   };
   const plus = (days: number) => {
     const d = new Date();
@@ -550,7 +552,9 @@ function IncomeArrived({ p }: { p: NonNullable<ReturnType<typeof pendingIncome>>
             <Button
               size="sm"
               disabled={!(sum > 0)}
-              onClick={() => addedToast(confirmIncome(getState(), p.income, sum, method), "Доход учтён")}
+              onClick={() =>
+                addedToast(confirmIncome(getState(), p.income, sum, method), "Доход учтён")
+              }
             >
               Учесть {sum > 0 ? rub(sum) : ""}
             </Button>
@@ -783,7 +787,7 @@ function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void
     const n = nextIncome(s);
     return n.income && +n.date - Date.now() < 10 * 86400000 ? n.income : undefined;
   })();
-  const [mark, setMark] = useState(true);
+  const [mark, setMark] = useState(false);
   const [family, setFam] = useState(false);
   const fam = useFamily();
   const [amount, setAmount] = useState("");
@@ -833,6 +837,7 @@ function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void
                 amount: a,
                 category: "income",
                 note: note || (planned && mark && !family ? planned.name : "Разовый доход"),
+                ...(planned && mark && !family ? { incomeId: planned.id } : {}),
                 method,
                 ...(family ? { family: true } : {}),
               }),
@@ -840,6 +845,7 @@ function IncomeDialog({ open, onClose, s }: { open: boolean; onClose: () => void
             );
             if (planned && mark && !family) markIncomeArrived(s, planned);
             setFam(false);
+            setMark(false);
             setAmount("");
             setNote("");
             onClose();
