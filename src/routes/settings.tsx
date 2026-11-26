@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   FUTURE_SCHEMA_ERROR,
   MIN_DAILY,
+  avgLifeDaily,
   dayKey,
   getState,
   migrateState,
@@ -314,6 +315,33 @@ function Settings({ s }: { s: State }) {
             setState((x) => ({ ...x, minDaily: v === "" ? undefined : Math.max(0, Number(v)) }));
           }}
         />
+      </section>
+      <section className="space-y-2 rounded-2xl bg-card p-4 shadow-soft">
+        <h2 className="text-base font-medium">Комфортная норма дня</h2>
+        <p className="text-sm text-muted-foreground">
+          Больше этой суммы в&nbsp;день не&nbsp;показывается: лишние деньги до&nbsp;дохода спокойно
+          остаются в&nbsp;«Отложено на&nbsp;платежи». Пусто&nbsp;— без ограничения.
+        </p>
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          placeholder="Без ограничения"
+          value={s.comfortDaily ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            setState((x) => ({ ...x, comfortDaily: v === "" ? undefined : Math.max(0, Number(v)) }));
+          }}
+        />
+        {avgLifeDaily(s) > 0 && (
+          <button
+            type="button"
+            className="text-sm text-primary underline-offset-2 hover:underline"
+            onClick={() => setState((x) => ({ ...x, comfortDaily: avgLifeDaily(x) }))}
+          >
+            Подставить по&nbsp;тратам за&nbsp;30&nbsp;дней: {avgLifeDaily(s).toLocaleString("ru-RU")}&nbsp;₽
+          </button>
+        )}
       </section>
       <section className="rounded-2xl bg-card p-4 shadow-soft">
         <label className="flex items-center justify-between gap-3">

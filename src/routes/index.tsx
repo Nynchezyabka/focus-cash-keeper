@@ -121,6 +121,11 @@ function Today({ s }: { s: State }) {
               норма {rub(c.baseNorm)} +&nbsp;{rub(c.carry)} с&nbsp;прошлых дней
             </p>
           )}
+          {c.days > 2 && c.week >= 1 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              на&nbsp;{Math.min(7, c.days)}&nbsp;дн. ≈&nbsp;{rub(c.week)} — можно спокойно закупиться разом
+            </p>
+          )}
           {c.spentToday > 0 && (
             <p className="mt-2 text-xs text-muted-foreground">
               потрачено {rub(c.spentToday)} из {rub(c.dailyNorm)}

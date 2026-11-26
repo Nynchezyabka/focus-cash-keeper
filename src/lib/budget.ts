@@ -107,6 +107,7 @@ export interface State {
   nextIncomeOverride?: string | undefined; // YYYY-MM-DD
   overspendHandled?: string; // date key
   minDaily?: number | undefined; // protected minimum for life per day
+  comfortDaily?: number | undefined; // calm daily cap: money above it goes to «Отложено» instead of today
   dailyCarry?: boolean; // unspent daily money moves to the next day whole; overspend still spreads
   carryLog?: { day: string; norm: number; carry: number } | undefined; // today's base norm and carried money
   ai: AiSettings;
@@ -740,6 +741,8 @@ export function calc(s: State, now = new Date()) {
     if (first && first.perDay + extra / days < dailyNorm)
       dailyNorm = Math.max(first.perDay + extra / days, Math.min(minDaily, pool / days));
   }
+  // comfortable norm: more money than needed does not inflate the day, it stays set aside for later payments
+  if (s.comfortDaily && s.comfortDaily > 0) dailyNorm = Math.min(dailyNorm, s.comfortDaily);
   // money kept now for payments after the next income — shown in «Отложено на платежи», not hidden
   let ahead = Math.min(
     Math.max(0, total - held),
@@ -769,6 +772,8 @@ export function calc(s: State, now = new Date()) {
   const baseNorm = s.dailyCarry ? Math.max(0, dailyNorm - carry / days) : dailyNorm;
   dailyNorm = baseNorm + carry;
   const freeToday = dailyNorm - spentToday;
+  // rough week ahead: today's free money plus base norms of the next days (never past the next income)
+  const week = Math.max(0, freeToday) + baseNorm * Math.min(6, Math.max(0, days - 1));
   const overspend = freeToday < 0 ? -freeToday : 0;
   const rest = Math.max(0, total);
   const afterSpread =
@@ -787,6 +792,7 @@ export function calc(s: State, now = new Date()) {
     baseNorm,
     carry,
     freeToday,
+    week,
     overspend,
     afterSpread,
     total,
@@ -1209,4 +1215,13 @@ export function forecast(
     money = left - perDay * r.days + r.inAtEnd;
   }
   return segs;
+}
+
+/** Average everyday spending per day over the last 30 days (planned payments and goals excluded). */
+export function avgLifeDaily(s: State, now = new Date()) {
+  const from = +startOfDay(now) - 30 * 86400000;
+  const sum = s.txs
+    .filter((t) => t.kind === "expense" && !t.goal && !t.obligationId && +new Date(t.date) >= from && +new Date(t.date) < +startOfDay(now))
+    .reduce((a, t) => a + t.amount, 0);
+  return Math.round(sum / 30 / 50) * 50;
 }
